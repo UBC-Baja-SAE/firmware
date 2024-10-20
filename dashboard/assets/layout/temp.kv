@@ -1,0 +1,12 @@
+#:kivy 1.11.0
+
+<Temp>:
+    RelativeLayout:
+        center: (self.parent.center_x + 10, self.parent.center_y)
+        size: (20, 20)
+
+        
+        Image:
+            source: './assets/images/temp.png'
+            fit_mode: 'contain'
+            texture_size: self.parent.size
