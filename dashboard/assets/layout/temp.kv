@@ -1,12 +1,12 @@
 #:kivy 1.11.0
+#:import C gauge_constants
 
 <Temp>:
     RelativeLayout:
-        center: (self.parent.center_x + 10, self.parent.center_y)
-        size: (20, 20)
-
+        center: (self.parent.center_x + C.LINEAR_ICON_SIZE, self.parent.center_y)
+        size: (C.LINEAR_ICON_SIZE, C.LINEAR_ICON_SIZE)
         
         Image:
-            source: './assets/images/temp.png'
+            source: C.TEMPERATURE_ICON_PATH
             fit_mode: 'contain'
             texture_size: self.parent.size

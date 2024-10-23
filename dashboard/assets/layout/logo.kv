@@ -1,11 +1,12 @@
 #:kivy 1.11.0
+#:import C gauge_constants
 
 <Logo>:
     RelativeLayout:
-        center: (self.parent.center_x, 300)
-        size: (180, 180)
+        center: (self.parent.center_x, C.LOGO_CENTER_Y)
+        size: (C.LOGO_SIZE, C.LOGO_SIZE)
         
         Image:
-            source: './assets/images/logo.png'
+            source: C.LOGO_PATH
             fit_mode: 'contain'
             texture_size: self.parent.size

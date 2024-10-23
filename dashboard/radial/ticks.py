@@ -1,6 +1,8 @@
-from RadialGauge.Gaugeable import Gaugeable
-from GaugeConfigurations import (COLOUR_GRADIENT, COLOUR_TICKS, WIDTH_SMALL, 
-WIDTH_LARGE, RATIO_LARGE, RATIO_SMALL, RATIO_GRADIENT, TICK_LABEL)
+from radial.interface import Gaugeable
+from gauge_constants import (
+    COLOUR_GRADIENT, COLOUR_TICKS, WIDTH_SMALL, WIDTH_LARGE, TICK_LABEL,
+    RADIAL_TICK_RATIO_LARGE, RADIAL_TICK_RATIO_SMALL, RATIO_GRADIENT, 
+)
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.graphics import Color, Line
@@ -18,8 +20,13 @@ class GaugeTicks(Gaugeable, Widget):
         size: tuple,
         **kwargs
     ):
-        super(GaugeTicks, self).__init__(angle_start, angle_end, value_max, 
-                                         radius, **kwargs)
+        super(GaugeTicks, self).__init__(
+            angle_start, 
+            angle_end, 
+            value_max, 
+            radius, 
+            **kwargs
+        )
         
         self.size_hint = (None, None)
         self.pos_hint = { "center_x": 0.5, "center_y": 0.5 }
@@ -38,8 +45,13 @@ class GaugeTicks(Gaugeable, Widget):
     def drawOutline(self) -> None:
         Color(*COLOUR_TICKS)
         Line(
-            circle = (self.center_x, self.center_y, dp(self.radius),
-                      self.angle_start - 90, self.angle_end - 90),
+            circle = (
+                self.center_x,
+                self.center_y,
+                dp(self.radius),
+                self.angle_start - 90,
+                self.angle_end - 90
+            ),
             width = dp(WIDTH_SMALL)
         )
         
@@ -53,22 +65,27 @@ class GaugeTicks(Gaugeable, Widget):
             
             Color(color[0], color[1], color[2], alpha)
             Line(
-                circle = (self.center_x, self.center_y, dp(start_radius + i), 
-                          self.angle_start - 90, self.angle_end - 90),
+                circle = (
+                    self.center_x,
+                    self.center_y,
+                    dp(start_radius + i), 
+                    self.angle_start - 90,
+                    self.angle_end - 90
+                ),
                 width = dp(WIDTH_SMALL)
             )
     
     def drawTicks(self) -> None:
-        self.drawTick(self.angle_start, RATIO_LARGE, WIDTH_LARGE, 0)
+        self.drawTick(self.angle_start, RADIAL_TICK_RATIO_LARGE, WIDTH_LARGE, 0)
         
         full_interval = (self.angle_end - self.angle_start) / (self.ticks - 1)
         for i in range(1, self.ticks):
             angle_full = self.angle_start + i * full_interval
             angle_half = angle_full - full_interval / 2
 
-            self.drawTick(angle_full, RATIO_LARGE, WIDTH_LARGE, 
+            self.drawTick(angle_full, RADIAL_TICK_RATIO_LARGE, WIDTH_LARGE, 
                           i * self.value_max // (self.ticks - 1))
-            self.drawTick(angle_half, RATIO_SMALL, WIDTH_SMALL, None)
+            self.drawTick(angle_half, RADIAL_TICK_RATIO_SMALL, WIDTH_SMALL, None)
     
     def drawTick(self, angle: int, length_ratio: float, width: int, 
                  label_value: int) -> None:

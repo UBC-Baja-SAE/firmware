@@ -2,9 +2,10 @@ from kivy.uix.widget import Widget
 from kivy.graphics import Color, Line
 from kivy.metrics import dp
 from kivy.uix.label import Label
-from kivy.lang import Builder
-from GaugeConfigurations import (COLOUR_GRADIENT, COLOUR_TICKS, RATIO_GRADIENT,
-                                 WIDTH_SMALL, RATIO_MINOR, LINEAR_GAUGE_LABEL)
+from gauge_constants import (
+    COLOUR_GRADIENT, COLOUR_TICKS, RATIO_GRADIENT, WIDTH_SMALL, RATIO_MINOR,
+    LINEAR_GAUGE_LABEL
+)
 
 class LinearGaugeTicks(Widget):
     def __init__(
@@ -17,8 +18,24 @@ class LinearGaugeTicks(Widget):
         size: tuple,
         **kwargs
     ):
+        """This class is responsible for drawing the tick marks for the gauge.
+
+        Args:
+            length (int):       The length (or height) of the gauge.
+            bar_width (int):    The width of the bar that fills the gauge.
+            ticks (int):        The number of [major] tick marks, with one tick mark 
+                                in-between each major increment.
+            sym_min (str):      The string at the bottom of the gauge
+            sym_max (str):      The string at the top of the gauge
+            size (tuple):       The size of the widget, in (width, height)
+        """
         super(LinearGaugeTicks, self).__init__(**kwargs)
         
+        '''
+        Format this widget to use objective sizing, be centered in its parent,
+        and have explicit sizing. Note that the size is explicitly passed as a
+        parameter, and not in **kwargs.
+        '''
         self.size_hint = (None, None)
         self.pos_hint = { "center_x": 0.5, "center_y": 0.5 }
         self.size = size
@@ -32,6 +49,9 @@ class LinearGaugeTicks(Widget):
         self.draw()
         
     def draw(self, *args) -> None:
+        """
+        This draws the static elements. This should be called once at start-up.
+        """
         with self.canvas:
             self.drawGradient()
             self.drawOutline()
@@ -68,20 +88,27 @@ class LinearGaugeTicks(Widget):
     
     def drawTick(self, ratio: float, y: int) -> None:
         Color(*COLOUR_TICKS)
-        Line(points = [0, y, self.bar_width * ratio, y], 
-             width = dp(WIDTH_SMALL))
+        Line(
+            points = [0, y, self.bar_width * ratio, y], 
+            width = dp(WIDTH_SMALL)
+        )
         
     def drawLabel(self, text: str) -> None:
-        size = dp(20)
+        size = dp(25)
         
         x, y = self.size
         
         if text is self.sym_min:
             y = 0
             
-        label = Label(text = str(text), color = COLOUR_TICKS, halign = 'center',
-            font_size = LINEAR_GAUGE_LABEL, valign = 'middle',
+        label = Label(
+            text = str(text),
+            color = COLOUR_TICKS,
+            font_size = LINEAR_GAUGE_LABEL,
+            halign = 'center',
+            valign = 'middle',
             size = (size, size), 
-            center = (self.bar_width + size / 2, y))
+            center = (self.bar_width + size / 2, y)
+        )
         
         self.add_widget(label)

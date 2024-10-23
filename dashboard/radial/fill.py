@@ -1,5 +1,5 @@
-from RadialGauge.Gaugeable import Gaugeable
-from GaugeConfigurations import WIDTH_SMALL, COLOUR_PRIMARY, RATIO_FILL
+from radial.interface import Gaugeable
+from gauge_constants import WIDTH_SMALL, COLOUR_PRIMARY, RATIO_FILL
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Line
 from kivy.metrics import dp
