@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "steering_wheel_datatypes.h"
 #include "steering_wheel.h"
 
