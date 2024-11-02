@@ -1,6 +1,9 @@
 import os
 import shutil
 import argparse
+'''
+Example use: from the root of this repository, use python scripts/copy_libs_arduino.py --destination=/c/Users/geoff/OneDrive/Documents/Arduino/libraries
+'''
 
 current_path = os.getcwd()
 source = f"{current_path}/lib"
