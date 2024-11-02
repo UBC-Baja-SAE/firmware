@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include "steering_wheel_datatypes.h"
 #include "steering_wheel.h"
+#include "serial.h"
 
 void steering_wheel_init(SteeringWheelData_t &data)
 {
+    Serial.println("INIT");
     // default button presses to off and
     data = {
         .left_dpad_button_pins = {2, 3, 4, 5, 6},
@@ -29,6 +31,12 @@ void steering_wheel_init(SteeringWheelData_t &data)
     }
 
     // initialize LCD pins and set up libraries
+
+    SerialMessage message = createSerialMessage(0x11, 0x50);
+
+    sendSerialMessage(message);
+
+
 
 }
 

@@ -6,6 +6,8 @@
 SteeringWheelData_t steering_wheel_data = {0};
 
 void setup() {
+    Serial.begin(9600);
+    Serial.println("INIT");
     steering_wheel_init(steering_wheel_data);
 }
 
