@@ -2,9 +2,11 @@
 #define STEERING_WHEEL_DATATYPES_H
 
 #define CONFIRMED_PRESS_TIME 500 //ms
+#define LCD_STALE_TIME 20000 //ms
 
 #define NUM_DPAD_BUTTONS 5
 #define NUM_LEDS 3
+#define NUM_WHEELS 4
 #define TOP_BUTTON 0
 #define RIGHT_BUTTON 1
 #define BOTTOM_BUTTON 2
@@ -13,6 +15,11 @@
 #define TOP_LED 0
 #define MIDDLE_LED 1
 #define BOTTOM_LED 2
+#define FRONT_LEFT 0
+#define FRONT_RIGHT 1
+#define REAR_LEFT 2
+#define REAR_RIGHT 3
+#define INCREMENT_PER_CYCLE 1
 
 enum class Button_Sts_e {
     SNA, 
@@ -27,6 +34,13 @@ enum class LED_Sts_e {
     UNLIT,
 };
 
+enum class LCD_State_e {
+    DEFAULT, 
+    ALL_WHEELS,
+    FRONT_WHEELS,
+    REAR_WHEELS,
+};
+
 typedef struct {
     int left_dpad_button_pins[NUM_DPAD_BUTTONS];
     int led_pins[NUM_LEDS];
@@ -35,6 +49,10 @@ typedef struct {
     Button_Sts_e left_dpad_button_sts_prev[NUM_DPAD_BUTTONS];
     unsigned long left_dpad_button_press_time[NUM_DPAD_BUTTONS];
     LED_Sts_e leds_data[NUM_LEDS];
+    LCD_State_e lcd_state;
+    unsigned long lcd_state_trigger_time;
+    bool lcd_state_confirm;
+    uint8_t sw_suspension_position[NUM_WHEELS];
 } SteeringWheelData_t;
 
 #endif

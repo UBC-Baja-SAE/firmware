@@ -3,6 +3,161 @@
 #include "steering_wheel.h"
 #include "serial.h"
 
+
+// Function prototypes
+static void handle_button_presses(SteeringWheelData_t &data);
+
+
+
+// Function Definition
+
+static void handle_button_presses(SteeringWheelData_t &data)
+{
+    if (data.left_dpad_button_sts_prev[TOP_BUTTON] == Button_Sts_e::Pressed 
+        && data.left_dpad_button_sts[TOP_BUTTON] == Button_Sts_e::Pressed_Confirmed)
+    {
+        if (data.lcd_state != LCD_State_e::DEFAULT
+            && data.lcd_state_confirm == true)
+        {
+            // start increasing the XX esuss position
+            if (data.lcd_state == LCD_State_e::ALL_WHEELS)
+            {
+                data.sw_suspension_position[FRONT_LEFT] += INCREMENT_PER_CYCLE;
+                data.swc_suspension_position[FRONT_RIGHT] += INCREMENT_PER_CYCLE;
+                data.sw_suspension_position[REAR_LEFT] += INCREMENT_PER_CYCLE;
+                data.swc_suspension_position[REAR_RIGHT] += INCREMENT_PER_CYCLE;
+            }
+            else if (data.lcd_state == LCD_State_e::FRONT_WHEELS)
+            {
+                data.sw_suspension_position[FRONT_LEFT] += INCREMENT_PER_CYCLE;
+                data.swc_suspension_position[FRONT_RIGHT] += INCREMENT_PER_CYCLE;
+            }
+            else if (data.lcd_state == LCD_State_e::REAR_WHEELS)
+            {
+                data.sw_suspension_position[REAR_LEFT] += INCREMENT_PER_CYCLE;
+                data.swc_suspension_position[REAR_RIGHT] += INCREMENT_PER_CYCLE;
+            }
+            else
+            {
+                // not possible, do nothing
+            }
+        }
+        else
+        {
+            // do nothing
+        }
+        data.lcd_state_trigger_time = millis();
+    }
+    else if (data.left_dpad_button_sts_prev[RIGHT_BUTTON] == Button_Sts_e::Pressed
+        && data.left_dpad_button_sts[RIGHT_BUTTON] == Button_Sts_e::Pressed_Confirmed)
+    {
+        switch (data.lcd_state)
+        {
+            case LCD_State_e::DEFAULT:
+                data.lcd_state = LCD_State_e::ALL_WHEELS;
+                break;
+            case LCD_State_e::ALL_WHEELS:
+                data.lcd_state = LCD_State_e::FRONT_WHEELS;
+                break;
+            case LCD_State_e::FRONT_WHEELS:
+                data.lcd_state = LCD_State_e::REAR_WHEELS;
+                break;
+            case LCD_State_e::REAR_WHEELS:
+                data.lcd_state = LCD_State_e::ALL_WHEELS;
+                break;
+            default:
+                data.lcd_state = LCD_State_e::DEFAULT;
+                break;
+        }
+        data.lcd_state_confirm = false;
+        data.lcd_state_trigger_time = millis();
+    }
+    else if (data.left_dpad_button_sts[BOTTOM_BUTTON] == Button_Sts_e::Pressed_Confirmed)
+    {
+        if (data.lcd_state != LCD_State_e::DEFAULT
+            && data.lcd_state_confirm == true)
+        {
+            if (data.lcd_state == LCD_State_e::ALL_WHEELS)
+            {
+                data.sw_suspension_position[FRONT_LEFT] -= INCREMENT_PER_CYCLE;
+                data.swc_suspension_position[FRONT_RIGHT] -= INCREMENT_PER_CYCLE;
+                data.sw_suspension_position[REAR_LEFT] -= INCREMENT_PER_CYCLE;
+                data.swc_suspension_position[REAR_RIGHT] -= INCREMENT_PER_CYCLE;
+            }
+            else if (data.lcd_state == LCD_State_e::FRONT_WHEELS)
+            {
+                data.sw_suspension_position[FRONT_LEFT] -= INCREMENT_PER_CYCLE;
+                data.swc_suspension_position[FRONT_RIGHT] -= INCREMENT_PER_CYCLE;
+            }
+            else if (data.lcd_state == LCD_State_e::REAR_WHEELS)
+            {
+                data.sw_suspension_position[REAR_LEFT] -= INCREMENT_PER_CYCLE;
+                data.swc_suspension_position[REAR_RIGHT] -= INCREMENT_PER_CYCLE;
+            }
+            else
+            {
+                // not possible, do nothing
+            }
+        }
+        else
+        {
+            // do nothing
+        }
+        data.lcd_state_trigger_time = millis();
+    }
+    else if (data.left_dpad_button_sts_prev[LEFT_BUTTON] == Button_Sts_e::Pressed
+        && data.left_dpad_button_sts[LEFT_BUTTON] == Button_Sts_e::Pressed_Confirmed)
+    {
+        switch (data.lcd_state)
+        {
+            case LCD_State_e::DEFAULT:
+                data.lcd_state = LCD_State_e::REAR_WHEELS;
+                break;
+            case LCD_State_e::REAR_WHEELS:
+                data.lcd_state = LCD_State_e::FRONT_WHEELS;
+                break;
+            case LCD_State_e::FRONT_WHEELS:
+                data.lcd_state = LCD_State_e::ALL_WHEELS;
+                break;
+            case LCD_State_e::ALL_WHEELS:
+                data.lcd_state = LCD_State_e::REAR_WHEELS;
+                break;
+            default:
+                data.lcd_state = LCD_State_e::DEFAULT;
+                break;
+        }
+        data.lcd_state_confirm = false;
+        data.lcd_state_trigger_time = millis();
+    }
+    else if (data.left_dpad_button_sts_prev[CENTER_BUTTON] == Button_Sts_e::Pressed
+        && data.left_dpad_button_sts[CENTER_BUTTON] == Button_Sts_e::Pressed_Confirmed)
+    {
+        if (data.lcd_state != LCD_State_e::DEFAULT)
+        {
+            data.lcd_state_confirm = true;
+        }
+        else
+        {
+            data.lcd_state_confirm = false;
+        }
+        data.lcd_state_trigger_time = millis();
+    }
+    else
+    {
+        //no press detected, let's check if we should return to a default LCD state
+        if (millis() - data.lcd_state_trigger_time >= LCD_STALE_TIME)
+        {
+            data.lcd_state = LCD_State_e::DEFAULT;
+            data.lcd_state_confirm = false;
+        }
+        else
+        {
+            // do nothing
+        }
+    }
+}
+
+
 void steering_wheel_init(SteeringWheelData_t &data)
 {
     Serial.println("INIT");
@@ -99,6 +254,11 @@ void steering_wheel_handler(SteeringWheelData_t &data)
 
 
     // Read for serial communication from the PI
+
+
+
+    // Handle button presses
+    handle_button_presses(data);
 
     // Write to the LEDs
 
