@@ -3,6 +3,8 @@
 
 #define CONFIRMED_PRESS_TIME 500 //ms
 #define LCD_STALE_TIME 20000 //ms
+#define LED_BLINK_HOLD_ON 500 //ms
+#define LED_BLINK_HOLD_OFF 300 //ms
 
 #define NUM_DPAD_BUTTONS 5
 #define NUM_LEDS 3
@@ -12,9 +14,9 @@
 #define BOTTOM_BUTTON 2
 #define LEFT_BUTTON 3
 #define CENTER_BUTTON 4
-#define TOP_LED 0
-#define MIDDLE_LED 1
-#define BOTTOM_LED 2
+#define GAS_LED 0
+#define TEMPERATURE_LED 1
+#define BATTERY_LED 2
 #define FRONT_LEFT 0
 #define FRONT_RIGHT 1
 #define REAR_LEFT 2
@@ -31,7 +33,8 @@ enum class Button_Sts_e {
 enum class LED_Sts_e {
     SNA, 
     LIT, 
-    UNLIT,
+    BLINKING_ON,
+    BLINKING_OFF,
 };
 
 enum class LCD_State_e {
@@ -53,6 +56,10 @@ typedef struct {
     unsigned long lcd_state_trigger_time;
     bool lcd_state_confirm;
     uint8_t sw_suspension_position[NUM_WHEELS];
+    bool gas_ok;
+    bool battery_ok;
+    bool temperature_ok;
+    unsigned long led_blinking_times[NUM_LEDS];
 } SteeringWheelData_t;
 
 #endif

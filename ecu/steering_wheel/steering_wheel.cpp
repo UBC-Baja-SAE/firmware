@@ -5,11 +5,69 @@
 
 
 // Function prototypes
+static void detect_button_presses(SteeringWheelData_t &data);
 static void handle_button_presses(SteeringWheelData_t &data);
 
 
 
 // Function Definition
+static void detect_button_presses(SteeringWheelData_t &data)
+{
+    // Read for buttons pins being pressed
+    for (int i = 0; i < NUM_DPAD_BUTTONS; i++)
+    {
+        data.left_dpad_button_data[i] = digitalRead(data.left_dpad_button_pins[i]);
+
+        // Button is pressed
+        if (data.left_dpad_button_data[i] == LOW)
+        {   
+            // prev was pressed
+            if (data.left_dpad_button_sts_prev[i] == Button_Sts_e::Pressed)
+            {
+                // check if we should confirm the press
+                if (millis() - data.left_dpad_button_press_time[i] >= CONFIRMED_PRESS_TIME)
+                {
+                    Serial.println("Button " + String(i) + " is confirmed pressed");
+
+                    data.left_dpad_button_sts[i] = Button_Sts_e::Pressed_Confirmed;
+                }
+                else
+                {
+                    // keep button status as Pressed, so do nothing
+                }
+            }
+            // prev was not pressed
+            else if (data.left_dpad_button_sts_prev[i] == Button_Sts_e::Not_Pressed
+                || data.left_dpad_button_sts_prev[i] == Button_Sts_e::SNA)
+            {
+                data.left_dpad_button_sts[i] = Button_Sts_e::Pressed;
+
+                // start timer for the confirmed button press
+                data.left_dpad_button_press_time[i] = millis();
+            }
+            else
+            {
+                // if the button press is confirmed and the button is still pressed, do nothing
+            }
+        }
+        // Button is not pressed
+        else if (data.left_dpad_button_data[i] == HIGH)
+        {
+            if (data.left_dpad_button_sts_prev[i] == Button_Sts_e::Pressed
+                || data.left_dpad_button_sts_prev[i] == Button_Sts_e::Pressed_Confirmed)
+            {
+                Serial.println("Button " + String(i) + " is NO LONGER pressed");
+            }
+            else
+            {
+                // do nothing
+            }
+
+            data.left_dpad_button_sts[i] = Button_Sts_e::Not_Pressed;
+            data.left_dpad_button_press_time[i] = 0;
+        }
+    }
+}
 
 static void handle_button_presses(SteeringWheelData_t &data)
 {
@@ -19,7 +77,7 @@ static void handle_button_presses(SteeringWheelData_t &data)
         if (data.lcd_state != LCD_State_e::DEFAULT
             && data.lcd_state_confirm == true)
         {
-            // start increasing the XX esuss position
+            // start increasing the XX esus position
             if (data.lcd_state == LCD_State_e::ALL_WHEELS)
             {
                 data.sw_suspension_position[FRONT_LEFT] += INCREMENT_PER_CYCLE;
@@ -157,6 +215,88 @@ static void handle_button_presses(SteeringWheelData_t &data)
     }
 }
 
+static void handle_led_flags(SteeringWheelData_t &data)
+{
+    if (data.gas_ok == true)
+    {
+        data.leds_data[GAS_LED] = LED_Sts_e::LIT;
+    }
+    else
+    {
+        data.leds_data[GAS_LED] = LED_Sts_e::BLINKING_ON;
+    }
+
+    if (data.battery_ok == true)
+    {
+        data.leds_data[BATTERY_LED] = LED_Sts_e::LIT;
+    }
+    else
+    {
+        data.leds_data[BATTERY_LED] = LED_Sts_e::BLINKING_ON;
+    }
+
+    if (data.temperature_ok == true)
+    {
+        data.leds_data[TEMPERATURE_LED] = LED_Sts_e::LIT;
+    }
+    else
+    {
+        data.leds_data[TEMPERATURE_LED] = LED_Sts_e::BLINKING_ON;
+    }
+}
+
+
+static void handle_led_out(LED_Sts_e led_sts, LED_STS_e led_sts_prev, int led_pin, unsigned long led_blinking_time)
+{
+    if (led_sts == LED_Sts_e::SNA)
+    {
+        digitalWrite(led_pin, LOW);
+    }
+    else if (led_sts == LED_Sts_e::LIT)
+    {
+        digitalWrite(led_pin, HIGH);
+    }
+    else if (led_sts == LED_Sts_e::BLINKING_ON)
+    {
+        digitalWrite(led_pin, HIGH);
+
+        if (led_sts_prev != led_sts)
+        {
+            led_blinking_time = millis()
+        }
+        else
+        {
+            //do nothing
+        }
+
+        if (millis() - led_blinking_time >= LED_BLINK_HOLD_ON)
+        {
+            // set the led_sts to the BLINKING_OFF
+        }
+
+    }
+    else if (led_sts == LED_Sts_e::BLINKING_OFF)
+    {
+        digitalWrite(led_pin, LOW);
+
+        if (led_sts_prev != led_sts)
+        {
+            led_blinking_time = millis()
+        }
+        else
+        {
+            //do nothing
+        }
+
+        if (millis() - led_blinking_time >= LED_BLINK_HOLD_OFF)
+        {
+            // set the led_sts to BLINKING_OFF
+
+            //deal with the millis() crap
+        }
+    }
+}
+
 
 void steering_wheel_init(SteeringWheelData_t &data)
 {
@@ -170,6 +310,13 @@ void steering_wheel_init(SteeringWheelData_t &data)
         .left_dpad_button_sts_prev = {Button_Sts_e::SNA, Button_Sts_e::SNA, Button_Sts_e::SNA, Button_Sts_e::SNA, Button_Sts_e::SNA},
         .left_dpad_button_press_time = {0, 0, 0, 0, 0},
         .leds_data = {LED_Sts_e::SNA, LED_Sts_e::SNA, LED_Sts_e::SNA},
+        .lcd_state = LCD_State_e::Default,
+        .lcd_state_trigger_time = 0,
+        .lcd_state_confirm = false,
+        .sw_suspension_position = {0, 0, 0, 0},
+        .gas_ok = false,
+        .battery_ok = false,
+        .temperature_ok = false,
     };
 
     // initialize button pins
@@ -197,60 +344,7 @@ void steering_wheel_init(SteeringWheelData_t &data)
 
 void steering_wheel_handler(SteeringWheelData_t &data)
 {
-    // Read for buttons pins being pressed
-    for (int i = 0; i < NUM_DPAD_BUTTONS; i++)
-    {
-        data.left_dpad_button_data[i] = digitalRead(data.left_dpad_button_pins[i]);
-
-        // Button is pressed
-        if (data.left_dpad_button_data[i] == LOW)
-        {   
-            // prev was pressed
-            if (data.left_dpad_button_sts_prev[i] == Button_Sts_e::Pressed)
-            {
-                // check if we should confirm the press
-                if (millis() - data.left_dpad_button_press_time[i] >= CONFIRMED_PRESS_TIME)
-                {
-                    Serial.println("Button " + String(i) + " is confirmed pressed");
-
-                    data.left_dpad_button_sts[i] = Button_Sts_e::Pressed_Confirmed;
-                }
-                else
-                {
-                    // keep button status as Pressed, so do nothing
-                }
-            }
-            // prev was not pressed
-            else if (data.left_dpad_button_sts_prev[i] == Button_Sts_e::Not_Pressed
-                || data.left_dpad_button_sts_prev[i] == Button_Sts_e::SNA)
-            {
-                data.left_dpad_button_sts[i] = Button_Sts_e::Pressed;
-
-                // start timer for the confirmed button press
-                data.left_dpad_button_press_time[i] = millis();
-            }
-            else
-            {
-                // if the button press is confirmed and the button is still pressed, do nothing
-            }
-        }
-        // Button is not pressed
-        else if (data.left_dpad_button_data[i] == HIGH)
-        {
-            if (data.left_dpad_button_sts_prev[i] == Button_Sts_e::Pressed
-                || data.left_dpad_button_sts_prev[i] == Button_Sts_e::Pressed_Confirmed)
-            {
-                Serial.println("Button " + String(i) + " is NO LONGER pressed");
-            }
-            else
-            {
-                // do nothing
-            }
-
-            data.left_dpad_button_sts[i] = Button_Sts_e::Not_Pressed;
-            data.left_dpad_button_press_time[i] = 0;
-        }
-    }
+    detect_button_presses(data);
 
 
     // Read for serial communication from the PI
@@ -261,7 +355,7 @@ void steering_wheel_handler(SteeringWheelData_t &data)
     handle_button_presses(data);
 
     // Write to the LEDs
-
+    
     // Write to the LCD
 
     
