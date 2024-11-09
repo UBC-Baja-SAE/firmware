@@ -8,7 +8,6 @@ Example use: from the root of this repository, use python scripts/copy_libs_ardu
 current_path = os.getcwd()
 source = f"{current_path}/lib"
 
-
 def copy_over_libs(source, destination):
     print("here")
     try:
@@ -28,9 +27,6 @@ def copy_over_libs(source, destination):
                 print("Gucci")
     except Exception as e:
         print("You've failed me Anakin")
-    
-
-    
 
 def main():
     parser = argparse.ArgumentParser(description="Parsing arguments")

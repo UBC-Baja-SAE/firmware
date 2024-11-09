@@ -1,23 +1,21 @@
 /**
  * @file serial.c 
- * @brief Interface for communication Serial messages
+ * @brief Interface for communicating Serial messages
  */
 
 #include "serial.h"
 
-SerialMessage createSerialMessage(uint8_t id, uint8_t data)
+SerialMessage_t createSerialMessage(uint8_t id, uint8_t data)
 {
-    SerialMessage msg;
+    SerialMessage_t msg;
 
-    msg.start_marker = START_MARKER; // some constant
     msg.message_id = id;
     msg.message = data;
-    msg.end_marker = END_MARKER; // some other constant
 
     return msg;
 }
 
-void sendSerialMessage(SerialMessage msg)
+void sendSerialMessage(SerialMessage_t msg)
 {
     Serial.print(msg.start_marker, HEX);
     Serial.print(msg.message_id, HEX);
