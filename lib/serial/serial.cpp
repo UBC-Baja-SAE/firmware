@@ -1,8 +1,3 @@
-/**
- * @file serial.c 
- * @brief Interface for communication Serial messages
- */
-
 #include "serial.h"
 
 SerialMessage createSerialMessage(uint8_t id, uint8_t data)

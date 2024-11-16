@@ -1,3 +1,8 @@
+/**
+ * @file serial_datatypes.h
+ * @brief Represents a serial message that is sent from device to device
+ */
+
 #ifndef SERIAL_DATATYPES_H
 #define SERIAL_DATATYPES_H
 
