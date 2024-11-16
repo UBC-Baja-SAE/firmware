@@ -14,5 +14,5 @@ void loop() {
 
   sendSerialMessage(message);
 
-  delay(2000);
+  delay(5000);
 }
