@@ -1,6 +1,8 @@
 #include <Arduino.h>
+#include <LiquidCrystal_I2C.h>
 #include "steering_wheel_datatypes.h"
 #include "steering_wheel.h"
+#include "lcd_handler.h"
 #include "serial.h"
 
 
@@ -69,31 +71,52 @@ static void detect_button_presses(SteeringWheelData_t &data)
     }
 }
 
+static void increment_suspension_pos(SteeringWheelData_t &data, bool fl_sel, bool fr_sel, bool rl_sel, bool rr_sel)
+{
+    data.sw_suspension_position[FRONT_LEFT] = fl_sel ? (data.sw_suspension_position[FRONT_LEFT] + INCREMENT_PER_CYCLE) : data.sw_suspension_position[FRONT_LEFT];
+    data.sw_suspension_position[FRONT_RIGHT] = fr_sel ? (data.sw_suspension_position[FRONT_RIGHT] + INCREMENT_PER_CYCLE) : data.sw_suspension_position[FRONT_RIGHT];
+    data.sw_suspension_position[REAR_LEFT] = rl_sel ? (data.sw_suspension_position[REAR_LEFT] + INCREMENT_PER_CYCLE) : data.sw_suspension_position[REAR_LEFT];
+    data.sw_suspension_position[REAR_RIGHT] = rr_sel ? (data.sw_suspension_position[REAR_RIGHT] + INCREMENT_PER_CYCLE) : data.sw_suspension_position[REAR_RIGHT];
+
+    data.sw_suspension_position[FRONT_LEFT] = (data.sw_suspension_position[FRONT_LEFT] > MAX_SUSPENSION_STATE) ? MAX_SUSPENSION_STATE : data.sw_suspension_position[FRONT_LEFT];
+    data.sw_suspension_position[FRONT_RIGHT] = (data.sw_suspension_position[FRONT_RIGHT] > MAX_SUSPENSION_STATE) ? MAX_SUSPENSION_STATE : data.sw_suspension_position[FRONT_RIGHT];
+    data.sw_suspension_position[REAR_LEFT] = (data.sw_suspension_position[REAR_LEFT] > MAX_SUSPENSION_STATE) ? MAX_SUSPENSION_STATE : data.sw_suspension_position[REAR_LEFT];
+    data.sw_suspension_position[REAR_RIGHT] = (data.sw_suspension_position[REAR_RIGHT] > MAX_SUSPENSION_STATE) ? MAX_SUSPENSION_STATE : data.sw_suspension_position[REAR_RIGHT];
+}
+
+static void decrement_suspension_pos(SteeringWheelData_t &data, bool fl_sel, bool fr_sel, bool rl_sel, bool rr_sel)
+{
+    data.sw_suspension_position[FRONT_LEFT] = fl_sel ? (data.sw_suspension_position[FRONT_LEFT] - INCREMENT_PER_CYCLE) : data.sw_suspension_position[FRONT_LEFT];
+    data.sw_suspension_position[FRONT_RIGHT] = fr_sel ? (data.sw_suspension_position[FRONT_RIGHT] - INCREMENT_PER_CYCLE) : data.sw_suspension_position[FRONT_RIGHT];
+    data.sw_suspension_position[REAR_LEFT] = rl_sel ? (data.sw_suspension_position[REAR_LEFT] - INCREMENT_PER_CYCLE) : data.sw_suspension_position[REAR_LEFT];
+    data.sw_suspension_position[REAR_RIGHT] = rr_sel ? (data.sw_suspension_position[REAR_RIGHT] - INCREMENT_PER_CYCLE) : data.sw_suspension_position[REAR_RIGHT];
+
+    data.sw_suspension_position[FRONT_LEFT] = (data.sw_suspension_position[FRONT_LEFT] < MIN_SUSPENSION_STATE) ? MIN_SUSPENSION_STATE : data.sw_suspension_position[FRONT_LEFT];
+    data.sw_suspension_position[FRONT_RIGHT] = (data.sw_suspension_position[FRONT_RIGHT] < MIN_SUSPENSION_STATE) ? MIN_SUSPENSION_STATE : data.sw_suspension_position[FRONT_RIGHT];
+    data.sw_suspension_position[REAR_LEFT] = (data.sw_suspension_position[REAR_LEFT] < MIN_SUSPENSION_STATE) ? MIN_SUSPENSION_STATE : data.sw_suspension_position[REAR_LEFT];
+    data.sw_suspension_position[REAR_RIGHT] = (data.sw_suspension_position[REAR_RIGHT] < MIN_SUSPENSION_STATE) ? MIN_SUSPENSION_STATE : data.sw_suspension_position[REAR_RIGHT];
+}
+
 static void handle_button_presses(SteeringWheelData_t &data)
 {
     if (data.left_dpad_button_sts_prev[TOP_BUTTON] == Button_Sts_e::Pressed 
         && data.left_dpad_button_sts[TOP_BUTTON] == Button_Sts_e::Pressed_Confirmed)
     {
-        if (data.lcd_state != LCD_State_e::DEFAULT
+        if (data.lcd_state != LCD_State_e::DEFAULT_NONE
             && data.lcd_state_confirm == true)
         {
             // start increasing the XX esus position
             if (data.lcd_state == LCD_State_e::ALL_WHEELS)
             {
-                data.sw_suspension_position[FRONT_LEFT] += INCREMENT_PER_CYCLE;
-                data.swc_suspension_position[FRONT_RIGHT] += INCREMENT_PER_CYCLE;
-                data.sw_suspension_position[REAR_LEFT] += INCREMENT_PER_CYCLE;
-                data.swc_suspension_position[REAR_RIGHT] += INCREMENT_PER_CYCLE;
+                (void) increment_suspension_pos(data, true, true, true, true);
             }
             else if (data.lcd_state == LCD_State_e::FRONT_WHEELS)
             {
-                data.sw_suspension_position[FRONT_LEFT] += INCREMENT_PER_CYCLE;
-                data.swc_suspension_position[FRONT_RIGHT] += INCREMENT_PER_CYCLE;
+                (void) increment_suspension_pos(data, true, true, false, false);
             }
             else if (data.lcd_state == LCD_State_e::REAR_WHEELS)
             {
-                data.sw_suspension_position[REAR_LEFT] += INCREMENT_PER_CYCLE;
-                data.swc_suspension_position[REAR_RIGHT] += INCREMENT_PER_CYCLE;
+                (void) increment_suspension_pos(data, false, false, true, true);
             }
             else
             {
@@ -111,7 +134,7 @@ static void handle_button_presses(SteeringWheelData_t &data)
     {
         switch (data.lcd_state)
         {
-            case LCD_State_e::DEFAULT:
+            case LCD_State_e::DEFAULT_NONE:
                 data.lcd_state = LCD_State_e::ALL_WHEELS;
                 break;
             case LCD_State_e::ALL_WHEELS:
@@ -124,7 +147,7 @@ static void handle_button_presses(SteeringWheelData_t &data)
                 data.lcd_state = LCD_State_e::ALL_WHEELS;
                 break;
             default:
-                data.lcd_state = LCD_State_e::DEFAULT;
+                data.lcd_state = LCD_State_e::DEFAULT_NONE;
                 break;
         }
         data.lcd_state_confirm = false;
@@ -132,25 +155,20 @@ static void handle_button_presses(SteeringWheelData_t &data)
     }
     else if (data.left_dpad_button_sts[BOTTOM_BUTTON] == Button_Sts_e::Pressed_Confirmed)
     {
-        if (data.lcd_state != LCD_State_e::DEFAULT
+        if (data.lcd_state != LCD_State_e::DEFAULT_NONE
             && data.lcd_state_confirm == true)
         {
             if (data.lcd_state == LCD_State_e::ALL_WHEELS)
             {
-                data.sw_suspension_position[FRONT_LEFT] -= INCREMENT_PER_CYCLE;
-                data.swc_suspension_position[FRONT_RIGHT] -= INCREMENT_PER_CYCLE;
-                data.sw_suspension_position[REAR_LEFT] -= INCREMENT_PER_CYCLE;
-                data.swc_suspension_position[REAR_RIGHT] -= INCREMENT_PER_CYCLE;
+                decrement_suspension_pos(data, true, true, true, true);
             }
             else if (data.lcd_state == LCD_State_e::FRONT_WHEELS)
             {
-                data.sw_suspension_position[FRONT_LEFT] -= INCREMENT_PER_CYCLE;
-                data.swc_suspension_position[FRONT_RIGHT] -= INCREMENT_PER_CYCLE;
+                decrement_suspension_pos(data, true, true, false, false);
             }
             else if (data.lcd_state == LCD_State_e::REAR_WHEELS)
             {
-                data.sw_suspension_position[REAR_LEFT] -= INCREMENT_PER_CYCLE;
-                data.swc_suspension_position[REAR_RIGHT] -= INCREMENT_PER_CYCLE;
+                decrement_suspension_pos(data, false, false, true, true);
             }
             else
             {
@@ -168,7 +186,7 @@ static void handle_button_presses(SteeringWheelData_t &data)
     {
         switch (data.lcd_state)
         {
-            case LCD_State_e::DEFAULT:
+            case LCD_State_e::DEFAULT_NONE:
                 data.lcd_state = LCD_State_e::REAR_WHEELS;
                 break;
             case LCD_State_e::REAR_WHEELS:
@@ -181,7 +199,7 @@ static void handle_button_presses(SteeringWheelData_t &data)
                 data.lcd_state = LCD_State_e::REAR_WHEELS;
                 break;
             default:
-                data.lcd_state = LCD_State_e::DEFAULT;
+                data.lcd_state = LCD_State_e::DEFAULT_NONE;
                 break;
         }
         data.lcd_state_confirm = false;
@@ -190,7 +208,7 @@ static void handle_button_presses(SteeringWheelData_t &data)
     else if (data.left_dpad_button_sts_prev[CENTER_BUTTON] == Button_Sts_e::Pressed
         && data.left_dpad_button_sts[CENTER_BUTTON] == Button_Sts_e::Pressed_Confirmed)
     {
-        if (data.lcd_state != LCD_State_e::DEFAULT)
+        if (data.lcd_state != LCD_State_e::DEFAULT_NONE)
         {
             data.lcd_state_confirm = true;
         }
@@ -205,7 +223,7 @@ static void handle_button_presses(SteeringWheelData_t &data)
         //no press detected, let's check if we should return to a default LCD state
         if (millis() - data.lcd_state_trigger_time >= LCD_STALE_TIME)
         {
-            data.lcd_state = LCD_State_e::DEFAULT;
+            data.lcd_state = LCD_State_e::DEFAULT_NONE;
             data.lcd_state_confirm = false;
         }
         else
@@ -215,38 +233,30 @@ static void handle_button_presses(SteeringWheelData_t &data)
     }
 }
 
-static void handle_led_flags(SteeringWheelData_t &data)
+static void handle_led_flags(Param_Sts_e parameter_sts, Param_Sts_e parameter_sts_prev, LED_Sts_e &led_sts)
 {
-    if (data.gas_ok == true)
+    if (parameter_sts == Param_Sts_e::GOOD
+        && parameter_sts_prev != parameter_sts)
     {
-        data.leds_data[GAS_LED] = LED_Sts_e::LIT;
+        led_sts = LED_Sts_e::LIT;
+    }
+    else if (parameter_sts == Param_Sts_e::BAD
+        && parameter_sts_prev != parameter_sts)
+    {
+        led_sts = LED_Sts_e::BLINKING_ON;
+    }
+    else if (parameter_sts == Param_Sts_e::SNA)
+    {
+        led_sts = LED_Sts_e::SNA;
     }
     else
     {
-        data.leds_data[GAS_LED] = LED_Sts_e::BLINKING_ON;
-    }
-
-    if (data.battery_ok == true)
-    {
-        data.leds_data[BATTERY_LED] = LED_Sts_e::LIT;
-    }
-    else
-    {
-        data.leds_data[BATTERY_LED] = LED_Sts_e::BLINKING_ON;
-    }
-
-    if (data.temperature_ok == true)
-    {
-        data.leds_data[TEMPERATURE_LED] = LED_Sts_e::LIT;
-    }
-    else
-    {
-        data.leds_data[TEMPERATURE_LED] = LED_Sts_e::BLINKING_ON;
+        // do nothing
     }
 }
 
 
-static void handle_led_out(LED_Sts_e led_sts, LED_STS_e led_sts_prev, int led_pin, unsigned long led_blinking_time)
+static void handle_led_out(LED_Sts_e &led_sts, LED_Sts_e led_sts_prev, int led_pin, unsigned long &led_blinking_time)
 {
     if (led_sts == LED_Sts_e::SNA)
     {
@@ -260,18 +270,11 @@ static void handle_led_out(LED_Sts_e led_sts, LED_STS_e led_sts_prev, int led_pi
     {
         digitalWrite(led_pin, HIGH);
 
-        if (led_sts_prev != led_sts)
-        {
-            led_blinking_time = millis()
-        }
-        else
-        {
-            //do nothing
-        }
-
         if (millis() - led_blinking_time >= LED_BLINK_HOLD_ON)
         {
-            // set the led_sts to the BLINKING_OFF
+            // Serial.println("LED " + String(led_pin) + " IS BLINKING OFF");
+            led_sts = LED_Sts_e::BLINKING_OFF;
+            led_blinking_time = millis();
         }
 
     }
@@ -279,28 +282,34 @@ static void handle_led_out(LED_Sts_e led_sts, LED_STS_e led_sts_prev, int led_pi
     {
         digitalWrite(led_pin, LOW);
 
-        if (led_sts_prev != led_sts)
-        {
-            led_blinking_time = millis()
-        }
-        else
-        {
-            //do nothing
-        }
-
         if (millis() - led_blinking_time >= LED_BLINK_HOLD_OFF)
         {
-            // set the led_sts to BLINKING_OFF
-
-            //deal with the millis() crap
+            // Serial.println("LED " + String(led_pin) + " IS BLINKING ON");
+            led_sts = LED_Sts_e::BLINKING_ON;
+            led_blinking_time = millis();
         }
+    }
+    else
+    {
+        // not possible, do nothing
+    }
+}
+
+String ledStateToString(LED_Sts_e state) {
+    switch (state) {
+        case LED_Sts_e::SNA: return "SNA";
+        case LED_Sts_e::LIT: return "LIT";
+        case LED_Sts_e::BLINKING_ON: return "BLINKING_ON";
+        case LED_Sts_e::BLINKING_OFF: return "BLINKING_OFF";
+        default: return "UNKNOWN";
     }
 }
 
 
-void steering_wheel_init(SteeringWheelData_t &data)
+void steering_wheel_init(SteeringWheelData_t &data, LiquidCrystal_I2C &lcd)
 {
     Serial.println("INIT");
+
     // default button presses to off and
     data = {
         .left_dpad_button_pins = {2, 3, 4, 5, 6},
@@ -310,13 +319,18 @@ void steering_wheel_init(SteeringWheelData_t &data)
         .left_dpad_button_sts_prev = {Button_Sts_e::SNA, Button_Sts_e::SNA, Button_Sts_e::SNA, Button_Sts_e::SNA, Button_Sts_e::SNA},
         .left_dpad_button_press_time = {0, 0, 0, 0, 0},
         .leds_data = {LED_Sts_e::SNA, LED_Sts_e::SNA, LED_Sts_e::SNA},
-        .lcd_state = LCD_State_e::Default,
+        .leds_data_prev = {LED_Sts_e::SNA, LED_Sts_e::SNA, LED_Sts_e::SNA},
+        .lcd_state = LCD_State_e::DEFAULT_NONE,
         .lcd_state_trigger_time = 0,
         .lcd_state_confirm = false,
         .sw_suspension_position = {0, 0, 0, 0},
-        .gas_ok = false,
-        .battery_ok = false,
-        .temperature_ok = false,
+        .gas_ok = Param_Sts_e::GOOD,
+        .gas_ok_prev = Param_Sts_e::SNA,
+        .battery_ok = Param_Sts_e::BAD,
+        .battery_ok_prev = Param_Sts_e::SNA,
+        .temperature_ok = Param_Sts_e::BAD,
+        .temperature_ok_prev = Param_Sts_e::SNA,
+        .led_blinking_times = {0, 0, 0},
     };
 
     // initialize button pins
@@ -331,18 +345,20 @@ void steering_wheel_init(SteeringWheelData_t &data)
         pinMode(data.led_pins[j], OUTPUT);
         digitalWrite(data.led_pins[j], LOW);
     }
-
+    
     // initialize LCD pins and set up libraries
+    lcd.begin(16, 2);
+    // lcd.backlight();
 
     SerialMessage message = createSerialMessage(0x11, 0x50);
 
     sendSerialMessage(message);
 
-
-
+    lcd.setCursor(0, 0);
+    lcd.print("baja");
 }
 
-void steering_wheel_handler(SteeringWheelData_t &data)
+void steering_wheel_handler(SteeringWheelData_t &data, LiquidCrystal_I2C &lcd)
 {
     detect_button_presses(data);
 
@@ -355,9 +371,19 @@ void steering_wheel_handler(SteeringWheelData_t &data)
     handle_button_presses(data);
 
     // Write to the LEDs
-    
-    // Write to the LCD
 
+    handle_led_flags(data.gas_ok, data.gas_ok_prev, data.leds_data[GAS_LED]);
+    handle_led_flags(data.temperature_ok, data.temperature_ok_prev, data.leds_data[TEMPERATURE_LED]);
+    handle_led_flags(data.battery_ok, data.battery_ok_prev, data.leds_data[BATTERY_LED]);
+
+    handle_led_out(data.leds_data[GAS_LED], data.leds_data_prev[GAS_LED], data.led_pins[GAS_LED], data.led_blinking_times[GAS_LED]);
+    handle_led_out(data.leds_data[BATTERY_LED], data.leds_data_prev[BATTERY_LED], data.led_pins[BATTERY_LED], data.led_blinking_times[BATTERY_LED]);
+    handle_led_out(data.leds_data[TEMPERATURE_LED], data.leds_data_prev[TEMPERATURE_LED], data.led_pins[TEMPERATURE_LED], data.led_blinking_times[TEMPERATURE_LED]);
+
+    // Serial.println("LED " + String(data.led_pins[GAS_LED]) + " is " + ledStateToString(data.leds_data[GAS_LED]));
+
+    // Write to the LCD
+    // update_lcd(lcd, data.lcd_state);
     
 
     // save the data
@@ -365,6 +391,15 @@ void steering_wheel_handler(SteeringWheelData_t &data)
     {
         data.left_dpad_button_sts_prev[i] = data.left_dpad_button_sts[i];
     }
+
+    for (int j = 0; j < NUM_LEDS; j++)
+    {
+        data.leds_data_prev[j] = data.leds_data[j];
+    }
+
+    data.gas_ok_prev = data.gas_ok;
+    data.battery_ok_prev = data.battery_ok;
+    data.temperature_ok_prev = data.temperature_ok;
 
     delay(100);
 }
