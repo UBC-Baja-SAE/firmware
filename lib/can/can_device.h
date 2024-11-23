@@ -7,6 +7,8 @@
 #ifndef CAN_DEVICE_H
 #define CAN_DEVICE_H
 
+#include "can_datatypes.h"
+
 /**
  * Interface that represents a device that communicates on the CAN bus.
  */
