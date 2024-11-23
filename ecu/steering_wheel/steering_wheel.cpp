@@ -306,7 +306,7 @@ String ledStateToString(LED_Sts_e state) {
 }
 
 
-void steering_wheel_init(SteeringWheelData_t &data, LiquidCrystal_I2C &lcd)
+void steering_wheel_init(SteeringWheelData_t &data)
 {
     Serial.println("INIT");
 
@@ -345,20 +345,12 @@ void steering_wheel_init(SteeringWheelData_t &data, LiquidCrystal_I2C &lcd)
         pinMode(data.led_pins[j], OUTPUT);
         digitalWrite(data.led_pins[j], LOW);
     }
-    
-    // initialize LCD pins and set up libraries
-    lcd.begin(16, 2);
-    // lcd.backlight();
 
     SerialMessage message = createSerialMessage(0x11, 0x50);
-
     sendSerialMessage(message);
-
-    lcd.setCursor(0, 0);
-    lcd.print("baja");
 }
 
-void steering_wheel_handler(SteeringWheelData_t &data, LiquidCrystal_I2C &lcd)
+void steering_wheel_handler(SteeringWheelData_t &data)
 {
     detect_button_presses(data);
 
@@ -381,9 +373,6 @@ void steering_wheel_handler(SteeringWheelData_t &data, LiquidCrystal_I2C &lcd)
     handle_led_out(data.leds_data[TEMPERATURE_LED], data.leds_data_prev[TEMPERATURE_LED], data.led_pins[TEMPERATURE_LED], data.led_blinking_times[TEMPERATURE_LED]);
 
     // Serial.println("LED " + String(data.led_pins[GAS_LED]) + " is " + ledStateToString(data.leds_data[GAS_LED]));
-
-    // Write to the LCD
-    // update_lcd(lcd, data.lcd_state);
     
 
     // save the data
