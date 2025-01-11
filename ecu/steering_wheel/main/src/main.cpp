@@ -10,9 +10,9 @@ void setup() {
 }
 
 void loop() {
-  SerialMessage message = createSerialMessage(0xAF, 0xFF);
+  SerialMessage_t message = createSerialMessage(0xAF, 0xFF);
 
   sendSerialMessage(message);
 
-  delay(5000);
+  delay(2000);
 }
