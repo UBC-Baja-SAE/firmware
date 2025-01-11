@@ -1,3 +1,4 @@
 {
-    "baud_rate": 9600
+    "baud_rate": 9600,
+    "port": "/dev/ttyACM0"
 }
