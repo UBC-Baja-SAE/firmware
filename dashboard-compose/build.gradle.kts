@@ -30,9 +30,4 @@ compose.desktop {
             description = "Compose UI Dashboard App"
         }
     }
-    sourceSets {
-        main {
-            resources.srcDirs("src/main/resources")
-        }
-    }
 }
