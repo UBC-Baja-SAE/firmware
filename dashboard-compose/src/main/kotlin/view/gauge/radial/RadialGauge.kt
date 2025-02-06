@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,7 +58,6 @@ private const val TICK_LENGTH_LARGE = 50 + BORDER_RADIUS
 private const val TICK_LENGTH_SMALL = 40 + BORDER_RADIUS
 
 private const val TICK_COUNT = 7
-private const val SMALL_TICK_COUNT = TICK_COUNT - 1
 
 @Composable
 fun RadialGauge(
@@ -93,11 +93,6 @@ fun RadialGauge(
                 size = size
             )
 
-            val gradientBrush = Brush.sweepGradient(
-                colorStops = GRADIENT,
-                center = Offset(center.x, center.y)
-            )
-
             val tickAngleIncrement = ANGLE_RANGE / (TICK_COUNT - 1)
             for (i in 0 until TICK_COUNT) {
                 val degrees = (START_ANGLE + i * tickAngleIncrement).toDouble()
@@ -123,7 +118,7 @@ fun RadialGauge(
                 )
             }
 
-            for (i in 0 until SMALL_TICK_COUNT) {
+            for (i in 0 until TICK_COUNT - 1) {
                 val degrees = START_ANGLE + tickAngleIncrement * (0.5 + i)
                 val radians = Math.toRadians(degrees)
 
@@ -147,6 +142,10 @@ fun RadialGauge(
                 )
             }
 
+            val gradientBrush = Brush.sweepGradient(
+                colorStops = GRADIENT,
+                center = Offset(center.x, center.y)
+            )
             drawArc(
                 brush = gradientBrush,
                 startAngle = START_ANGLE,

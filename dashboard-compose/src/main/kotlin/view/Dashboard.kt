@@ -1,13 +1,14 @@
 package view
 
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import org.baja.dashboard.view.gauge.linear.LinearGauge
 import org.baja.dashboard.view.gauge.radial.RadialGauge
 
 /**
@@ -15,7 +16,8 @@ import org.baja.dashboard.view.gauge.radial.RadialGauge
  */
 @Composable
 fun Dashboard() {
-    var value by remember { mutableStateOf(50f) }
+    var value by remember { mutableStateOf(0f) }
+
     LaunchedEffect(Unit) {
         while (true) {
             value = ((value + 1f) % 100f)
@@ -23,14 +25,24 @@ fun Dashboard() {
         }
     }
     RadialGauge(
-        Modifier.absoluteOffset(
-            300.dp, 120.dp
-        ),
-        value, 100f, true, "Label")
-
+        Modifier.offset(200.dp, 120.dp),
+        value, 100f, true, "km/h"
+    )
+    RadialGauge(
+        Modifier.offset(680.dp, 120.dp),
+        100f - value, 100f, false, "rpm"
+    )
+    LinearGauge(Modifier.offset(50.dp, 150.dp),
+        value, 100f, "images/fuel.png"
+    )
+    LinearGauge(Modifier.offset(125.dp, 150.dp),
+        value, 100f, "images/temp.png"
+    )
     Image(
         painter = painterResource("images/logo.png"),
         contentDescription = "",
-        modifier = Modifier.size(100.dp)
+        modifier = Modifier
+            .size(200.dp)
+            .offset(540.dp, 50.dp)
     )
 }
