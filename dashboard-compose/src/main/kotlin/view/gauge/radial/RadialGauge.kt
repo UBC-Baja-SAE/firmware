@@ -46,7 +46,7 @@ private const val SIZE = 400
 
 /**
  * The colour gradient of the infill for the gauge. The float values are bound
- * rom `0f` and `1f`, representing the start and end at 3 o'clock. The float
+ * from `0f` and `1f`, representing the start and end at 3 o'clock. The float
  * values represent the point along the arc where its associated colour begins,
  * where the float value is the percentage along the arc, clockwise.
  * There is a
@@ -108,11 +108,15 @@ private const val TICK_COUNT = 7
 
 /**
  * A gauge that fills radially. The gauge fills clock-wise, and it is fully
- * filled when `currentValue` is equal to `maxValue`.
+ * filled when `currentValue` is equal to `maxValue`. Visually, the reading
+ * on the gauge is bounded between `0f` and `maxValue`.
  *
  * @param modifier  the modifier for the `RadialGauge`'s bounding box. Use this
  *                  parameter to modify the position of the gauge.
- * @param currentValue  the
+ * @param currentValue  the current value to display on the gauge.
+ * @param maxValue  the maximum value that can be displayed on the gauge.
+ * @param showReading   whether to show the central numerical reading.
+ * @param label the text to display underneath the central numerical reading.
  */
 @Composable
 fun RadialGauge(
@@ -153,9 +157,7 @@ fun RadialGauge(
                 startAngle = START_ANGLE + angleIncrements * 0.5f,
                 angleIncrements = angleIncrements
             )
-            fillGauge(
-                targetAngle
-            )
+            fillGauge(targetAngle)
         }
         DrawMeasurements(
             angleIncrements = angleIncrements,
@@ -246,9 +248,7 @@ fun DrawScope.drawTicks(
  * @param targetAngle   the angle that the gauge should fill to, measured in
  *                      degrees from the start angle of the gauge.
  */
-fun DrawScope.fillGauge(
-    targetAngle: Float
-) {
+fun DrawScope.fillGauge(targetAngle: Float) {
     val gradientBrush = Brush.sweepGradient(
         colorStops = GRADIENT,
         center = Offset(center.x, center.y)
