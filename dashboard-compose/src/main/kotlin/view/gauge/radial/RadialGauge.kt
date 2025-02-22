@@ -68,8 +68,8 @@ private const val ANGLE_CHANGE_INTERVAL = 1000 / 30
 /**
  * The font size for the main value reading in `sp`, and its vertical offset.
  */
-private const val READING_FONT_SIZE = 150
-private const val READING_VERTICAL_OFFSET = -40
+private const val READING_FONT_SIZE = 135
+private const val READING_VERTICAL_OFFSET = -20
 
 /**
  * The font size for the reading's label in `sp`, and its vertical offset
