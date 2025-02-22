@@ -23,7 +23,12 @@ set-up on the Pi:
 - Install [JRE 17](https://packages.debian.org/bookworm/openjdk-17-jre), the 
   default (and latest _stable_) version of Java for Bookworm (as of January 
   2025). It is worth noting that only the Java _Runtime_ is mandatory to _run_ 
-  the application.
+  the application. Ensure that the `JAVA_HOME` variable is set correctly.
+- The Raspberry Pi 5 may have compatibility issues with the rendering of the 
+  Compose libraries. Set the environment variable on the Pi as shown 
+  [here](https://github.com/JetBrains/skiko/issues/838#issuecomment-1997275861), 
+  and run the following command in the Pi shell.
+  - `export SKIKO_RENDER_API=SOFTWARE`
 ### Development
 - Install [JDK 17](https://www.oracle.com/ca-en/java/technologies/downloads/)
   for your operating system.
