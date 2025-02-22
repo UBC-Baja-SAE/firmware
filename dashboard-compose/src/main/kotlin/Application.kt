@@ -21,13 +21,14 @@ fun main() = application {
         // full screen
         state = WindowState(
             /* use for production */
-//            placement = WindowPlacement.Maximized
+            placement = WindowPlacement.Fullscreen
             /* use for testing size on desktop */
-            width = 1280.dp,
-            height = 400.dp
+//            width = 1280.dp,
+//            height = 400.dp
         ),
         // removes top bar
-        undecorated = true
+        undecorated = true,
+		alwaysOnTop = true,
     ) {
         Box(
             modifier = Modifier
