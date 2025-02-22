@@ -30,13 +30,13 @@ fun Dashboard() {
     )
     RadialGauge(
         Modifier.offset(680.dp, 120.dp),
-        100f - value, 100f, false, "rpm"
+        100f - value, 100f, false, "rpm (x1000)"
     )
     LinearGauge(Modifier.offset(50.dp, 150.dp),
-        value, 100f, "images/fuel.png"
+        value, 100f, "images/fuel.png", Pair('E', 'F')
     )
     LinearGauge(Modifier.offset(125.dp, 150.dp),
-        value, 100f, "images/temp.png"
+        value, 100f, "images/temp.png", Pair('C', 'H')
     )
     Image(
         painter = painterResource("images/logo.png"),

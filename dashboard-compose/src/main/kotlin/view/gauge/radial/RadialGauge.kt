@@ -205,11 +205,11 @@ fun DrawScope.drawBorder() {
 /**
  * Draw ticks spaced evenly throughout a circular arc.
  *
- * @param tickCount the number of ticks to draw.
+ * @param tickCount     the number of ticks to draw.
  * @param tickLength    the length of the ticks to draw.
- * @param tickWidth the width of the ticks to draw.
+ * @param tickWidth     the width of the ticks to draw.
  * @param startAngle    the angle where the first tick should be drawn in
- *                      degrees measured clockwise from the 3 o'clock position.
+ *  degrees measured clockwise from the 3 o'clock position.
  * @param angleIncrements   the angle in degrees to space the ticks by.
  */
 fun DrawScope.drawTicks(
@@ -229,15 +229,17 @@ fun DrawScope.drawTicks(
         val endRadius = SIZE / 2 + BORDER_RADIUS / 2
         val startRadius = endRadius - tickLength
 
-        val startX = center.x + startRadius * ratioX
-        val startY = center.y + startRadius * ratioY
-        val endX = center.x + endRadius * ratioX
-        val endY = center.y + endRadius * ratioY
+        val center = SIZE / 2
+
+        val startX = center + startRadius * ratioX
+        val startY = center + startRadius * ratioY
+        val endX = center + endRadius * ratioX
+        val endY = center + endRadius * ratioY
 
         drawLine(
             color = Color.White,
-            start = Offset(startX, startY),
-            end = Offset(endX, endY),
+            start = Offset(startX.dp.toPx(), startY.dp.toPx()),
+            end = Offset(endX.dp.toPx(), endY.dp.toPx()),
             strokeWidth = tickWidth.dp.toPx()
         )
     }
