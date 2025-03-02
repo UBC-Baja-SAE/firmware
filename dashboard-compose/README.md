@@ -1,7 +1,9 @@
 # Compose Dashboard
+
 ###### Author: Donghwa Kim
 
 ## Overview
+
 This project is an **automotive dashboard application** built using 
 [**Kotlin**](https://kotlinlang.org/) and [**Compose Multiplatform**](https://www.jetbrains.com/compose-multiplatform/),
 and designed for the Raspberry Pi 5. The dashboard aims to provide 
@@ -9,12 +11,15 @@ visualisation for data received from sensors on the vehicle using CAN bus
 communication.
 
 ## Requirements
+
 Kotlin targets the [JVM](https://en.wikipedia.org/wiki/Java_virtual_machine),
 and compiles to Java bytecode, hence this application has similar dependencies
 to most Java-based projects. Note that you need to set the `JAVA_HOME` 
 environment variable to the file path of the **correct JDK/JRE** for the Pi or 
 your computer if it is already set to a different Java version. 
+
 ### Operation
+
 UBC Baja utilises a [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) 
 running the official [Raspberry Pi OS](https://www.raspberrypi.com/software/operating-systems/#raspberry-pi-os-64-bit),
 which is a derivative of [Debian 12 (Bookworm)](https://wiki.debian.org/DebianBookworm). 
@@ -29,7 +34,9 @@ set-up on the Pi:
   [here](https://github.com/JetBrains/skiko/issues/838#issuecomment-1997275861), 
   and run the following command in the Pi shell.
   - `export SKIKO_RENDER_API=SOFTWARE`
+  
 ### Development
+
 - Install [JDK 17](https://www.oracle.com/ca-en/java/technologies/downloads/)
   for your operating system.
 - (optional) Download [IntelliJ IDEA](https://it.ubc.ca/services/desktop-print-services/software-licensing/free-open-source-software),
@@ -37,7 +44,8 @@ set-up on the Pi:
   software is developed by JetBrains (the company that created Kotlin), and 
   as UBC students, we get free access to IntelliJ IDEA Ultimate.
 
-## Setup
-To develop the application
+## Architecture
 
-## Deployment
+> All Kotlin (`*.kt`) files are relative to the directory `src/main/kotlin` unless specified.
+
+The dashboard application uses Compose Multiplatform, which is a framework for Kotlin user-interface (UI) development which enables targeting different platforms, including Unix or Windows systems. Compose follows a [declarative UI programming](https://docs.flutter.dev/get-started/flutter-for/declarative) style, hence the contents of the screen are produced as a function of the UI's state, rather than being constructed component by component.

@@ -28,7 +28,7 @@ fun main() = application {
         ),
         // removes top bar
         undecorated = true,
-		alwaysOnTop = true,
+        alwaysOnTop = true,
     ) {
         Box(
             modifier = Modifier
