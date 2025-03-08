@@ -1,3 +1,6 @@
-# firmware
+# UBC Baja SAE Firmware
 
-Some updates to the firmware README.md..
+## Overview
+
+This repository contains firmware which will be used for the mechatronics
+systems for our vehicle.

@@ -1,7 +1,5 @@
 # Electronic Control Units (ECUs)
 
-###### Author: Donghwa Kim
-
 ## Overview
 
 This module contains the source code for the firmware programmed onto our
