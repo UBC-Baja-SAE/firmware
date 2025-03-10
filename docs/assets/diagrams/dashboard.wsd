@@ -1,0 +1,21 @@
+@startuml
+
+rectangle "Dashboard" as dashboard {
+    component "Screen" as screen
+    component "Processor (Raspberry Pi)" as pi {
+        portout "HDMI" as hdmi
+        portout "SPI" as spi
+    }
+    component "PCB" as pcb {
+        component "CAN Controller" as mcp
+        component "CAN Transceiver" as transceiver
+    }
+}
+cloud "                  CAN Bus                  \n\n" as can
+
+hdmi ..> screen
+spi <..> mcp
+mcp --> transceiver
+transceiver --> can
+
+@enduml
