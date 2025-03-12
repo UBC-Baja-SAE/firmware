@@ -223,10 +223,13 @@ In order to communicate with the MCP2515 CAN controller on the dashboard PCB,
 the Pi must be configured with the correct drivers that will enable it to
 communicate.
 
-> `{crystal frequency}` and `{bit rate}` are placeholders for the
-> crystal frequency value for the dashboard PCB, as well as the CAN bit rate
-> respectively. The bit rate should be the frequency that all CAN modules adhere
-> to.
+> The following placeholder values refer to: 
+> - `{crystal frequency}`: the crystal frequency value for the oscillating
+> crystal on the dashboard circuit board; this should be 8-16 MHz.
+> - `{bit rate}`: the CAN bit rate that all CAN modules adhere to; should be
+> 1 MHz.
+> - `{pin}`: the pin number for the Raspberry Pi's GPIO; the value appended to
+> 'GPIO' in **green** in the above pinout, and not the physical pin number.
 
 1. Edit the boot file for the Pi to initialise the CAN controller on boot. 
    ```
@@ -234,7 +237,7 @@ communicate.
    ```
 2. Add the device configuration to the file.
    ```
-   dtoverlay=mcp2515-can0,oscillator={crystal frequency},interrupt=25
+   dtoverlay=mcp2515-can0,oscillator={crystal frequency},interrupt={pin}
    ```
 3. Then, reboot the Raspberry Pi and check the kernal messages to verify 
    initialisation.
