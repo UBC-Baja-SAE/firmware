@@ -40,7 +40,7 @@ struct ifreq ifr;
 
 struct can_filter filter[1];
 
-int can_send(int fd, struct can_message msg)
+int can_send(int fd, CAN_Message msg)
 {
     struct can_frame frame;
     frame.can_id = msg.id & can_id_bits;
@@ -55,18 +55,21 @@ int can_send(int fd, struct can_message msg)
     return 1;
 }
 
-int can_receive(int fd, struct can_message* msg)
+int can_receive(int fd, CAN_Message* msg)
 {
     struct can_frame frame;
     if (read(fd, &frame, can_frame_size()) < 0) {
         printf("error receiving CAN message\n");
         return 0;
     }
-    memcpy(msg, frame.data, frame.can_dlc);
-    printf("0x%03X [%d] ", frame.can_id, frame.can_dlc);
-    for (int i = 0; i < frame.can_dlc; i++)
+    memcpy(msg->data, frame.data, frame.can_dlc);
+    msg->size = frame.can_dlc;
+    msg->id = frame.can_id;
+    
+    printf("0x%03X [%d] ", msg->id, msg->size);
+    for (int i = 0; i < msg->size; i++)
     {
-		printf("%02X ", frame.data[i]);
+		printf("%02X ", msg->data[i]);
     }
     printf("\n");
 

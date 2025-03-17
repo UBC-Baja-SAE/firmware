@@ -1,8 +1,8 @@
 /**
  * @file can_interface.h
  * @brief This file provides an interface to interact with the Linux kernel on
- * the Raspberry Pi to communicate with the physical CAN bus. The methods in
- * this file can be used to initialise the CAN bus and send/receive data.
+ * the dashboard to communicate with the physical CAN bus. The methods in this
+ * file can be used to initialise the CAN bus and send/receive data.
  */
 
 #ifndef CAN_INTERFACE_H
@@ -43,7 +43,7 @@ extern struct can_filter filter[1];
  * @param msg   the message to send to the CAN bus.
  * @return 1 if the message was sent successfully, else 0. 
  */
-int can_send(int fd, struct can_message msg);
+int can_send(int fd, CAN_Message msg);
 
 /**
  * @brief This blocks the calling thread and waits for the next message on the
@@ -55,7 +55,7 @@ int can_send(int fd, struct can_message msg);
  * @param msg   the pointer to the CAN message.
  * @return  1 if a message was received successfully, else 0.
  */
-int can_receive(int fd, struct can_message* msg);
+int can_receive(int fd, CAN_Message* msg);
 
 /**
  * @brief Initialises the CAN socket and CAN socket address for the application.
