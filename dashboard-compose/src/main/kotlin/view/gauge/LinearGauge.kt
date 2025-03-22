@@ -1,4 +1,4 @@
-package org.baja.dashboard.view.gauge.linear
+package org.baja.dashboard.view.gauge
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -33,7 +33,7 @@ private const val BAR_WIDTH = 25f
  * values represent the point along the bar where its associated colour begins,
  * where the float value is the percentage along the bar, from top to bottom.
  */
-private val GRADIENT = arrayOf(
+private val LINEAR_GRADIENT = arrayOf(
     0.0f to Color.Red,
     0.15f to BAJA_PURPLE,
     0.4f to BAJA_PURPLE,
@@ -56,8 +56,8 @@ private const val OFFSET = BORDER_WIDTH / 2
 /**
  * The length of the center tick and the outer ticks.
  */
-private const val TICK_LENGTH_SMALL = BAR_WIDTH * 0.8f
-private const val TICK_LENGTH_LARGE = BAR_WIDTH
+private const val LINEAR_TICK_LENGTH_SMALL = BAR_WIDTH * 0.8f
+private const val LINEAR_TICK_LENGTH_LARGE = BAR_WIDTH
 
 /**
  * The size of the icons next to the center of the gauge.
@@ -106,7 +106,7 @@ fun LinearGauge(
         contentAlignment = Alignment.Center
     ) {
         val left = -OFFSET
-        val right = TICK_LENGTH_LARGE
+        val right = LINEAR_TICK_LENGTH_LARGE
         val top = left
         val bottom = BAR_HEIGHT + OFFSET
         val center = BAR_HEIGHT / 2
@@ -119,9 +119,9 @@ fun LinearGauge(
             drawLine(left, top, left, bottom)
             drawLine(left, top, right, top)
             drawLine(left, bottom, right, bottom)
-            drawLine(left, center, TICK_LENGTH_SMALL, center)
+            drawLine(left, center, LINEAR_TICK_LENGTH_SMALL, center)
 
-            fillGauge(targetHeight)
+            fillLinearGauge(targetHeight)
         }
         Icon(imagePath)
         Symbol(symbols.first, bottom)
@@ -135,14 +135,14 @@ fun LinearGauge(
  *                  `src/main/resources` directory.
  */
 @Composable
-fun Icon(imagePath: String) {
+private fun Icon(imagePath: String) {
     Image(
         painter = painterResource(imagePath),
         contentDescription = "",
         modifier = Modifier
             .size(IMAGE_SIZE.dp)
             .offset(
-                x = (TICK_LENGTH_LARGE / 2 + IMAGE_SIZE / 2).dp
+                x = (LINEAR_TICK_LENGTH_LARGE / 2 + IMAGE_SIZE / 2).dp
             )
     )
 }
@@ -153,13 +153,13 @@ fun Icon(imagePath: String) {
  * @param height    the height to draw the symbol starting at.
  */
 @Composable
-fun Symbol(symbol: Char, height: Float) {
+private fun Symbol(symbol: Char, height: Float) {
     Text(
         text = "$symbol",
         fontSize = SYMBOL_FONT_SIZE.sp,
         color = Color.White,
         modifier = Modifier.offset(
-            x = (TICK_LENGTH_LARGE / 2 + SYMBOL_FONT_SIZE / 2).dp,
+            x = (LINEAR_TICK_LENGTH_LARGE / 2 + SYMBOL_FONT_SIZE / 2).dp,
             y = (height - BAR_HEIGHT / 2).dp
         )
     )
@@ -170,9 +170,9 @@ fun Symbol(symbol: Char, height: Float) {
  * @param targetHeight  the height that the gauge should fill to, measured in
  *                      `dp`.
  */
-fun DrawScope.fillGauge(targetHeight: Float) {
+private fun DrawScope.fillLinearGauge(targetHeight: Float) {
     val gradientBrush = Brush.linearGradient(
-        colorStops = GRADIENT
+        colorStops = LINEAR_GRADIENT
     )
     val x = (BAR_WIDTH / 2).dp.toPx()
     drawLine(
@@ -186,7 +186,7 @@ fun DrawScope.fillGauge(targetHeight: Float) {
 /**
  * Draw a line from point `(x1, y1)` to point `(x2, y2)`.
  */
-fun DrawScope.drawLine(x1: Float, y1: Float, x2: Float, y2: Float) {
+private fun DrawScope.drawLine(x1: Float, y1: Float, x2: Float, y2: Float) {
     drawLine(
         color = Color.White,
         strokeWidth = BORDER_WIDTH,

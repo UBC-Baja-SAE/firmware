@@ -8,8 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import org.baja.dashboard.view.gauge.linear.LinearGauge
-import org.baja.dashboard.view.gauge.radial.RadialGauge
+import org.baja.dashboard.view.gauge.LinearGauge
+import org.baja.dashboard.view.gauge.RadialGauge
 
 /**
  * The top level `Composable` element in the user-interface.

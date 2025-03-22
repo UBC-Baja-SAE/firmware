@@ -1,4 +1,4 @@
-package org.baja.dashboard.view.gauge.radial
+package org.baja.dashboard.view.gauge
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -52,7 +52,7 @@ private const val SIZE = 400
  * There is a
  * hard change between colours at `0f` and `1f`.
  */
-private val GRADIENT = arrayOf(
+private val RADIAL_GRADIENT = arrayOf(
     0.0f to BAJA_PURPLE,
     0.05f to Color.Red,
     0.3f to Color.LightGray,
@@ -97,8 +97,8 @@ private const val TOTAL_RADIUS = FILL_RADIUS + BORDER_RADIUS
  */
 private const val TICK_WIDTH_LARGE = 5
 private const val TICK_WIDTH_SMALL = 3
-private const val TICK_LENGTH_LARGE = 50 + BORDER_RADIUS
-private const val TICK_LENGTH_SMALL = 40 + BORDER_RADIUS
+private const val RADIAL_TICK_LENGTH_LARGE = 50 + BORDER_RADIUS
+private const val RADIAL_TICK_LENGTH_SMALL = 40 + BORDER_RADIUS
 
 /**
  * The number of large ticks around the gauge. There are always exactly
@@ -145,19 +145,19 @@ fun RadialGauge(
             drawBorder()
             drawTicks(
                 tickCount = TICK_COUNT,
-                tickLength = TICK_LENGTH_LARGE,
+                tickLength = RADIAL_TICK_LENGTH_LARGE,
                 tickWidth = TICK_WIDTH_LARGE,
                 startAngle = START_ANGLE,
                 angleIncrements = angleIncrements
             )
             drawTicks(
                 tickCount = TICK_COUNT - 1,
-                tickLength = TICK_LENGTH_SMALL,
+                tickLength = RADIAL_TICK_LENGTH_SMALL,
                 tickWidth = TICK_WIDTH_SMALL,
                 startAngle = START_ANGLE + angleIncrements * 0.5f,
                 angleIncrements = angleIncrements
             )
-            fillGauge(targetAngle)
+            fillRadialGauge(targetAngle)
         }
         DrawMeasurements(
             angleIncrements = angleIncrements,
@@ -188,7 +188,7 @@ fun RadialGauge(
 /**
  * Draw a circular border.
  */
-fun DrawScope.drawBorder() {
+private fun DrawScope.drawBorder() {
     drawArc(
         color = Color.White,
         startAngle = START_ANGLE,
@@ -212,7 +212,7 @@ fun DrawScope.drawBorder() {
  *  degrees measured clockwise from the 3 o'clock position.
  * @param angleIncrements   the angle in degrees to space the ticks by.
  */
-fun DrawScope.drawTicks(
+private fun DrawScope.drawTicks(
     tickCount: Int,
     tickLength: Int,
     tickWidth: Int,
@@ -250,9 +250,9 @@ fun DrawScope.drawTicks(
  * @param targetAngle   the angle that the gauge should fill to, measured in
  *                      degrees from the start angle of the gauge.
  */
-fun DrawScope.fillGauge(targetAngle: Float) {
+private fun DrawScope.fillRadialGauge(targetAngle: Float) {
     val gradientBrush = Brush.sweepGradient(
-        colorStops = GRADIENT,
+        colorStops = RADIAL_GRADIENT,
         center = Offset(center.x, center.y)
     )
     drawArc(
@@ -282,7 +282,7 @@ fun DrawScope.fillGauge(targetAngle: Float) {
  *                  last measurement value corresponds to this value.
  */
 @Composable
-fun DrawMeasurements(
+private fun DrawMeasurements(
     angleIncrements: Float,
     maxValue: Float
 ) {
@@ -293,7 +293,7 @@ fun DrawMeasurements(
         val ratioX = cos(radians).toFloat()
         val ratioY = sin(radians).toFloat()
 
-        val distance = SIZE / 2 - MEASUREMENT_OFFSET - TICK_LENGTH_LARGE
+        val distance = SIZE / 2 - MEASUREMENT_OFFSET - RADIAL_TICK_LENGTH_LARGE
 
         val x = distance * ratioX
         val y = distance * ratioY
