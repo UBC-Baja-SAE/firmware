@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 repositories {
     gradlePluginPortal()
@@ -19,15 +20,29 @@ dependencies {
     implementation(compose.desktop.currentOs)
 }
 
-compose.desktop {
-    application {
-        mainClass = "org.baja.dashboard.ApplicationKt"
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
 
-        nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Dashboard"
-            packageVersion = "1.0.0"
-            description = "Compose UI Dashboard App"
+    compose.desktop {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+
+        application {
+            mainClass = "org.baja.dashboard.ApplicationKt"
+
+            nativeDistributions {
+                targetFormats(TargetFormat.Msi, TargetFormat.Deb)
+                packageName = "Dashboard"
+                packageVersion = "1.0.0"
+                description = "Compose UI Dashboard App"
+            }
+
+            jvmArgs += listOf(
+                "-Djava.library.path=${projectDir}/build/cpp/"
+            )
         }
     }
 }

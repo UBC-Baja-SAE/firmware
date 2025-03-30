@@ -56,5 +56,9 @@
         "thread": "cpp",
         "typeinfo": "cpp"
     },
+    "C_Cpp.default.includePath": [
+        "${env:JAVA_HOME}/include",
+        "${env:JAVA_HOME}/include/linux",
+    ],
     "C_Cpp.errorSquiggles": "enabled"
 }

@@ -187,6 +187,9 @@ The Raspberry Pi 5 has the following pinout:
 
 > This can be found by entering `pinout` in the Raspberry Pi command-line.
 
+> `nm [file] | grep Java` to see all JNI method names
+> `file [file]` to see file type compiled correctly
+
 ### Wiring
 
 The CAN controller utilised in the dashboard PCB is the
