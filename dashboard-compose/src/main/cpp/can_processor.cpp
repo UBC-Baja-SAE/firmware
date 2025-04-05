@@ -36,12 +36,10 @@ void process()
 {
     while (true)
     {
-        CAN_Message msg;
-
         std::unique_lock<std::mutex> lock(queue_lock);
         cv.wait(lock, [] { return !message_queue.empty(); });
 
-        msg = message_queue.front();
+        CAN_Message msg = message_queue.front();
         message_queue.pop();
 
         lock.unlock();
@@ -55,7 +53,13 @@ void process()
         }
         std::cout << std::endl;
 
-        /* more processing */
+        /* set the data in the data map according to the message id */
+        int mod_id = msg.id % 16;
+        data_map[mod_id] = 0;
+        for (int i = 0; i < 8; i++) {
+            data_map[mod_id] |= msg.data[i] << (8 * i);
+        }
+        std::cout << "message " << msg.id << ": " << std::hex << std::setw(8) << static_cast<int>(data_map[mod_id]);
     }
 }
 

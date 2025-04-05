@@ -1,11 +1,11 @@
 package org.baja.dashboard.model
 
-class DataRepository() {
-    external fun test()
-
+class DataRepository {
     companion object {
         init {
             System.loadLibrary("jni_bridge")
         }
     }
+
+    external fun get(id: Int): Double
 }

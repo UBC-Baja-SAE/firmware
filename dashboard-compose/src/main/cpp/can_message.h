@@ -9,8 +9,9 @@
 #include <stdint.h>
 
 /**
- * This is the abstract CAN message for the dashboard, which is agnostic to the
- * underlying CAN data frame used for communication through the Linux kernel.
+ * @brief This is the abstract CAN message for the dashboard, which is agnostic
+ * to the underlying CAN data frame used for communication through the Linux
+ * kernel.
  */
 typedef struct
 {

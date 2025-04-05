@@ -17,7 +17,6 @@ import view.Dashboard
  * Entry point for the dashboard application.
  */
 fun main() = application {
-    DataRepository().test()
     Window(
         onCloseRequest = ::exitApplication,
         // full screen

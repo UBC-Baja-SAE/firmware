@@ -9,14 +9,14 @@ JNI_INCLUDE = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 # Source and object files
 SRCS_C = can_interface.c
 SRCS_CPP = can_processor.cpp
-SRCS_JNI = jni_bridge.c  # JNI source file
+SRCS_JNI = can_bridge.c  # JNI source file
 OBJS_C = can_interface.o
 OBJS_CPP = can_processor.o
-OBJS_JNI = jni_bridge.o
+OBJS_JNI = can_bridge.o
 
 # Output executable and shared library
 TARGET = test
-JNI_BRIDGE = jni_bridge.so  # Shared library for JNI
+JNI_BRIDGE = can_bridge.so  # Shared library for JNI
 JNI_OUTPUT_DIR=./../../../build/cpp
 JNI_LIB = $(JNI_OUTPUT_DIR)/lib$(JNI_BRIDGE)
 
