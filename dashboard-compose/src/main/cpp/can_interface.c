@@ -65,13 +65,6 @@ int can_receive(int fd, CAN_Message* msg)
     memcpy(msg->data, frame.data, frame.can_dlc);
     msg->size = frame.can_dlc;
     msg->id = frame.can_id;
-    
-    printf("0x%03X [%d] ", msg->id, msg->size);
-    for (int i = 0; i < msg->size; i++)
-    {
-		printf("%02X ", msg->data[i]);
-    }
-    printf("\n");
 
     return 1;
 }

@@ -10,14 +10,14 @@
 #include <jni.h>
 #include <stdint.h>
 
-static const int categories = 16;
+extern int categories;
 
 /**
  * @brief Temporary data mapping a CAN message to its internal data, where
  * `data_map[i]` is the data contained in a CAN message `msg` such that
  * `msg.id % 16 == i`.
  */
-extern uint64_t data_map[categories];
+extern uint64_t data_map[8];
 
 JNIEXPORT jdouble JNICALL Java_org_baja_dashboard_model_DataRepository_get(
     JNIEnv *env,

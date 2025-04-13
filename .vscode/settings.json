@@ -54,11 +54,16 @@
         "stop_token": "cpp",
         "streambuf": "cpp",
         "thread": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "iomanip": "cpp",
+        "sstream": "cpp",
+        "can_bridge.h": "c",
+        "cstring": "cpp"
     },
     "C_Cpp.default.includePath": [
         "${env:JAVA_HOME}/include",
         "${env:JAVA_HOME}/include/linux",
     ],
-    "C_Cpp.errorSquiggles": "enabled"
+    "C_Cpp.errorSquiggles": "enabled",
+    "makefile.makefilePath": "home/ubcbaja/firmware/dashboard-compose/Makefile"
 }

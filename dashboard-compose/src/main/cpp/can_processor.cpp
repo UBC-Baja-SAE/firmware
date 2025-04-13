@@ -4,19 +4,14 @@
 #include <iostream>
 #include <iomanip>
 #include <thread>
+#include <cstring>
+#include "can_processor.h"
 
 extern "C"
 {
     #include "can_interface.h"
+    #include "can_bridge.h"
 }
-
-std::queue<CAN_Message> message_queue;
-
-std::mutex queue_lock;
-
-std::condition_variable cv;
-
-const int worker_count = 2;
 
 void poll()
 {
@@ -45,21 +40,11 @@ void process()
         lock.unlock();
         cv.notify_one();
 
-        /* temporary sanity check, formatting the data as hex */
-        std::cout << "processing message [" << std::hex << std::setw(3) << std::setfill('0') << msg.id << "]: ";
-        for (int i = 0; i < msg.size; i++)
-        {
-            std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(msg.data[i]);
-        }
-        std::cout << std::endl;
+        // set the data in the data map according to the message id
+        int mod_id = msg.id % categories;
 
-        /* set the data in the data map according to the message id */
-        int mod_id = msg.id % 16;
-        data_map[mod_id] = 0;
-        for (int i = 0; i < 8; i++) {
-            data_map[mod_id] |= msg.data[i] << (8 * i);
-        }
-        std::cout << "message " << msg.id << ": " << std::hex << std::setw(8) << static_cast<int>(data_map[mod_id]);
+        // the CAN bus data is (for now) assumed to be little-endian
+        memcpy(&data_map[mod_id], msg.data, msg.size);
     }
 }
 
@@ -67,7 +52,7 @@ void start()
 {
     can_init();
 
-    can_filter_init(socket_fd, 0x123, 0x7ff);
+    can_filter_init(socket_fd, 0x000, 0x7f8);
 
     std::thread poll_thread(poll);
     std::vector<std::thread> workers;
@@ -78,9 +63,4 @@ void start()
     for (auto& worker : workers) {
         worker.join();
     }
-}
-
-int main()
-{
-    start();
 }

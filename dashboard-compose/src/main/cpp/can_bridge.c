@@ -1,25 +1,11 @@
 #include <jni.h>
+#include <string.h>
 #include "can_message.h"
 #include "can_bridge.h"
 
-extern uint64_t data_map[categories] = {
-    0, 
-    0, 
-    0,
-    0,
-    0, 
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0, 
-    0,
-    0,
-    0,
-    0
-};
+int categories = sizeof(data_map) / sizeof(uint64_t);
+
+uint64_t data_map[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 JNIEXPORT jdouble JNICALL Java_org_baja_dashboard_model_DataRepository_get(
     JNIEnv *env,
@@ -28,5 +14,8 @@ JNIEXPORT jdouble JNICALL Java_org_baja_dashboard_model_DataRepository_get(
 ) {
     int mod_id = id % categories;
     uint64_t data = data_map[mod_id];
-    return (jdouble) data;
+
+    double result;
+    memcpy(&result, &data, sizeof(data));
+    return (jdouble) result;
 }
