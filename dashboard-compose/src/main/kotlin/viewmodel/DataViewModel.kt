@@ -28,13 +28,17 @@ object DataViewModel {
         CoroutineScope(Dispatchers.IO).launch {
             startDataCollection()
         }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            repository.start()
+        }
     }
 
     private suspend fun startDataCollection() {
         while (true) {
             fetchData()
 
-            delay(3000) // runs at 40 fps
+            delay(1000 / 60) // 60 fps
         }
     }
 

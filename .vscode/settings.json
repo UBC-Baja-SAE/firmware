@@ -58,7 +58,8 @@
         "iomanip": "cpp",
         "sstream": "cpp",
         "can_bridge.h": "c",
-        "cstring": "cpp"
+        "cstring": "cpp",
+        "can_processor.h": "c"
     },
     "C_Cpp.default.includePath": [
         "${env:JAVA_HOME}/include",

@@ -1,7 +1,7 @@
 #include <jni.h>
 #include <string.h>
-#include "can_message.h"
 #include "can_bridge.h"
+#include "can_processor.h"
 
 int categories = sizeof(data_map) / sizeof(uint64_t);
 
@@ -18,4 +18,11 @@ JNIEXPORT jdouble JNICALL Java_org_baja_dashboard_model_DataRepository_get(
     double result;
     memcpy(&result, &data, sizeof(data));
     return (jdouble) result;
+}
+
+JNIEXPORT void JNICALL Java_org_baja_dashboard_model_DataRepository_start(
+    JNIEnv *env,
+    jobject obj
+) {
+    start();
 }

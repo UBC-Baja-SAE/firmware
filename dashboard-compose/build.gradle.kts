@@ -33,6 +33,10 @@ kotlin {
         application {
             mainClass = "org.baja.dashboard.ApplicationKt"
 
+            /*
+             * Configures the build to target the Windows and Debian platforms,
+             * and sets the application details.
+             */
             nativeDistributions {
                 targetFormats(TargetFormat.Msi, TargetFormat.Deb)
                 packageName = "Dashboard"
@@ -40,6 +44,11 @@ kotlin {
                 description = "Compose UI Dashboard App"
             }
 
+            /*
+             * Includes the ~/build/cpp directory into the compilation paths,
+             * This directory should include the *.so files that are generated
+             * when compiling the JNI library files.
+             */
             jvmArgs += listOf(
                 "-Djava.library.path=${projectDir}/build/cpp/"
             )

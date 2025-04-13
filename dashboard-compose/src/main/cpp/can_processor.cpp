@@ -13,6 +13,14 @@ extern "C"
     #include "can_bridge.h"
 }
 
+std::queue<CAN_Message> message_queue;
+
+std::mutex queue_lock;
+
+std::condition_variable cv;
+
+const int worker_count = 2;
+
 void poll()
 {
     while (true)

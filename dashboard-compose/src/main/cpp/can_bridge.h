@@ -19,10 +19,17 @@ extern int categories;
  */
 extern uint64_t data_map[8];
 
-JNIEXPORT jdouble JNICALL Java_org_baja_dashboard_model_DataRepository_get(
-    JNIEnv *env,
-    jobject obj,
-    jint id
-);
+extern "C" {    
+    JNIEXPORT jdouble JNICALL Java_org_baja_dashboard_model_DataRepository_get(
+        JNIEnv *env,
+        jobject obj,
+        jint id
+    );
+
+    JNIEXPORT void JNICALL Java_org_baja_dashboard_model_DataRepository_start(
+        JNIEnv *env,
+        jobject obj
+    );
+}
 
 #endif // CAN_BRIDGE_H
