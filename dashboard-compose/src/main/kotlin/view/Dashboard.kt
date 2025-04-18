@@ -3,7 +3,10 @@ package view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -17,24 +20,24 @@ import org.baja.dashboard.viewmodel.DataViewModel
  */
 @Composable
 fun Dashboard() {
-    val speed = DataViewModel.speed
-    val temp = DataViewModel.temperature
-    val rpm = DataViewModel.rpm
-    val fuel = DataViewModel.fuel
+    val speed by DataViewModel.getSpeed().collectAsState()
+    val temp by DataViewModel.getTemperature().collectAsState()
+    val rpm by DataViewModel.getRPM().collectAsState()
+    val fuel by DataViewModel.getFuel().collectAsState()
 
     RadialGauge(
         Modifier.offset(200.dp, 120.dp), 
-        speed.value.toFloat(), 70f, true, "km/h"
+        speed.toFloat(), 70f, true, "km/h"
     )
     RadialGauge(
         Modifier.offset(680.dp, 120.dp),
-        rpm.value.toFloat(), 5f, false, "rpm (x1000)"
+        rpm.toFloat(), 5f, false, "rpm (x1000)"
     )
     LinearGauge(Modifier.offset(50.dp, 150.dp),
-        fuel.value.toFloat(), 1f, "images/fuel.png", Pair('E', 'F')
+        fuel.toFloat(), 1f, "images/fuel.png", Pair('E', 'F')
     )
     LinearGauge(Modifier.offset(125.dp, 150.dp),
-        temp.value.toFloat(), 100f, "images/temp.png", Pair('C', 'H')
+        temp.toFloat(), 100f, "images/temp.png", Pair('C', 'H')
     )
     Image(
         painter = painterResource("images/logo.png"),

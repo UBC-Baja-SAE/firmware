@@ -12,17 +12,13 @@ import org.baja.dashboard.model.DataRepository
 object DataViewModel {
     private val repository = DataRepository()
 
-    private val _speed = MutableStateFlow(0.0)
-    val speed = _speed.asStateFlow()
+    private val speed = MutableStateFlow(0.0)
 
-    private val _temperature = MutableStateFlow(0.0)
-    val temperature = _temperature.asStateFlow()
+    private val temperature = MutableStateFlow(0.0)
 
-    private val _rpm = MutableStateFlow(0.0)
-    val rpm = _rpm.asStateFlow()
+    private val rpm = MutableStateFlow(0.0)
 
-    private val _fuel = MutableStateFlow(0.0)
-    val fuel = _fuel.asStateFlow()
+    private val fuel = MutableStateFlow(0.0)
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
@@ -34,20 +30,26 @@ object DataViewModel {
         }
     }
 
+    fun getSpeed() = speed.asStateFlow()
+
+    fun getTemperature() = temperature.asStateFlow()
+
+    fun getRPM() = rpm.asStateFlow()
+
+    fun getFuel() = fuel.asStateFlow()
+
     private suspend fun startDataCollection() {
         while (true) {
             fetchData()
 
-            println(_speed.value)
-
-            delay(1000) // 60 fps
+            delay(1000 / 30) // 30 fps
         }
     }
 
     private fun fetchData() {
-        _speed.value = repository.get(Data.Speed.id)
-        _temperature.value = repository.get(Data.Temperature.id)
-        _rpm.value = repository.get(Data.RPM.id)
-        _fuel.value = repository.get(Data.Fuel.id)
+        speed.value = repository.get(Data.Speed.id)
+        temperature.value = repository.get(Data.Temperature.id)
+        rpm.value = repository.get(Data.RPM.id)
+        fuel.value = repository.get(Data.Fuel.id)
     }
 }
