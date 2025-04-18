@@ -90,7 +90,7 @@ fun LinearGauge(
     imagePath: String,
     symbols: Pair<Char, Char>
 ) {
-    val percentage = if (currentValue >= 0f) currentValue / maxValue else 0f
+    val percentage = boundedPercentage(currentValue, maxValue)
     val targetHeight by animateFloatAsState(
         targetValue = BAR_HEIGHT * percentage,
         animationSpec = tween(

@@ -126,7 +126,7 @@ fun RadialGauge(
     showReading: Boolean = false,
     label: String = ""
 ) {
-    val percentage = if (currentValue >= 0f) currentValue / maxValue else 0f
+    val percentage = boundedPercentage(currentValue, maxValue)
     val targetAngle by animateFloatAsState(
         targetValue = ANGLE_RANGE * percentage,
         animationSpec = tween(
