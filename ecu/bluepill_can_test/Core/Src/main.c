@@ -22,6 +22,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "math.h"
+#include "string.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,7 +47,7 @@ CAN_HandleTypeDef hcan;
 
 /* USER CODE BEGIN PV */
 CAN_TxHeaderTypeDef header;
-uint8_t data[8] = {0, 1, 0, 1, 0, 1, 0, 1};  // Example data
+uint8_t data[8];  // Example data
 uint32_t mailbox;
 CAN_FilterTypeDef filter;
 /* USER CODE END PV */
@@ -59,6 +62,11 @@ static void MX_CAN_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void set_data(double new)
+{
+	memcpy(&data, &new, sizeof(data));
+}
 
 /* USER CODE END 0 */
 
@@ -107,7 +115,6 @@ int main(void)
 
   // Configure the CAN Tx Header
   header.DLC = 8;                   // Data length: 8 bytes
-  header.StdId = 0x123;              // Set CAN ID (change as needed)
   header.IDE = CAN_ID_STD;           // Use Standard ID
   header.RTR = CAN_RTR_DATA;         // Data frame
   header.TransmitGlobalTime = DISABLE;
@@ -119,24 +126,63 @@ int main(void)
   if (HAL_CAN_Start(&hcan) != HAL_OK) {
     Error_Handler();
   }
+
+  // Time variable for oscillation (radians)
+  double t = 0.0;
+  const double dt = 0.1;  // increment per loop
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  // Transmit the message
-	  if (HAL_CAN_AddTxMessage(&hcan, &header, data, &mailbox) == HAL_OK) {
-		  // Message successfully queued
-		  // Pulse GPIO pin 13 for 100 ms
-		  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);  // Turn ON pin
-		  HAL_Delay(100);                                        // Wait 100 ms
-		  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET); // Turn OFF pin
-	  } else {
-		  // Error handling
+	  // Advance time
+	  t += dt;
+	  if (t > 2.0 * M_PI) {
+		  t -= 2.0 * M_PI;
+	  }
+
+	  // Compute four oscillating values:
+	  //   id 1 → 0…70
+	  //   id 2 → 0…100
+	  //   id 3 → 0…5
+	  //   id 4 → 0…1
+	  double v1 = (sin(t) + 1.0) * (70.0  / 2.0);    // [0,70]
+	  double v2 = (sin(t) + 1.0) * (100.0 / 2.0);    // [0,100]
+	  double v3 = (sin(t) + 1.0) * (5.0   / 2.0);    // [0,5]
+	  double v4 = (sin(t) + 1.0) * (1.0   / 2.0);    // [0,1]
+
+	  // ID = 1
+	  header.StdId = 1;
+	  set_data(v1);
+	  if (HAL_CAN_AddTxMessage(&hcan, &header, data, &mailbox) != HAL_OK) {
 		  Error_Handler();
 	  }
-	  HAL_Delay(3000);
+	  HAL_Delay(3);
+
+	  // ID = 2
+	  header.StdId = 2;
+	  set_data(v2);
+	  if (HAL_CAN_AddTxMessage(&hcan, &header, data, &mailbox) != HAL_OK) {
+		  Error_Handler();
+	  }
+	  HAL_Delay(3);
+
+	  // ID = 3
+	  header.StdId = 3;
+	  set_data(v3);
+	  if (HAL_CAN_AddTxMessage(&hcan, &header, data, &mailbox) != HAL_OK) {
+		  Error_Handler();
+	  }
+	  HAL_Delay(3);
+
+	  // ID = 4
+	  header.StdId = 4;
+	  set_data(v4);
+	  if (HAL_CAN_AddTxMessage(&hcan, &header, data, &mailbox) != HAL_OK) {
+		  Error_Handler();
+	  }
+	  HAL_Delay(3);
   }
     /* USER CODE END WHILE */
 
