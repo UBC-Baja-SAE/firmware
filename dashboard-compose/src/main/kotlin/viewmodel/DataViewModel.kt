@@ -38,7 +38,9 @@ object DataViewModel {
         while (true) {
             fetchData()
 
-            delay(1000 / 60) // 60 fps
+            println(_speed.value)
+
+            delay(1000) // 60 fps
         }
     }
 

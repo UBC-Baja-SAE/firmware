@@ -269,3 +269,13 @@ communicate.
 		     down /sbin/ifconfig can0 down
      ```
 5. To check the state of the CAN interface, run `ifconfig`.
+
+## Operating
+
+This application utilises the
+[Gradle Application Plugin](https://docs.gradle.org/current/userguide/application_plugin.html),
+hence it can be ran and launched directly from the build files, instead of 
+requiring an executable. To operate, launch the application manually:
+```
+./gradlew run
+```

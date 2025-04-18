@@ -55,3 +55,18 @@ kotlin {
         }
     }
 }
+
+/**
+ * Configures the C/C++ source code to be compiled as defined in the project
+ * Makefile before the Kotlin code is compiled.
+ */
+tasks.register<Exec>("compileC++") {
+    description = "Build native C/C++ CAN bridge code"
+    group = "build"
+    workingDir = file(projectDir)
+    commandLine("make")
+}
+
+tasks.named("compileKotlin").configure {
+    dependsOn("compileC++")
+}

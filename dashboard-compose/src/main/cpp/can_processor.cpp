@@ -52,7 +52,7 @@ void process()
         int mod_id = msg.id % categories;
 
         // the CAN bus data is (for now) assumed to be little-endian
-        memcpy(&data_map[mod_id], msg.data, msg.size);
+        memcpy(&data_map[mod_id], msg.data, sizeof(data_map[mod_id]));
     }
 }
 
