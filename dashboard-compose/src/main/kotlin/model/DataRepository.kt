@@ -7,7 +7,13 @@ class DataRepository {
         }
     }
 
-    external fun get(id: Int): Double
+    external fun getSpeed(): Double
+
+    external fun getTemperature(): Double
+
+    external fun getRPM(): Double
+
+    external fun getFuel(): Double
 
     external fun start()
 }

@@ -6,7 +6,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.baja.dashboard.model.Data
 import org.baja.dashboard.model.DataRepository
 
 object DataViewModel {
@@ -42,14 +41,16 @@ object DataViewModel {
         while (true) {
             fetchData()
 
+            println("speed: ${speed.value}")
+
             delay(1000 / 30) // 30 fps
         }
     }
 
     private fun fetchData() {
-        speed.value = repository.get(Data.Speed.id)
-        temperature.value = repository.get(Data.Temperature.id)
-        rpm.value = repository.get(Data.RPM.id)
-        fuel.value = repository.get(Data.Fuel.id)
+        speed.value = repository.getSpeed()
+        temperature.value = repository.getTemperature()
+        rpm.value = repository.getRPM()
+        fuel.value = repository.getFuel()
     }
 }

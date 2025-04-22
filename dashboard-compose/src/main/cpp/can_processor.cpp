@@ -6,12 +6,14 @@
 #include <thread>
 #include <cstring>
 #include "can_processor.h"
+#include "can_bridge.h"
 
 extern "C"
 {
     #include "can_interface.h"
-    #include "can_bridge.h"
 }
+
+std::unordered_map<int, double> observed_data;
 
 std::queue<CAN_Message> message_queue;
 
@@ -48,11 +50,8 @@ void process()
         lock.unlock();
         cv.notify_one();
 
-        // set the data in the data map according to the message id
-        int mod_id = msg.id % categories;
-
         // the CAN bus data is (for now) assumed to be little-endian
-        memcpy(&data_map[mod_id], msg.data, sizeof(data_map[mod_id]));
+        memcpy(&observed_data[msg.id], msg.data, sizeof(observed_data[msg.id]));
     }
 }
 

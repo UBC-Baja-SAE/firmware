@@ -50,7 +50,7 @@ kotlin {
              * when compiling the JNI library files.
              */
             jvmArgs += listOf(
-                "-Djava.library.path=${projectDir}/build/cpp/"
+                "-Djava.library.path=${buildDir}/cpp/"
             )
         }
     }

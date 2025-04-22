@@ -59,11 +59,13 @@
         "sstream": "cpp",
         "can_bridge.h": "c",
         "cstring": "cpp",
-        "can_processor.h": "c"
+        "can_processor.h": "c",
+        "map": "cpp"
     },
     "C_Cpp.default.includePath": [
         "${env:JAVA_HOME}/include",
         "${env:JAVA_HOME}/include/linux",
+        "./lib/can"
     ],
     "C_Cpp.errorSquiggles": "enabled",
     "makefile.makefilePath": "home/ubcbaja/firmware/dashboard-compose/Makefile"

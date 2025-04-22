@@ -1,28 +1,45 @@
 #include <jni.h>
+#include <stdint.h>
 #include <string.h>
 #include "can_bridge.h"
 #include "can_processor.h"
+#include "can_id.h"
 
-int categories = sizeof(data_map) / sizeof(uint64_t);
-
-uint64_t data_map[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-
-JNIEXPORT jdouble JNICALL Java_org_baja_dashboard_model_DataRepository_get(
-    JNIEnv *env,
-    jobject obj,
-    jint id
-) {
-    int mod_id = id % categories;
-    uint64_t data = data_map[mod_id];
+/**
+ * @brief Observes the last received CAN message with the given id.
+ * @param id    the id of the CAN message to observe.
+ * @return the data received from the CAN message. 
+ */
+double getData(int id)
+{
+    uint64_t data = observed_data[id];
 
     double result;
     memcpy(&result, &data, sizeof(data));
-    return (jdouble) result;
+    return result;
 }
 
-JNIEXPORT void JNICALL Java_org_baja_dashboard_model_DataRepository_start(
-    JNIEnv *env,
-    jobject obj
-) {
+getSpeed
+{
+    return (jdouble) getData(speedometer_id);
+}
+
+getTemperature
+{
+    return (jdouble) getData(thermometer_id);
+}
+
+getRPM
+{
+    return (jdouble) getData(tachometer_id);
+}
+
+getFuel
+{
+    return (jdouble) getData(fuel_sensor_id);
+}
+
+startProcessor
+{
     start();
 }
