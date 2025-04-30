@@ -6,6 +6,7 @@
 #define CAN_PROCESSOR_H 
 
 #include <unordered_map>
+#include <stdint.h>
 #include "can_bridge.h"
 
 extern "C"
@@ -18,7 +19,7 @@ extern "C"
  * `observed_data[i]` is the last received data value for any message with that
  * id.
  */
-extern std::unordered_map<int, double> observed_data;
+extern std::unordered_map<int, uint64_t> observed_data;
 
 /**
  * @brief Instantiates the CAN bus background application for the dashboard.

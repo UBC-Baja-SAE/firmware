@@ -1,8 +1,6 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
-#include <iostream>
-#include <iomanip>
 #include <thread>
 #include <cstring>
 #include "can_processor.h"
@@ -13,7 +11,7 @@ extern "C"
     #include "can_interface.h"
 }
 
-std::unordered_map<int, double> observed_data;
+std::unordered_map<int, uint64_t> observed_data;
 
 std::queue<CAN_Message> message_queue;
 
@@ -51,7 +49,10 @@ void process()
         cv.notify_one();
 
         // the CAN bus data is (for now) assumed to be little-endian
-        memcpy(&observed_data[msg.id], msg.data, sizeof(observed_data[msg.id]));
+        uint64_t message_data;
+        memcpy(&message_data, msg.data, sizeof(message_data));
+
+        observed_data[msg.id] = message_data;
     }
 }
 
