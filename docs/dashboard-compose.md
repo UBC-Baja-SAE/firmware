@@ -197,7 +197,7 @@ The CAN controller utilised in the dashboard PCB is the
 which uses an SPI interface. The table below outlines the wiring configuration
 for the Raspberry Pi to CAN controller interface.
 
-|**Raspberry Pi GPIO**|**MCP2515 IO**|**Function**|
+|**Raspberry Pi GPIO**|**Dashboard IO**|**Function**|
 |-|-|-|
 |GPIO10 (Pin 19)|SI |MOSI       |
 |GPIO9 (Pin 21) |SO |MISO       |

@@ -16,7 +16,7 @@ family. Hence, many of the tools used to develop for these MCUs are created dire
 Aside from the PCBs that physically contain the STM32 MCUs, the following tools
 are recommended to program the firmware onto the MCUs:
 
-- The [ST-Link/V2 debugger/programmer](https://www.st.com/en/development-tools/st-link-v2.html) for debugging and programming the MCUs.
+- The [ST-LINK/V2 debugger/programmer](https://www.st.com/en/development-tools/st-link-v2.html) for debugging and programming the MCUs.
   - Refer to the [user manual](https://www.st.com/resource/en/user_manual/um1075-stlinkv2-incircuit-debuggerprogrammer-for-stm8-and-stm32-stmicroelectronics.pdf) for the pinout.
 - The [STM32 Cube IDE](https://www.st.com/en/development-tools/stm32cubeide.html)
   for generating the hardware abstraction layer (HAL) code, configuring the microcontroller clock speeds and pin configurations, and flashing the firmware onto the hardware.
@@ -36,5 +36,24 @@ As the CAN bus is designed to accommodate 1 Mbps, the baud rate of the microcont
 
 [CAN bus bit timing configuration](https://community.st.com/t5/stm32-mcus-products/stm32f103c8t6-blue-pill-can-does-not-work/td-p/66829)
 
+## Wiring
+
+### ST-LINK/V2
+
+| ST-LINK/V2 Pin | Pin Number | STM32 Pin | Description |
+|-|-|-|-|
+| VAPP | 1, 2 | 3V3 | Target Voltage |
+| SWDIO | 7 | SWIO | Serial I/O |
+| SWCLK | 9 | SWCLK | Serial Clock |
+| NRST | 15 | NRST | Reset |
+| GND | 4, 6, 8, ..., 20 | GND | Ground |
+| VDD | 19 | 3V3 | Power |
+
+For example, an STM32F103C8T6 "Blue Pill" board is wired as follows:
+
+<p align="center">
+  <img src="assets/images/stlink_wiring_bluepill.jpg"  width="350px"/>
+  <img src="assets/images/stlink_pinout.jpg"  width="350px"/>
+</p>
 
 
