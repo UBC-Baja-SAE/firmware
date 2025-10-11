@@ -38,7 +38,6 @@
 #define CAN_ID_ESUS_RR_STRAIN_R        0x134
 
 // -- PI (Platform Interface / Central IMU) (0x180 - 0x18F) --
-// Note: This is a separate, central IMU for redundancy/filtering.
 #define CAN_ID_PI_IMU_ACCEL            0x180
 #define CAN_ID_PI_IMU_GYRO             0x181
 
@@ -70,6 +69,7 @@ typedef struct {
 // ESUS Suspension Displacement - USED by all 4 ESUS units
 typedef struct {
     uint16_t suspension_mm; // Suspension position in mm
+    uint16_t suspension_velocity_mmps_x10;
 } CanMsg_Suspension_t; // Simplified name: No need for L/R in payload
 
 // ESUS Strain Gauge Data - USED by all 4 ESUS units
