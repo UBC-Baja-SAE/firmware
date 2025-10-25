@@ -1,9 +1,9 @@
 #include "icm42670p.h"
 #include <unistd.h>
 #include <linux/i2c-dev.h>
-#include <iomanip>
-#include <fcntl.h>
 #include <sys/ioctl.h>
+#include <fcntl.h>
+#include <iomanip>
 #include <chrono>
 #include <thread>
 
@@ -92,7 +92,7 @@ std::optional<IMUVector> ICM42670P::measureAcceleration()
 
     IMUVector vector;
     double scale = 16384.0;
-    // section 3.2, lsb -> lsb/(lsb/g) -> g, scale corresponds to boot config
+    // section 3.2, lsb -> lsb/(lsb/g) -> g, scale corresponds to config
     vector.x = x / scale;
     vector.y = y / scale;
     vector.z = z / scale;
@@ -115,7 +115,7 @@ std::optional<IMUVector> ICM42670P::measureAngularVelocity()
 
     IMUVector vector;
     double scale = 131.0;
-    // section 3.1, lsb -> lsb/(lsb/(º/s)), scale corresponds to boot config
+    // section 3.1, lsb -> lsb/(lsb/(º/s)) -> º/s, scale corresponds to config
     vector.x = x / scale;
     vector.y = y / scale;
     vector.z = z / scale;

@@ -92,14 +92,18 @@ public:
     /**
      * Measures the acceleration observed by the IMU's accelerometer.
      * 
-     * @return The 3-dimensional acceleration vector.
+     * @return The 3-dimensional acceleration vector, where each element of the
+     * vector is the acceleration (in standard gravity (g)) observed along its
+     * respective axis.
      */
     std::optional<IMUVector> measureAcceleration();
 
     /**
      * Measures the angular velocity observed by the IMU's gyroscope.
      * 
-     * @return The 3-dimensional angular velocity vector.
+     * @return The 3-dimensional angular velocity vector, where each element of
+     * the vector is the angular velocity (in degrees per second (º/s)) observed
+     * along its respective axis.
      */
     std::optional<IMUVector> measureAngularVelocity();
 
