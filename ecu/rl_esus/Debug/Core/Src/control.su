@@ -1,9 +1,0 @@
-../Core/Src/control.c:37:14:V_to_X	24	static
-../Core/Src/control.c:57:13:HW_Read_IMU_Raw	24	static
-../Core/Src/control.c:65:17:HW_Read_Potentiometer_Raw	4	static
-../Core/Src/control.c:72:17:HW_Read_Strain_Gauge_Raw	4	static
-../Core/Src/control.c:79:13:HW_Set_Actuator_Current_mA	16	static
-../Core/Src/control.c:93:6:CAN_Transmit_Message	24	static
-../Core/Src/control.c:129:6:ESUS_Sense	72	static
-../Core/Src/control.c:187:6:ESUS_Control	24	static
-../Core/Src/control.c:223:6:ESUS_Publish	56	static

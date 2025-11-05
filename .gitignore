@@ -1,1 +1,9 @@
-build/
+# general
+.vscode
+
+# dashboard-specific custom output directory
+build
+
+# stm32-specific
+**/.settings/
+**/Debug/
