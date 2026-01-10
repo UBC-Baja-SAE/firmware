@@ -140,6 +140,11 @@ int main(void)
       Error_Handler();
     }
 
+    SendRPMOnCan(CAN_ID_REAR_RPM);
+    SendSpeedOnCan(CAN_ID_REAR_SPEED);
+    SendFuelOnCan(CAN_ID_REAR_FUEL);
+    SendTempOnCan(CAN_ID_REAR_TEMPERATURE);
+    
     // Send message every 100 ms
     HAL_Delay(100);
   }
