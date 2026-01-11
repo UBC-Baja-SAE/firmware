@@ -2,11 +2,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "control.h"
-#include "can_messages.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "control.h"
+#include "can_messages.h"
+
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -15,6 +17,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define TIM3_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
+#define DEBOUNCE_TIME_MS 5
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -28,7 +32,11 @@ ADC_HandleTypeDef hadc2;
 
 FDCAN_HandleTypeDef hfdcan1;
 
+TIM_HandleTypeDef htim3;
+
 /* USER CODE BEGIN PV */
+volatile uint32_t previousCaptureValue = 0;
+volatile uint32_t lastMagnetTime = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -39,6 +47,7 @@ static void MX_GPIO_Init(void);
 static void MX_FDCAN1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -65,6 +74,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -81,9 +91,18 @@ int main(void)
   MX_FDCAN1_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
-  
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) 
+  {
+    Error_Handler();
+  }
+
+  HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM3_IRQn);
+
+  // 3. CRITICAL FIX: Start Timer AFTER initialization
+  if (HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -109,6 +128,10 @@ int main(void)
   TxHeader.TxEventFifoControl = FDCAN_STORE_TX_EVENTS;
   TxHeader.MessageMarker = 0;
 
+    uint32_t currentTime = HAL_GetTick();
+
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -116,21 +139,30 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    
+
     /* USER CODE BEGIN 3 */
 
     // Test message
-    if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData) == HAL_OK)
+
+
+
+    if ((HAL_GetTick() - lastMagnetTime) > 1000)
     {
-      Error_Handler();
+      measured_frequency = 0;
     }
 
+
+
+    SendFrequencyOnCan(0x600);
+
+    /*
     // FL
     SendPotOnCan(CAN_ID_ESUS_FL_SUSPENSION);
     SendAccelOnCan(CAN_ID_ESUS_FL_IMU_ACCEL);
     SendGyroOnCan(CAN_ID_ESUS_FL_IMU_GYRO);
     SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_L);
     SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_R);
+    */
 
     /*
     // FR
@@ -300,7 +332,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_5;
+  sConfig.Channel = ADC_CHANNEL_9;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -424,6 +456,64 @@ static void MX_FDCAN1_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 1999;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 15;
+  if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -432,6 +522,13 @@ static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
+
+
+
+
+
+
+
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
@@ -566,8 +663,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PC6 PC7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+  /*Configure GPIO pin : PC7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -648,10 +745,58 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /*Configure GPIO pin : PC6 (TIM3 CH1) */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;       // Connects pin to Internal Timer Hardware
+  GPIO_InitStruct.Pull = GPIO_PULLUP;           // Enables internal resistor (as you requested)
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;    // Selects TIM3 function for this pin
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+/* USER CODE BEGIN 4 */
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  // Ensure we are handling TIM3, Channel 1
+  if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+  {
+    uint32_t currentTime = HAL_GetTick();
+
+    // 1. Software Debounce: Ignore if pulse is too close to the last one
+    if ((currentTime - lastMagnetTime) < DEBOUNCE_TIME_MS)
+    {
+      return;
+    }
+
+    uint32_t currentCapture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+    uint32_t diff = 0;
+
+    // 2. Handle Timer Rollover (Timer counts 0 -> 65535 -> 0)
+    if (currentCapture >= previousCaptureValue)
+    {
+      diff = currentCapture - previousCaptureValue;
+    }
+    else
+    {
+      // (Period - Old) + New + 1
+      diff = (htim->Init.Period - previousCaptureValue) + currentCapture + 1;
+    }
+
+    // 3. Update Frequency
+    if (diff > 0)
+    {
+      // Calculate Frequency: ClockSpeed / Ticks
+      measured_frequency = TIM3_CLOCK_FREQ / diff;
+
+      // Update tracking variables
+      previousCaptureValue = currentCapture;
+      lastMagnetTime = currentTime;
+    }
+  }
+}
+/* USER CODE END 4 */
 /* USER CODE END 4 */
 
  /* MPU Configuration */
