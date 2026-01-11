@@ -18,11 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "control.h"
-#include "can_messages.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "control.h"
+#include "can_messages.h"
 
 /* USER CODE END Includes */
 
@@ -96,7 +96,6 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_FDCAN1_Init();
-
   /* USER CODE BEGIN 2 */
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) 
   {
