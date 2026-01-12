@@ -14,6 +14,7 @@
 #define GYRO_DATA_START  0x11
 #define PWR_MGMT0        0x1F
 
+void IMU_Init(void);
 float VoltageToPosition(float voltage);
 void SendPotOnCan(uint32_t can_id);
 void SendAccelOnCan(uint32_t can_id);
