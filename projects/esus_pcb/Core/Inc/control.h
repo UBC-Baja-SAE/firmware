@@ -8,6 +8,12 @@
 #define V_EXTEND        0.0f
 #define V_COMP          5.0f
 
+// ICM-42670-P Definitions
+#define ICM_ADDR         (0x68 << 1)
+#define ACCEL_DATA_START 0x0B
+#define GYRO_DATA_START  0x11
+#define PWR_MGMT0        0x1F
+
 float VoltageToPosition(float voltage);
 void SendPotOnCan(uint32_t can_id);
 void SendAccelOnCan(uint32_t can_id);

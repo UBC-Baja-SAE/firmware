@@ -1,7 +1,10 @@
 #include "control.h"
 
-extern ADC_HandleTypeDef hadc1;
+// Hardware Handles
+extern ADC_HandleTypeDef hadc1;  // Used for Potentiometer
+extern ADC_HandleTypeDef hadc2;  // Used for Strain Gauge (Assumed based on main.c)
 extern FDCAN_HandleTypeDef hfdcan1;
+extern I2C_HandleTypeDef hi2c1;  // Used for IMU
 
 uint8_t pot_tx_data[2];
 
@@ -21,6 +24,13 @@ static void CAN_Transmit(uint32_t id, uint8_t *data, uint32_t len) {
     if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &tx_header, data) != HAL_OK) {
         Error_Handler();
     }
+}
+
+// Initialization for ICM-42670-P
+void IMU_Init(void) {
+    // Wake up: Enable both Accel and Gyro in Low Noise mode
+    uint8_t pwr_mgmt = 0x0F;
+    HAL_I2C_Mem_Write(&hi2c1, ICM_ADDR, PWR_MGMT0, I2C_MEMADD_SIZE_8BIT, &pwr_mgmt, 1, 100);
 }
 
 float VoltageToPosition(float voltage)
@@ -75,20 +85,32 @@ void SendPotOnCan(uint32_t can_id)
     // }
 }
 
-
 void SendAccelOnCan(uint32_t can_id) {
-    uint8_t data[6] = {0}; 
-    // data[0], [1] = X | data[2], [3] = Y | data[4], [5] = Z
-    CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_6);
+    uint8_t raw_data[6];
+    // Read 6 bytes starting from ACCEL_DATA_X1 (0x0B)
+    if (HAL_I2C_Mem_Read(&hi2c1, ICM_ADDR, ACCEL_DATA_START, I2C_MEMADD_SIZE_8BIT, raw_data, 6, 100) == HAL_OK) {
+        CAN_Transmit(can_id, raw_data, FDCAN_DLC_BYTES_6);
+    }
 }
 
 void SendGyroOnCan(uint32_t can_id) {
-    uint8_t data[6] = {0};
-    CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_6);
+    uint8_t raw_data[6];
+    // Read 6 bytes starting from GYRO_DATA_X1 (0x11)
+    if (HAL_I2C_Mem_Read(&hi2c1, ICM_ADDR, GYRO_DATA_START, I2C_MEMADD_SIZE_8BIT, raw_data, 6, 100) == HAL_OK) {
+        CAN_Transmit(can_id, raw_data, FDCAN_DLC_BYTES_6);
+    }
 }
 
-// 4. Strain Gauges - 2 Bytes expected
+// Assumes connected to ADC2
 void SendStrainOnCan(uint32_t can_id) {
-    uint8_t data[2] = {0};
+    uint16_t strain_val = 0;
+
+    HAL_ADC_Start(&hadc2);
+    if (HAL_ADC_PollForConversion(&hadc2, 10) == HAL_OK) {
+        strain_val = (uint16_t)HAL_ADC_GetValue(&hadc2);
+    }
+    HAL_ADC_Stop(&hadc2);
+
+    uint8_t data[2] = { (strain_val >> 8) & 0xFF, (strain_val & 0xFF) };
     CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
 }
