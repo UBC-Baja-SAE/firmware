@@ -3,7 +3,9 @@
 extern ADC_HandleTypeDef hadc1;
 extern FDCAN_HandleTypeDef hfdcan1;
 
-volatile uint32_t measured_frequency;
+volatile uint32_t measured_speedometer_frequency;
+volatile uint32_t measured_tachometer_frequency;
+
 
 
 uint8_t pot_tx_data[2];
@@ -96,18 +98,28 @@ void SendStrainOnCan(uint32_t can_id) {
     CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
 }
 
-void SendFrequencyOnCan(uint32_t can_id) {
-    uint8_t data[4] = {0};
+void SendSpeedometerOnCan(uint32_t can_id) {
+    uint8_t data[2];
+    uint32_t freq_to_send = measured_speedometer_frequency;
 
-    // Create a local copy to avoid interrupt changing it mid-read (atomic access for 32-bit usually fine, but safer)
-    uint32_t freq_to_send = measured_frequency;
+    // Split 32-bit integer into 2 bytes (Little Endian)
+    uint16_t val = (uint16_t)freq_to_send;
+    data[0] = val & 0xFF;
+    data[1] = (val >> 8) & 0xFF;
 
-    // Split 32-bit integer into 4 bytes (Little Endian)
-    data[0] = (uint8_t)(freq_to_send & 0xFF);
-    data[1] = (uint8_t)((freq_to_send >> 8) & 0xFF);
-    data[2] = (uint8_t)((freq_to_send >> 16) & 0xFF);
-    data[3] = (uint8_t)((freq_to_send >> 24) & 0xFF);
+    // Send 2 bytes
+    CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
+}
 
-    // Send 4 bytes
-    CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_4);
+void SendTachometerOnCan(uint32_t can_id) {
+    uint8_t data[2];
+    uint32_t freq_to_send = measured_tachometer_frequency;
+
+    // Split 32-bit integer into 2 bytes (Little Endian)
+    uint16_t val = (uint16_t)freq_to_send;
+    data[0] = val & 0xFF;
+    data[1] = (val >> 8) & 0xFF;
+
+    // Send 2 bytes
+    CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
 }

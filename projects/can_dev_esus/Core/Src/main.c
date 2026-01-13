@@ -18,7 +18,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define TIM3_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
-#define DEBOUNCE_TIME_MS 5
+#define TIM8_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
+
+#define MAGNET_DEBOUNCE_TIME_MS 5
+#define SPARK_DEBOUNCE_TIME_MS 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -33,10 +36,14 @@ ADC_HandleTypeDef hadc2;
 FDCAN_HandleTypeDef hfdcan1;
 
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
-volatile uint32_t previousCaptureValue = 0;
+volatile uint32_t previousSpeedometerCaptureValue = 0;
 volatile uint32_t lastMagnetTime = 0;
+volatile uint32_t previousTachometerCaptureValue = 0;
+volatile uint32_t lastSparkTime = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -48,6 +55,7 @@ static void MX_FDCAN1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM8_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -92,6 +100,7 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_TIM3_Init();
+  MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) 
   {
@@ -100,6 +109,17 @@ int main(void)
 
   HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
+
+
+  // 1. Enable the Interrupt Vector for Timer 8
+
+  HAL_NVIC_SetPriority(TIM8_CC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM8_CC_IRQn);
+
+  if (HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   // 3. CRITICAL FIX: Start Timer AFTER initialization
   if (HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1) != HAL_OK)
@@ -114,6 +134,8 @@ int main(void)
           DISABLE,                      // No remote frames rejected
           DISABLE                       // No extended remote frames rejected
   );
+
+
 
   FDCAN_TxHeaderTypeDef TxHeader;
   uint8_t TxData[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
@@ -142,18 +164,21 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    // Test message
-
-
+    // Test messages
 
     if ((HAL_GetTick() - lastMagnetTime) > 1000)
     {
-      measured_frequency = 0;
+      measured_speedometer_frequency = 0;
+    }
+
+    if ((HAL_GetTick() - lastSparkTime) > 1000)
+    {
+      measured_tachometer_frequency = 0;
     }
 
 
-
-    SendFrequencyOnCan(0x600);
+    SendSpeedometerOnCan(0x201);
+    SendTachometerOnCan(0x200);
 
     /*
     // FL
@@ -514,6 +539,56 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM8 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM8_Init(void)
+{
+
+  /* USER CODE BEGIN TIM8_Init 0 */
+
+  /* USER CODE END TIM8_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM8_Init 1 */
+
+  /* USER CODE END TIM8_Init 1 */
+  htim8.Instance = TIM8;
+  htim8.Init.Prescaler = 1999;
+  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim8.Init.Period = 65535;
+  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim8.Init.RepetitionCounter = 0;
+  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_IC_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 15;
+  if (HAL_TIM_IC_ConfigChannel(&htim8, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM8_Init 2 */
+
+  /* USER CODE END TIM8_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -663,12 +738,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PC7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PC8 PC9 PC10 PC11
                            PC12 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
@@ -752,6 +821,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;    // Selects TIM3 function for this pin
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC7 (TIM8 CH2) */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;       // Connects pin to Internal Timer Hardware
+  GPIO_InitStruct.Pull = GPIO_PULLUP;           // Enables internal resistor (as you requested)
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF3_TIM8;    // Selects TIM8 function for this pin
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
@@ -765,7 +843,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     uint32_t currentTime = HAL_GetTick();
 
     // 1. Software Debounce: Ignore if pulse is too close to the last one
-    if ((currentTime - lastMagnetTime) < DEBOUNCE_TIME_MS)
+    if ((currentTime - lastMagnetTime) < MAGNET_DEBOUNCE_TIME_MS)
     {
       return;
     }
@@ -774,29 +852,68 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     uint32_t diff = 0;
 
     // 2. Handle Timer Rollover (Timer counts 0 -> 65535 -> 0)
-    if (currentCapture >= previousCaptureValue)
+    if (currentCapture >= previousSpeedometerCaptureValue)
     {
-      diff = currentCapture - previousCaptureValue;
+      diff = currentCapture - previousSpeedometerCaptureValue;
     }
     else
     {
       // (Period - Old) + New + 1
-      diff = (htim->Init.Period - previousCaptureValue) + currentCapture + 1;
+      diff = (htim->Init.Period - previousSpeedometerCaptureValue) + currentCapture + 1;
     }
 
     // 3. Update Frequency
     if (diff > 0)
     {
       // Calculate Frequency: ClockSpeed / Ticks
-      measured_frequency = TIM3_CLOCK_FREQ / diff;
+      measured_speedometer_frequency = TIM3_CLOCK_FREQ / diff;
 
       // Update tracking variables
-      previousCaptureValue = currentCapture;
+      previousSpeedometerCaptureValue = currentCapture;
       lastMagnetTime = currentTime;
     }
   }
+
+  if (htim->Instance == TIM8 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
+  {
+    uint32_t currentTime = HAL_GetTick();
+
+    // 1. Software Debounce: Ignore if pulse is too close to the last one
+    if ((currentTime - lastSparkTime) < SPARK_DEBOUNCE_TIME_MS)
+    {
+      return;
+    }
+
+    uint32_t currentCapture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
+    uint32_t diff = 0;
+
+    // 2. Handle Timer Rollover (Timer counts 0 -> 65535 -> 0)
+    if (currentCapture >= previousTachometerCaptureValue)
+    {
+      diff = currentCapture - previousTachometerCaptureValue;
+    }
+    else
+    {
+      // (Period - Old) + New + 1
+      diff = (htim->Init.Period - previousTachometerCaptureValue) + currentCapture + 1;
+    }
+
+    // 3. Update Frequency
+    if (diff > 0)
+    {
+      // Calculate Frequency: ClockSpeed / Ticks
+      measured_tachometer_frequency = TIM8_CLOCK_FREQ / diff;
+
+      // Update tracking variables
+      previousTachometerCaptureValue = currentCapture;
+      lastSparkTime = currentTime;
+    }
+  }
+
+
+
+
 }
-/* USER CODE END 4 */
 /* USER CODE END 4 */
 
  /* MPU Configuration */
