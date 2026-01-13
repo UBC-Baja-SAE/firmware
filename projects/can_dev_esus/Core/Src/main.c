@@ -18,7 +18,12 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define TIM3_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
-#define DEBOUNCE_TIME_MS 5
+#define TIM8_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
+#define MAGNET_DEBOUNCE_TIME_MS 5
+#define SPARK_DEBOUNCE_TIME_MS 1
+#define SMOOTHING_FACTOR 0.2f
+#define PULSES_PER_REV   1.0f
+#define MAX_RPM_LIMIT    3600
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -33,10 +38,15 @@ ADC_HandleTypeDef hadc2;
 FDCAN_HandleTypeDef hfdcan1;
 
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
-volatile uint32_t previousCaptureValue = 0;
-volatile uint32_t lastMagnetTime = 0;
+volatile uint32_t previous_speedometer_capture_value = 0;
+volatile uint32_t last_magnet_time = 0;
+volatile uint32_t previous_tachometer_capture_value = 0;
+volatile uint32_t last_spark_time = 0;
+static float smoothed_speed_freq = 0;
+static float smoothed_tach_freq = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -48,6 +58,7 @@ static void MX_FDCAN1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM8_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -92,6 +103,7 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_TIM3_Init();
+  MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) 
   {
@@ -101,11 +113,17 @@ int main(void)
   HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
 
-  // 3. CRITICAL FIX: Start Timer AFTER initialization
+  HAL_NVIC_SetPriority(TIM8_CC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM8_CC_IRQn);
+
   if (HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
+  if (HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_2) != HAL_OK)
+    {
+      Error_Handler();
+    }
 
   HAL_FDCAN_ConfigGlobalFilter(
           &hfdcan1,
@@ -128,9 +146,6 @@ int main(void)
   TxHeader.TxEventFifoControl = FDCAN_STORE_TX_EVENTS;
   TxHeader.MessageMarker = 0;
 
-    uint32_t currentTime = HAL_GetTick();
-
-
 
   /* USER CODE END 2 */
 
@@ -142,18 +157,24 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    // Test message
+	uint32_t current_time = HAL_GetTick();
 
+	if ((current_time - last_magnet_time) > 1000)
+	{
+	  measured_speedometer_frequency = 0;
+	  smoothed_speed_freq = 0;
+	}
 
+	if ((current_time - last_spark_time) > 1000)
+	{
+	  measured_tachometer_frequency = 0;
+	  smoothed_tach_freq = 0;
+	 }
 
-    if ((HAL_GetTick() - lastMagnetTime) > 1000)
-    {
-      measured_frequency = 0;
-    }
-
-
-
-    SendFrequencyOnCan(0x600);
+    SendSpeedOnCan(CAN_ID_REAR_SPEED);
+    // TODO: For testing on the Dyno the tachometer is sending RPM, for the actual car we
+    //       may want to send freq on CAN and give the calculation to the PI
+    SendTachometerOnCan(CAN_ID_REAR_RPM);
 
     // Send message every 100 ms
     HAL_Delay(100);
@@ -478,6 +499,66 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM8 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM8_Init(void)
+{
+
+  /* USER CODE BEGIN TIM8_Init 0 */
+
+  /* USER CODE END TIM8_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM8_Init 1 */
+
+  /* USER CODE END TIM8_Init 1 */
+  htim8.Instance = TIM8;
+  htim8.Init.Prescaler = 1999;
+  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim8.Init.Period = 65535;
+  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim8.Init.RepetitionCounter = 0;
+  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_FALLING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 15;
+  if (HAL_TIM_IC_ConfigChannel(&htim8, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM8_Init 2 */
+
+  /* USER CODE END TIM8_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -627,12 +708,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PC7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PC8 PC9 PC10 PC11
                            PC12 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
@@ -726,41 +801,83 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
   // Ensure we are handling TIM3, Channel 1
   if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
   {
-    uint32_t currentTime = HAL_GetTick();
+    uint32_t current_time = HAL_GetTick();
 
     // 1. Software Debounce: Ignore if pulse is too close to the last one
-    if ((currentTime - lastMagnetTime) < DEBOUNCE_TIME_MS)
+    if ((current_time - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS)
     {
       return;
     }
 
-    uint32_t currentCapture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+    uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
     uint32_t diff = 0;
 
     // 2. Handle Timer Rollover (Timer counts 0 -> 65535 -> 0)
-    if (currentCapture >= previousCaptureValue)
+    if (current_capture >= previous_speedometer_capture_value)
     {
-      diff = currentCapture - previousCaptureValue;
+      diff = current_capture - previous_speedometer_capture_value;
     }
     else
     {
       // (Period - Old) + New + 1
-      diff = (htim->Init.Period - previousCaptureValue) + currentCapture + 1;
+      diff = (htim->Init.Period - previous_speedometer_capture_value) + current_capture + 1;
     }
 
     // 3. Update Frequency
     if (diff > 0)
     {
-      // Calculate Frequency: ClockSpeed / Ticks
-      measured_frequency = TIM3_CLOCK_FREQ / diff;
+      float instant_freq = (float)TIM3_CLOCK_FREQ / diff;
+      // Exponential Smoothing
+      smoothed_speed_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_speed_freq * (1.0f - SMOOTHING_FACTOR));
 
-      // Update tracking variables
-      previousCaptureValue = currentCapture;
-      lastMagnetTime = currentTime;
+      measured_speedometer_frequency = (uint32_t)smoothed_speed_freq;
+
+      previous_speedometer_capture_value = current_capture;
+      last_magnet_time = current_time;
     }
   }
+
+  if (htim->Instance == TIM8 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
+    {
+      uint32_t current_time = HAL_GetTick();
+
+      if ((current_time - last_spark_time) < SPARK_DEBOUNCE_TIME_MS)
+      {
+        return;
+      }
+
+      uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
+      uint32_t diff = 0;
+
+      if (current_capture >= previous_tachometer_capture_value)
+      {
+        diff = current_capture - previous_tachometer_capture_value;
+      }
+      else
+      {
+        diff = (htim->Init.Period - previous_tachometer_capture_value) + current_capture + 1;
+      }
+
+      if (diff > 0)
+      {
+    	  float instant_freq = (float)TIM8_CLOCK_FREQ / diff;
+
+    	  smoothed_tach_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_tach_freq * (1.0f - SMOOTHING_FACTOR));
+
+    	  uint32_t calculated_rpm = (uint32_t)((smoothed_tach_freq * 60.0f) / PULSES_PER_REV);
+
+    	  if (calculated_rpm > MAX_RPM_LIMIT) {
+    	  calculated_rpm = MAX_RPM_LIMIT;
+    	  }
+
+    	  // FREQ IS ACTUALLY RPM
+    	  measured_tachometer_frequency = calculated_rpm;
+
+    	  previous_tachometer_capture_value = current_capture;
+    	  last_spark_time = current_time;
+      }
+    }
 }
-/* USER CODE END 4 */
 /* USER CODE END 4 */
 
  /* MPU Configuration */
