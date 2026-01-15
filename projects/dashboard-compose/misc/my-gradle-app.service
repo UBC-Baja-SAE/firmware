@@ -1,0 +1,28 @@
+# Need to add this to /etc/systemd/system/my-gradle-app.service
+# sudo systemctl daemon-reload
+# sudo systemctl disable my-gradle-app.service
+# sudo systemctl enable my-gradle-app.service
+# sudo systemctl start my-gradle-app.service
+
+[Unit]
+Description=UBC Baja Dashboard
+After=network.target
+
+[Service]
+User=ubcbaja
+Group=ubcbaja
+WorkingDirectory=/home/ubcbaja/firmware/projects/dashboard-compose
+
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/ubcbaja/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=SKIKO_RENDER_API=SOFTWARE
+
+ExecStartPre=/bin/sleep 20
+ExecStart=/home/ubcbaja/firmware/projects/dashboard-compose/gradlew run --no-daemon -Pcompose.desktop.renderApi=SOFTWARE
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
