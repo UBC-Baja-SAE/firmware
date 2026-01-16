@@ -7,3 +7,7 @@ build
 # stm32-specific
 **/.settings/
 **/Debug/
+
+# JVM crash logs
+hs_err_pid*.log
+replay_pid*.log

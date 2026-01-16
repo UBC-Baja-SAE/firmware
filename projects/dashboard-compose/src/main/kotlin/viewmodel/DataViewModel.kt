@@ -8,7 +8,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.baja.dashboard.model.DataRepository
 
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+
 object DataViewModel {
+    private var logFile: File? = null
+
     private val repository = DataRepository()
     private val speed = MutableStateFlow(0.0)
     private val temperature = MutableStateFlow(0.0)
@@ -48,6 +56,8 @@ object DataViewModel {
     private val piGyro = MutableStateFlow(0.0)
 
     init {
+        initLogger()
+
         CoroutineScope(Dispatchers.IO).launch {
             startDataCollection()
         }
@@ -56,6 +66,60 @@ object DataViewModel {
             repository.start()
         }
     }
+
+    private fun initLogger() {
+        try {
+            val folder = File("/home/ubcbaja/firmware/logs")
+            if (!folder.exists()) folder.mkdirs()
+
+            // Create filename with date/time: baja_log_20240116_1430.csv
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())
+            logFile = File(folder, "baja_log_$timestamp.csv")
+
+            // 1. THE HEADER: Must match the order in writeLog() exactly
+            val header = listOf(
+                "Timestamp", "Speed", "RPM", "Temp", "Fuel",
+                "FL_Accel", "FL_Gyro", "FL_Susp", "FL_StrainL", "FL_StrainR",
+                "FR_Accel", "FR_Gyro", "FR_Susp", "FR_StrainL", "FR_StrainR",
+                "RL_Accel", "RL_Gyro", "RL_Susp", "RL_StrainL", "RL_StrainR",
+                "RR_Accel", "RR_Gyro", "RR_Susp", "RR_StrainL", "RR_StrainR",
+                "Pi_Accel", "Pi_Gyro"
+            ).joinToString(",") + "\n"
+
+            logFile?.writeText(header)
+        } catch (e: Exception) {
+            println("Logger Init Error: ${e.message}")
+        }
+    }
+
+    private fun writeLog() {
+        val file = logFile ?: return
+
+        // 2. THE DATA ROW: Expanded to include all corner ECUs and Pi IMUs
+        val row = listOf(
+            System.currentTimeMillis(),
+            speed.value, rpm.value, temperature.value, fuel.value,
+            // Front Left
+            flAccel.value, flGyro.value, flSuspension.value, flStrainL.value, flStrainR.value,
+            // Front Right
+            frAccel.value, frGyro.value, frSuspension.value, frStrainL.value, frStrainR.value,
+            // Rear Left
+            rlAccel.value, rlGyro.value, rlSuspension.value, rlStrainL.value, rlStrainR.value,
+            // Rear Right
+            rrAccel.value, rrGyro.value, rrSuspension.value, rrStrainL.value, rrStrainR.value,
+            // Pi local sensors
+            piAccel.value, piGyro.value
+        ).joinToString(",") + "\n"
+
+        try {
+            // We append the text to the file on the SD card
+            file.appendText(row)
+        } catch (e: Exception) {
+            // Catching errors (like SD card full or unplugged) so the UI doesn't crash
+            println("File Write Error: ${e.message}")
+        }
+    }
+
 
     fun getSpeed() = speed.asStateFlow()
     fun getTemperature() = temperature.asStateFlow()
@@ -136,5 +200,7 @@ object DataViewModel {
         // Pi
         piAccel.value = repository.getPiAccel()
         piGyro.value = repository.getPiGyro()
+
+        writeLog()
     }
 }
