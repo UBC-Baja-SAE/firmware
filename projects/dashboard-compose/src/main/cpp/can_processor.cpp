@@ -48,9 +48,15 @@ void process()
         lock.unlock();
         cv.notify_one();
 
-        // the CAN bus data is (for now) assumed to be little-endian
-        uint64_t message_data;
-        memcpy(&message_data, msg.data, sizeof(message_data));
+        uint64_t message_data = 0;
+
+        int bytesToCopy = 8; // Default for Speed/RPM
+        
+        if (msg.id >= 0x100 && msg.id <= 0x181) {
+            bytesToCopy = 2;
+        }
+
+        memcpy(&message_data, msg.data, bytesToCopy); 
 
         observed_data[msg.id] = message_data;
     }
@@ -60,8 +66,8 @@ void start()
 {
     can_init();
 
-    can_filter_init(socket_fd, 0x000, 0x7f8);
-
+    can_filter_init(socket_fd, 0x000, 0x000);
+    
     std::thread poll_thread(poll);
     std::vector<std::thread> workers;
     for (int i = 0; i < worker_count; i++) {

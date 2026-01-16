@@ -100,9 +100,9 @@ int main(void)
   );
 
   FDCAN_TxHeaderTypeDef TxHeader;
-  uint8_t TxData[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+  uint8_t TxData[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x34, 0x40};
 
-  TxHeader.Identifier = 0x123;
+  TxHeader.Identifier = 0x201;
   TxHeader.IdType = FDCAN_STANDARD_ID;
   TxHeader.TxFrameType = FDCAN_DATA_FRAME;
   TxHeader.DataLength = FDCAN_DLC_BYTES_8;

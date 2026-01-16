@@ -10,9 +10,19 @@
  * @param id    the id of the CAN message to observe.
  * @return the data received from the CAN message. 
  */
-double getData(int id)
-{
+double getData(int id) {
     uint64_t data = observed_data[id];
+
+    // Log the Hex to the console so we can see it in the terminal
+    if (data != 0) {
+        printf("DEBUG: ID 0x%X received 0x%016llx\n", id, (unsigned long long)data);
+    }
+
+    if (id >= 0x100 && id <= 0x134) {
+        uint16_t val;
+        memcpy(&val, &data, 2);
+        return (double)val;
+    }
 
     double result;
     memcpy(&result, &data, sizeof(data));
