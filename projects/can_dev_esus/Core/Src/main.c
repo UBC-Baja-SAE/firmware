@@ -23,7 +23,7 @@
 #define SPARK_DEBOUNCE_TIME_MS 1
 #define SMOOTHING_FACTOR 0.2f
 #define PULSES_PER_REV   1.0f
-#define MAX_RPM_LIMIT    3600
+#define MAX_RPM_LIMIT    20000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -862,16 +862,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       {
     	  float instant_freq = (float)TIM8_CLOCK_FREQ / diff;
 
-    	  smoothed_tach_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_tach_freq * (1.0f - SMOOTHING_FACTOR));
-
-    	  uint32_t calculated_rpm = (uint32_t)((smoothed_tach_freq * 60.0f) / PULSES_PER_REV);
-
-    	  if (calculated_rpm > MAX_RPM_LIMIT) {
-    	  calculated_rpm = MAX_RPM_LIMIT;
-    	  }
+//    	  smoothed_tach_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_tach_freq * (1.0f - SMOOTHING_FACTOR));
+//
+//    	  uint32_t calculated_rpm = (uint32_t)((smoothed_tach_freq * 60.0f) / PULSES_PER_REV);
+//
+//    	  if (calculated_rpm > MAX_RPM_LIMIT) {
+//    	  calculated_rpm = MAX_RPM_LIMIT;
+//    	  }
 
     	  // FREQ IS ACTUALLY RPM
-    	  measured_tachometer_frequency = calculated_rpm;
+    	  measured_tachometer_frequency = instant_freq;
 
     	  previous_tachometer_capture_value = current_capture;
     	  last_spark_time = current_time;
