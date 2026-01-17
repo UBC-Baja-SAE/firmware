@@ -13,17 +13,26 @@
 double getData(int id) {
     uint64_t data = observed_data[id];
 
-    // Log the Hex to the console so we can see it in the terminal
     if (data != 0) {
         printf("DEBUG: ID 0x%X received 0x%016llx\n", id, (unsigned long long)data);
     }
 
+    // --- 2-Byte Sensors (Suspension / Strain) ---
     if (id >= 0x100 && id <= 0x134) {
         uint16_t val;
         memcpy(&val, &data, 2);
         return (double)val;
     }
 
+    // --- 4-Byte Sensors (Speedometer 0x201, Tachometer 0x200) ---
+    // If the data is 4 bytes long in candump, it's a 32-bit int
+    if (id == 0x200 || id == 0x201) {
+        uint32_t val;
+        memcpy(&val, &data, 4);
+        return (double)val;
+    }
+
+    // --- 8-Byte Sensors (Everything else) ---
     double result;
     memcpy(&result, &data, sizeof(data));
     return result;
