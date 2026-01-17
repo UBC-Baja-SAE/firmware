@@ -98,28 +98,61 @@ void SendStrainOnCan(uint32_t can_id) {
     CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
 }
 
+// void SendSpeedometerOnCan(uint32_t can_id) {
+//     uint8_t data[2];
+//     uint32_t freq_to_send = measured_speedometer_frequency;
+//
+//     // Split 32-bit integer into 2 bytes (Little Endian)
+//     uint16_t val = (uint16_t)freq_to_send;
+//     data[0] = val & 0xFF;
+//     data[1] = (val >> 8) & 0xFF;
+//
+//     // Send 2 bytes
+//     CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
+// }
+
 void SendSpeedometerOnCan(uint32_t can_id) {
-    uint8_t data[2];
-    uint32_t freq_to_send = measured_speedometer_frequency;
+    // 1. Create a Union to swap between Double and Bytes
+    union {
+        double value;
+        uint8_t bytes[8];
+    } converter;
 
-    // Split 32-bit integer into 2 bytes (Little Endian)
-    uint16_t val = (uint16_t)freq_to_send;
-    data[0] = val & 0xFF;
-    data[1] = (val >> 8) & 0xFF;
+    // 2. Cast the raw frequency directly to a double
+    converter.value = (double)measured_speedometer_frequency;
 
-    // Send 2 bytes
-    CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
+    // 3. Send the 8 bytes
+    CAN_Transmit(can_id, converter.bytes, FDCAN_DLC_BYTES_8);
 }
 
+
+// void SendTachometerOnCan(uint32_t can_id) {
+//     uint8_t data[2];
+//     uint32_t freq_to_send = measured_tachometer_frequency;
+//     //uint32_t freq_to_send = 16;
+//
+//     // Split 32-bit integer into 2 bytes (Little Endian)
+//     uint16_t val = (uint16_t)freq_to_send;
+//     data[0] = val & 0xFF;
+//     data[1] = (val >> 8) & 0xFF;
+//
+//     // Send 2 bytes
+//     CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
+// }
+
+
 void SendTachometerOnCan(uint32_t can_id) {
-    uint8_t data[2];
-    uint32_t freq_to_send = measured_tachometer_frequency;
+    // 1. Create a Union to swap between Double and Bytes
+    union {
+        double value;
+        uint8_t bytes[8];
+    } converter;
 
-    // Split 32-bit integer into 2 bytes (Little Endian)
-    uint16_t val = (uint16_t)freq_to_send;
-    data[0] = val & 0xFF;
-    data[1] = (val >> 8) & 0xFF;
+    measured_tachometer_frequency = (double)measured_tachometer_frequency;
 
-    // Send 2 bytes
-    CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
+    // 2. Cast the raw frequency directly to a double
+    converter.value = (double)measured_tachometer_frequency;
+
+    // 3. Send the 8 bytes
+    CAN_Transmit(can_id, converter.bytes, FDCAN_DLC_BYTES_8);
 }

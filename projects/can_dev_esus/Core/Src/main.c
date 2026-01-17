@@ -17,11 +17,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TIM3_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
-#define TIM8_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
+#define TIM3_CLOCK_FREQ  32000   // (96MHz Clock / (1999 + 1))
+#define TIM8_CLOCK_FREQ  32000   // (96MHz Clock / (1999 + 1))
 
 #define MAGNET_DEBOUNCE_TIME_MS 5
-#define SPARK_DEBOUNCE_TIME_MS 1
+#define SPARK_DEBOUNCE_TIME_MS 10
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -175,7 +175,6 @@ int main(void)
     {
       measured_tachometer_frequency = 0;
     }
-
 
     SendSpeedometerOnCan(0x201);
     SendTachometerOnCan(0x200);

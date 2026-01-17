@@ -42,7 +42,9 @@
 #define CAN_ID_PI_IMU_GYRO             0x181
 
 // -- Rear ECU (Engine/Powertrain Data) (0x200 - 0x20F) --
+//#define CAN_ID_REAR_RPM                0x100 // Tachometer
 #define CAN_ID_REAR_RPM                0x200 // Tachometer
+//#define CAN_ID_REAR_SPEED              0x101 // Speed
 #define CAN_ID_REAR_SPEED              0x201 // Speed
 #define CAN_ID_REAR_FUEL               0x201 // Fuel
 #define CAN_ID_REAR_TEMPERATURE        0x201 // Temperature
