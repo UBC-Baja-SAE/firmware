@@ -11,7 +11,7 @@ JNI_PATH = -I$(JAVA_HOME)/include
 LIB_JNI = $(JNI_PATH) $(JNI_PATH)/linux
 
 # Include for the shared CAN libraries across the `firmware` project.
-CAN_LIBRARY_PATH = ./../lib/can
+CAN_LIBRARY_PATH = ./../../lib/can
 LIB_CAN_ID = -I$(CAN_LIBRARY_PATH)
 
 # All include flags for the dashboard.

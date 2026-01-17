@@ -112,6 +112,44 @@
  */
 #define getFuel         REPOSITORY_METHOD(jdouble, getFuel)
 
+
+// --- Front Left ECU Signals ---
+#define getFLAccel      REPOSITORY_METHOD(jdouble, getFLAccel)
+#define getFLGyro       REPOSITORY_METHOD(jdouble, getFLGyro)
+#define getFLSuspension REPOSITORY_METHOD(jdouble, getFLSuspension)
+#define getFLStrainL    REPOSITORY_METHOD(jdouble, getFLStrainL)
+#define getFLStrainR    REPOSITORY_METHOD(jdouble, getFLStrainR)
+
+
+// --- Front Right ECU Signals ---
+#define getFRAccel      REPOSITORY_METHOD(jdouble, getFRAccel)
+#define getFRGyro       REPOSITORY_METHOD(jdouble, getFRGyro)
+#define getFRSuspension REPOSITORY_METHOD(jdouble, getFRSuspension)
+#define getFRStrainL    REPOSITORY_METHOD(jdouble, getFRStrainL)
+#define getFRStrainR    REPOSITORY_METHOD(jdouble, getFRStrainR)
+
+
+// --- Rear Left ECU Signals ---
+#define getRLAccel      REPOSITORY_METHOD(jdouble, getRLAccel)
+#define getRLGyro       REPOSITORY_METHOD(jdouble, getRLGyro)
+#define getRLSuspension REPOSITORY_METHOD(jdouble, getRLSuspension)
+#define getRLStrainL    REPOSITORY_METHOD(jdouble, getRLStrainL)
+#define getRLStrainR    REPOSITORY_METHOD(jdouble, getRLStrainR)
+
+
+// --- Rear Right ECU Signals ---
+#define getRRAccel      REPOSITORY_METHOD(jdouble, getRRAccel)
+#define getRRGyro       REPOSITORY_METHOD(jdouble, getRRGyro)
+#define getRRSuspension REPOSITORY_METHOD(jdouble, getRRSuspension)
+#define getRRStrainL    REPOSITORY_METHOD(jdouble, getRRStrainL)
+#define getRRStrainR    REPOSITORY_METHOD(jdouble, getRRStrainR)
+
+
+// --- Pi IMU ---
+#define getPiAccel      REPOSITORY_METHOD(jdouble, getPiAccel)
+#define getPiGyro       REPOSITORY_METHOD(jdouble, getPiGyro)
+
+
 /**
  * @brief Launches the CAN processing application, enabling the dashboard
  * application to receive, process, and send CAN bus data.
@@ -126,13 +164,32 @@
  */
 extern "C" {
     getSpeed;
-
     getTemperature;
-
     getRPM;
-
     getFuel;
-
+    getFLAccel;
+    getFLGyro;
+    getFLSuspension;
+    getFLStrainL;
+    getFLStrainR;
+    getFRAccel;
+    getFRGyro;
+    getFRSuspension;
+    getFRStrainL;
+    getFRStrainR;
+    getRLAccel;
+    getRLGyro;
+    getRLSuspension;
+    getRLStrainL;
+    getRLStrainR;
+    getRRAccel;
+    getRRGyro;
+    getRRSuspension;
+    getRRStrainL;
+    getRRStrainR;
+    getPiAccel;
+    getPiGyro;
+    
     startProcessor;
 }
 
