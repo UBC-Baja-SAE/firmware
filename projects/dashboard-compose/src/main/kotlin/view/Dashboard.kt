@@ -57,11 +57,14 @@ fun Dashboard() {
 
     RadialGauge(
         Modifier.offset(200.dp, 120.dp), 
-        speed.toFloat(), 70f, true, "km/h"
+        speed.toFloat(), 60f, true, "km/h"
     )
     RadialGauge(
         Modifier.offset(680.dp, 120.dp),
-        rpm.toFloat(), 5f, false, "rpm (x1000)"
+        (rpm / 1000.0).toFloat(),
+        5f, 
+        false, 
+        "rpm (x1000)"
     )
     LinearGauge(Modifier.offset(50.dp, 150.dp),
         fuel.toFloat(), 1f, "images/fuel.png", Pair('E', 'F')
