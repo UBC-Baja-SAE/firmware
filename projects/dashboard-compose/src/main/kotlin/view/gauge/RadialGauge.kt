@@ -104,7 +104,7 @@ private const val RADIAL_TICK_LENGTH_SMALL = 40 + BORDER_RADIUS
  * The number of large ticks around the gauge. There are always exactly
  * `TICK_COUNT - 1` small ticks, with one between each large tick.
  */
-private const val TICK_COUNT = 6
+private const val TICK_COUNT = 7
 
 /**
  * A gauge that fills radially. The gauge fills clock-wise, and it is fully

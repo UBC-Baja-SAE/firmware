@@ -95,7 +95,7 @@ fun Dashboard() {
     RadialGauge(
         Modifier.offset(680.dp, 120.dp),
         (rpm / 1000.0).toFloat(),
-        5f, 
+        6f, 
         false, 
         "rpm (x1000)"
     )
