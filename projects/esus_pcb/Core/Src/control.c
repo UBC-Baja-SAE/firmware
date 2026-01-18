@@ -42,47 +42,34 @@ void SendPotOnCan(uint32_t can_id)
 {
     const int samples = 10;
     float posSum = 0;
+    ADC_ChannelConfTypeDef sConfig = {0};
+
+    // Reconfigure ADC1 to the Potentiometer channel (PB1)
+    sConfig.Channel = ADC_CHANNEL_5;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_810CYCLES_5; // Increased for stability
+    sConfig.SingleDiff = ADC_SINGLE_ENDED;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
     for (int i = 0; i < samples; i++)
     {
         HAL_ADC_Start(&hadc1);
-
         if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
         {
             uint32_t adcRaw = HAL_ADC_GetValue(&hadc1); 
-            float voltage = ((float)adcRaw * 5.0f) / 65535.0f; 
+            float voltage = ((float)adcRaw * 3.3f) / 65535.0f; // Note: H7 is usually 3.3V
             float position = VoltageToPosition(voltage);
             posSum += position;
         }
-
         HAL_ADC_Stop(&hadc1);
-        HAL_Delay(1); 
     }
 
     float posAvg = posSum / samples;
     uint16_t posCan = (uint16_t)(posAvg * 100.0f); 
-
     pot_tx_data[0] = (posCan >> 8) & 0xFF;
     pot_tx_data[1] = posCan & 0xFF;
 
     CAN_Transmit(can_id, pot_tx_data, FDCAN_DLC_BYTES_2);
-
-    // FDCAN_TxHeaderTypeDef tx_header = {
-    //     .Identifier         = can_id,
-    //     .IdType             = FDCAN_STANDARD_ID,
-    //     .TxFrameType        = FDCAN_DATA_FRAME,
-    //     .DataLength         = FDCAN_DLC_BYTES_2,
-    //     .ErrorStateIndicator= FDCAN_ESI_ACTIVE,
-    //     .BitRateSwitch      = FDCAN_BRS_OFF,
-    //     .FDFormat           = FDCAN_CLASSIC_CAN,
-    //     .TxEventFifoControl = FDCAN_NO_TX_EVENTS,
-    //     .MessageMarker      = 0
-    // };
-
-    // if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &tx_header, pot_tx_data) != HAL_OK)
-    // {
-    //     Error_Handler();
-    // }
 }
 
 void SendAccelOnCan(uint32_t can_id) {
@@ -101,16 +88,24 @@ void SendGyroOnCan(uint32_t can_id) {
     }
 }
 
-// Assumes connected to ADC2
-void SendStrainOnCan(uint32_t can_id) {
+void SendStrainOnCan(uint32_t can_id, uint32_t channel) {
+    ADC_ChannelConfTypeDef sConfig = {0};
     uint16_t strain_val = 0;
 
-    HAL_ADC_Start(&hadc2);
-    if (HAL_ADC_PollForConversion(&hadc2, 10) == HAL_OK) {
-        strain_val = (uint16_t)HAL_ADC_GetValue(&hadc2);
-    }
-    HAL_ADC_Stop(&hadc2);
+    // Dynamically switch ADC1 to the requested Strain Gauge channel
+    sConfig.Channel = channel;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_810CYCLES_5;
+    sConfig.SingleDiff = ADC_SINGLE_ENDED;
 
-    uint8_t data[2] = { (strain_val >> 8) & 0xFF, (strain_val & 0xFF) };
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
+    HAL_ADC_Start(&hadc1);
+    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+        strain_val = (uint16_t)HAL_ADC_GetValue(&hadc1);
+    }
+    HAL_ADC_Stop(&hadc1);
+
+    uint8_t data[2] = { (strain_val >> 8) & 0xFF, strain_val & 0xFF };
     CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
 }

@@ -55,6 +55,39 @@ fun Dashboard() {
     val piAccel by DataViewModel.getPiAccel().collectAsState()
     val piGyro by DataViewModel.getPiGyro().collectAsState()
 
+    // Hard-coded simulation state
+    var targetFuel by remember { mutableStateOf(1.0f) }
+    var targetTemp by remember { mutableStateOf(45.0f) }
+
+    // Simulation loop: Drains fuel and jitters temp
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2000) // Update every 2 seconds
+            
+            // Slowly drain fuel, reset to 1.0 if it hits empty for demo purposes
+            targetFuel = if (targetFuel > 0.05f) targetFuel - 0.02f else 1.0f
+            
+            // Jitter temperature between 40 and 60
+            targetTemp = (40..60).random().toFloat()
+        }
+    }
+
+    // Animation smoothing
+    val animatedFuel by animateFloatAsState(
+        targetValue = targetFuel,
+        animationSpec = tween(durationMillis = 1500, easing = LinearEasing),
+        label = "fuelAnimation"
+    )
+
+    val animatedTemp by animateFloatAsState(
+        targetValue = targetTemp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "tempAnimation"
+    )
+
     RadialGauge(
         Modifier.offset(200.dp, 120.dp), 
         speed.toFloat(), 60f, true, "km/h"
@@ -67,10 +100,10 @@ fun Dashboard() {
         "rpm (x1000)"
     )
     LinearGauge(Modifier.offset(50.dp, 150.dp),
-        fuel.toFloat(), 1f, "images/fuel.png", Pair('E', 'F')
+        animatedFuel, 1f, "images/fuel.png", Pair('E', 'F')
     )
     LinearGauge(Modifier.offset(125.dp, 150.dp),
-        temp.toFloat(), 100f, "images/temp.png", Pair('C', 'H')
+        animatedTemp, 100f, "images/temp.png", Pair('C', 'H')
     )
     Image(
         painter = painterResource("images/logo.png"),
