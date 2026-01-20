@@ -3,8 +3,8 @@
 extern ADC_HandleTypeDef hadc1;
 extern FDCAN_HandleTypeDef hfdcan1;
 
-volatile uint32_t measured_speedometer_frequency;
-volatile uint32_t measured_tachometer_frequency;
+volatile float measured_speedometer_frequency;
+volatile float measured_tachometer_frequency;
 
 
 uint8_t pot_tx_data[2];

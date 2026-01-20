@@ -17,13 +17,16 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TIM3_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
-#define TIM8_CLOCK_FREQ  48000   // (96MHz Clock / (1999 + 1))
+#define TIM3_CLOCK_FREQ  32000   // (64MHz Clock / (1999 + 1))
+#define TIM8_CLOCK_FREQ  32000   // (64MHz Clock / (1999 + 1))
 #define MAGNET_DEBOUNCE_TIME_MS 5
-#define SPARK_DEBOUNCE_TIME_MS 1
-#define SMOOTHING_FACTOR 0.2f
-#define PULSES_PER_REV   1.0f
+#define SPARK_DEBOUNCE_TIME_MS 10
+#define SMOOTHING_FACTOR 0.7f
+#define PULSES_PER_REV   2.0f
 #define MAX_RPM_LIMIT    20000
+#define RADIUS_MM 266.7
+#define PI 3.14159265358979323846
+#define TIRE_CIRCUMFERENCE_KM  ((2.0f * PI * RADIUS_MM) / 1000000.0f)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -803,7 +806,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
   {
     uint32_t current_time = HAL_GetTick();
 
-    // 1. Software Debounce: Ignore if pulse is too close to the last one
     if ((current_time - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS)
     {
       return;
@@ -812,7 +814,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
     uint32_t diff = 0;
 
-    // 2. Handle Timer Rollover (Timer counts 0 -> 65535 -> 0)
+    
     if (current_capture >= previous_speedometer_capture_value)
     {
       diff = current_capture - previous_speedometer_capture_value;
@@ -823,14 +825,14 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       diff = (htim->Init.Period - previous_speedometer_capture_value) + current_capture + 1;
     }
 
-    // 3. Update Frequency
     if (diff > 0)
     {
       float instant_freq = (float)TIM3_CLOCK_FREQ / diff;
       // Exponential Smoothing
       smoothed_speed_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_speed_freq * (1.0f - SMOOTHING_FACTOR));
+      double smoothed_speed_kmh = smoothed_speed_freq * TIRE_CIRCUMFERENCE_KM * 3600.0;
 
-      measured_speedometer_frequency = (uint32_t)smoothed_speed_freq;
+      measured_speedometer_frequency = (float) smoothed_speed_kmh;
 
       previous_speedometer_capture_value = current_capture;
       last_magnet_time = current_time;
@@ -849,6 +851,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
       uint32_t diff = 0;
 
+
       if (current_capture >= previous_tachometer_capture_value)
       {
         diff = current_capture - previous_tachometer_capture_value;
@@ -862,16 +865,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       {
     	  float instant_freq = (float)TIM8_CLOCK_FREQ / diff;
 
-//    	  smoothed_tach_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_tach_freq * (1.0f - SMOOTHING_FACTOR));
-//
-//    	  uint32_t calculated_rpm = (uint32_t)((smoothed_tach_freq * 60.0f) / PULSES_PER_REV);
-//
-//    	  if (calculated_rpm > MAX_RPM_LIMIT) {
-//    	  calculated_rpm = MAX_RPM_LIMIT;
-//    	  }
+   	  smoothed_tach_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_tach_freq * (1.0f - SMOOTHING_FACTOR));
+
+   	  double calculated_rpm = ((smoothed_tach_freq * 60.0f) / PULSES_PER_REV);
+
+   	  if (calculated_rpm > MAX_RPM_LIMIT) {
+   	  calculated_rpm = MAX_RPM_LIMIT;
+   	  }
 
     	  // FREQ IS ACTUALLY RPM
-    	  measured_tachometer_frequency = instant_freq;
+    	  measured_tachometer_frequency = calculated_rpm;
 
     	  previous_tachometer_capture_value = current_capture;
     	  last_spark_time = current_time;

@@ -3,8 +3,8 @@
 
 #include "main.h"
 
-extern volatile uint32_t measured_speedometer_frequency;
-extern volatile uint32_t measured_tachometer_frequency;
+extern volatile float measured_speedometer_frequency;
+extern volatile float measured_tachometer_frequency;
 
 void SendSpeedOnCan(uint32_t can_id); //new!
 
