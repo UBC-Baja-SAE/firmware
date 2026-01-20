@@ -102,7 +102,7 @@ int main(void)
   FDCAN_TxHeaderTypeDef TxHeader;
   uint8_t TxData[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x34, 0x40};
 
-  TxHeader.Identifier = 0x201;
+  TxHeader.Identifier = 0x67;
   TxHeader.IdType = FDCAN_STANDARD_ID;
   TxHeader.TxFrameType = FDCAN_DATA_FRAME;
   TxHeader.DataLength = FDCAN_DLC_BYTES_8;
@@ -131,12 +131,12 @@ int main(void)
       Error_Handler();
     }
 
-    // FL
-    SendPotOnCan(CAN_ID_ESUS_FL_SUSPENSION);
-    SendAccelOnCan(CAN_ID_ESUS_FL_IMU_ACCEL);
-    SendGyroOnCan(CAN_ID_ESUS_FL_IMU_GYRO);
-    SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_L);
-    SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_R);
+//    // FL
+//    SendPotOnCan(CAN_ID_ESUS_FL_SUSPENSION);
+//    SendAccelOnCan(CAN_ID_ESUS_FL_IMU_ACCEL);
+//    SendGyroOnCan(CAN_ID_ESUS_FL_IMU_GYRO);
+//    SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_L, ADC_CHANNEL_16);
+//    SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_R, ADC_CHANNEL_17);
 
     /*
     // FR
@@ -156,14 +156,15 @@ int main(void)
     SendStrainOnCan(CAN_ID_ESUS_RR_STRAIN_R);
     */
 
-    /*
+
+
     // RL
-    SendPotOnCan(CAN_ID_ESUS_Rl_SUSPENSION);
+    SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
     SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
     SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
-    SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L);
-    SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R);
-    */
+    SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
+    SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
+
 
     // Send message every 100 ms
     HAL_Delay(100);
@@ -306,7 +307,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -503,8 +504,10 @@ static void MX_GPIO_Init(void)
                           |GPIO_PIN_6, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_13|GPIO_PIN_14
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13|GPIO_PIN_14
                           |GPIO_PIN_3, GPIO_PIN_RESET);
+
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10 | GPIO_PIN_11, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);

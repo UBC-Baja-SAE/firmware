@@ -95,9 +95,8 @@ object DataViewModel {
     private fun writeLog() {
         val file = logFile ?: return
 
-        // 2. THE DATA ROW: Expanded to include all corner ECUs and Pi IMUs
-        val row = listOf(
-            System.currentTimeMillis(),
+        // Collect all sensor data points (excluding the timestamp for the check)
+        val dataPoints = listOf(
             speed.value, rpm.value, temperature.value, fuel.value,
             // Front Left
             flAccel.value, flGyro.value, flSuspension.value, flStrainL.value, flStrainR.value,
@@ -109,13 +108,19 @@ object DataViewModel {
             rrAccel.value, rrGyro.value, rrSuspension.value, rrStrainL.value, rrStrainR.value,
             // Pi local sensors
             piAccel.value, piGyro.value
-        ).joinToString(",") + "\n"
+        )
+
+        // If all values are 0.0, exit the function without writing
+        if (dataPoints.all { it == 0.0 }) {
+            return
+        }
+
+        // Combine timestamp + data points
+        val row = (listOf(System.currentTimeMillis()) + dataPoints).joinToString(",") + "\n"
 
         try {
-            // We append the text to the file on the SD card
             file.appendText(row)
         } catch (e: Exception) {
-            // Catching errors (like SD card full or unplugged) so the UI doesn't crash
             println("File Write Error: ${e.message}")
         }
     }

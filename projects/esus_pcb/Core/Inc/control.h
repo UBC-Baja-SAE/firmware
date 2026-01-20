@@ -19,6 +19,6 @@ float VoltageToPosition(float voltage);
 void SendPotOnCan(uint32_t can_id);
 void SendAccelOnCan(uint32_t can_id);
 void SendGyroOnCan(uint32_t can_id);
-void SendStrainOnCan(uint32_t can_id);
+void SendStrainOnCan(uint32_t can_id, uint32_t channel);
 
 #endif // __CONTROL_H
