@@ -279,3 +279,81 @@ requiring an executable. To operate, launch the application manually:
 ```
 ./gradlew run
 ```
+## Automatic Boot Setup
+
+To ensure the Dashboard starts automatically upon boot, we utilize a `systemd` service. This configuration bypasses the strict `graphical.target` dependency (which can cause boot loops) by using a 20-second safety buffer to allow the X11 server to initialize.
+
+### 1. Create the Service File
+Create the file using:
+`sudo nano /etc/systemd/system/ubcbaja-dashboard.service`
+
+### 2. Service Configuration
+Paste the following contents:
+
+```
+[Unit]
+Description=UBC Baja Dashboard
+# Using network.target to avoid graphical dependency loops
+After=network.target
+
+[Service]
+User=ubcbaja
+Group=ubcbaja
+WorkingDirectory=/home/ubcbaja/firmware/projects/dashboard-compose
+
+# Environment setup for Compose/Skiko on Raspberry Pi
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/ubcbaja/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+# Force software rendering to ensure compatibility with Pi GPU
+Environment=SKIKO_RENDER_API=SOFTWARE
+
+# 20s buffer to ensure the X11 server is fully ready before app launch
+ExecStartPre=/bin/sleep 20
+ExecStart=/home/ubcbaja/firmware/projects/dashboard-compose/gradlew run --no-daemon -Pcompose.desktop.renderApi=SOFTWARE
+
+# Auto-restart if the app crashes
+Restart=always
+RestartSec=10
+
+[Install]
+# Reaching multi-user state is enough to trigger the start
+WantedBy=multi-user.target
+```
+
+### 3. Enable and Start
+Run the following commands to register and launch the service:
+
+```
+# Reload systemd to recognize the new file
+sudo systemctl daemon-reload
+
+# Enable the service to run on boot
+sudo systemctl enable ubcbaja-dashboard.service
+
+# Start the service immediately
+sudo systemctl start ubcbaja-dashboard.service
+```
+
+### 4. Monitoring & Troubleshooting
+If the dashboard does not appear or shows 0.0 for all sensors, follow these steps:
+
+Verify Raw CAN Data: Ensure the Pi is physically receiving messages. If this is empty, check wiring and bitrates.
+
+```
+candump can0
+```
+
+View Live App Logs: Check JNI bridge output and sensor processing.
+
+```
+journalctl -u ubcbaja-dashboard.service -f
+```
+
+Check Status: See if the service has crashed or is inactive.
+
+```
+sudo systemctl status ubcbaja-dashboard.service
+```
+
+Manual Restart: ```bash sudo systemctl restart ubcbaja-dashboard.service```
