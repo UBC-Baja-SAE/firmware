@@ -66,6 +66,8 @@ void start()
 {
     can_init();
 
+    start_i2c_processor();
+
     can_filter_init(socket_fd, 0x000, 0x000);
     
     std::thread poll_thread(poll);

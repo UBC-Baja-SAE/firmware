@@ -17,6 +17,20 @@ double getData(int id) {
         printf("DEBUG: ID 0x%X received 0x%016llx\n", id, (unsigned long long)data);
     }
 
+    // -- 6 byte IMU data -- 
+    if (id == pi_imu_accel_id || id == pi_imu_gyro_id || 
+        id == fl_imu_accel_id || id == fl_imu_gyro_id ||
+        id == fr_imu_accel_id || id == fr_imu_gyro_id ||
+        id == rl_imu_accel_id || id == rl_imu_gyro_id ||
+        id == rr_imu_accel_id || id == rr_imu_gyro_id) {
+        
+        double raw_bits;
+        memset(&raw_bits, 0, sizeof(double)); 
+        memcpy(&raw_bits, &observed_data[id], 6);
+
+        return raw_bits;
+    }
+
     // --- 2-Byte Sensors (Suspension / Strain) ---
     if (id >= 0x100 && id <= 0x134) {
         uint16_t val;

@@ -10,9 +10,9 @@
 
 // ICM-42670-P Definitions
 #define ICM_ADDR         (0x68 << 1)
-#define ACCEL_DATA_START 0x0B
-#define GYRO_DATA_START  0x11
-#define PWR_MGMT0        0x1F
+#define ACCEL_DATA_START 0x1F
+#define GYRO_DATA_START  0x19
+#define PWR_MGMT0        0x11
 
 void IMU_Init(void);
 float VoltageToPosition(float voltage);
