@@ -123,47 +123,12 @@ int main(void) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-<<<<<<< Updated upstream
-    /*
-    // FL
-   SendPotOnCan(CAN_ID_ESUS_FL_SUSPENSION);
-   SendAccelOnCan(CAN_ID_ESUS_FL_IMU_ACCEL);
-   SendGyroOnCan(CAN_ID_ESUS_FL_IMU_GYRO);
-   SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_L, ADC_CHANNEL_16);
-   SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_R, ADC_CHANNEL_17);
-*/
 
-    // FR
-    //SendPotOnCan(CAN_ID_ESUS_FR_SUSPENSION);
-    SendAccelOnCan(CAN_ID_ESUS_FR_IMU_ACCEL);
-    SendGyroOnCan(CAN_ID_ESUS_FR_IMU_GYRO);
-    //SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_L, ADC_CHANNEL_16);
-    //SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_R, ADC_CHANNEL_17);
-
-
-
-    // // RR
-    // SendPotOnCan(CAN_ID_ESUS_RR_SUSPENSION);
-    // SendAccelOnCan(CAN_ID_ESUS_RR_IMU_ACCEL);
-    // SendGyroOnCan(CAN_ID_ESUS_RR_IMU_GYRO);
-    // SendStrainOnCan(CAN_ID_ESUS_RR_STRAIN_L, ADC_CHANNEL_16);
-    // SendStrainOnCan(CAN_ID_ESUS_RR_STRAIN_R, ADC_CHANNEL_17);
-
-
-
-    /*
-=======
-
->>>>>>> Stashed changes
     // RL
     SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
     SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
     SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
     SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
-<<<<<<< Updated upstream
-    */
-=======
->>>>>>> Stashed changes
 
     // Send message every 100 ms
     HAL_Delay(100);
@@ -298,11 +263,7 @@ static void MX_ADC1_Init(void) {
   }
 
   /** Configure Regular Channel
-<<<<<<< Updated upstream
-  */
-=======
    */
->>>>>>> Stashed changes
   sConfig.Channel = ADC_CHANNEL_9;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
@@ -486,14 +447,9 @@ static void MX_GPIO_Init(void) {
       GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-<<<<<<< Updated upstream
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_13|GPIO_PIN_14
-                          |GPIO_PIN_3, GPIO_PIN_RESET);
-=======
   HAL_GPIO_WritePin(
       GPIOB, GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_3,
       GPIO_PIN_RESET);
->>>>>>> Stashed changes
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4 | GPIO_PIN_5, GPIO_PIN_RESET);
