@@ -3,18 +3,6 @@
 
 #include "main.h"
 
-<<<<<<< Updated upstream
-#define X_EXTEND_CM     59.5f
-#define X_COMP_CM       34.5f
-#define V_EXTEND        0.0f
-#define V_COMP          1.8f
-
-// ICM-42670-P Definitions
-#define ICM_ADDR         (0x68 << 1)
-#define ACCEL_DATA_START 0x1F
-#define GYRO_DATA_START  0x19
-#define PWR_MGMT0        0x11
-=======
 #define X_EXTEND_CM 72.39f
 #define X_COMP_CM 47.625f
 #define V_EXTEND 0.0f
@@ -29,7 +17,6 @@
 #define GYRO_CONFIG0 0x20
 #define WHO_AM_I 0x75
 #define WHO_AM_I_VAL 0x67
->>>>>>> Stashed changes
 
 // I2C Recovery Configuration
 #define I2C_RECOVERY_MAX_CLOCKS 9
