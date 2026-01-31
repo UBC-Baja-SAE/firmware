@@ -131,34 +131,34 @@ int main(void)
    SendGyroOnCan(CAN_ID_ESUS_FL_IMU_GYRO);
    SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_L, ADC_CHANNEL_16);
    SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_R, ADC_CHANNEL_17);
-/*
-    /*
-    // FR
-    SendPotOnCan(CAN_ID_ESUS_FR_SUSPENSION);
-    SendAccelOnCan(CAN_ID_ESUS_FR_IMU_ACCEL);
-    SendGyroOnCan(CAN_ID_ESUS_FR_IMU_GYRO);
-    SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_L, ADC_CHANNEL_16);
-    SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_R, ADC_CHANNEL_17);
-    */
-
-/*
-    // RR
-    SendPotOnCan(CAN_ID_ESUS_RR_SUSPENSION);
-    SendAccelOnCan(CAN_ID_ESUS_RR_IMU_ACCEL);
-    SendGyroOnCan(CAN_ID_ESUS_RR_IMU_GYRO);
-    SendStrainOnCan(CAN_ID_ESUS_RR_STRAIN_L, ADC_CHANNEL_16);
-    SendStrainOnCan(CAN_ID_ESUS_RR_STRAIN_R, ADC_CHANNEL_17);
 */
 
+    // FR
+    //SendPotOnCan(CAN_ID_ESUS_FR_SUSPENSION);
+    SendAccelOnCan(CAN_ID_ESUS_FR_IMU_ACCEL);
+    SendGyroOnCan(CAN_ID_ESUS_FR_IMU_GYRO);
+    //SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_L, ADC_CHANNEL_16);
+    //SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_R, ADC_CHANNEL_17);
 
 
+
+    // // RR
+    // SendPotOnCan(CAN_ID_ESUS_RR_SUSPENSION);
+    // SendAccelOnCan(CAN_ID_ESUS_RR_IMU_ACCEL);
+    // SendGyroOnCan(CAN_ID_ESUS_RR_IMU_GYRO);
+    // SendStrainOnCan(CAN_ID_ESUS_RR_STRAIN_L, ADC_CHANNEL_16);
+    // SendStrainOnCan(CAN_ID_ESUS_RR_STRAIN_R, ADC_CHANNEL_17);
+
+
+
+    /*
     // RL
     SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
     SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
     SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
     SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
     SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
-
+    */
 
     // Send message every 100 ms
     HAL_Delay(100);

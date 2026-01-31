@@ -3,10 +3,10 @@
 
 #include "main.h"
 
-#define X_EXTEND_CM     72.39f
-#define X_COMP_CM       47.625f
+#define X_EXTEND_CM     59.5f
+#define X_COMP_CM       34.5f
 #define V_EXTEND        0.0f
-#define V_COMP          5.0f
+#define V_COMP          1.8f
 
 // ICM-42670-P Definitions
 #define ICM_ADDR         (0x68 << 1)
