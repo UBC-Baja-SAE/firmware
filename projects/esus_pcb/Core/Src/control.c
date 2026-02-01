@@ -7,15 +7,32 @@ extern ADC_HandleTypeDef hadc2;
 extern FDCAN_HandleTypeDef hfdcan1;
 extern I2C_HandleTypeDef hi2c1;
 
+// Global variables for CLion Live Watches
+volatile float live_gyro_x = 0.0f;
+volatile float live_gyro_y = 0.0f;
+volatile float live_gyro_z = 0.0f;
+volatile float live_accel_x = 0.0f;
+volatile float live_accel_y = 0.0f;
+volatile float live_accel_z = 0.0f;
+volatile float live_pot = 0.0f;
+
+#define GYRO_SENSITIVITY_2000DPS 16.4f
+#define ACCEL_SENSITIVITY_16G 2048.0f
+#define I2C_RECOVERY_MAX_CLOCKS 9
+
 // Global state
 static uint8_t g_imu_initialized = 0;
+static uint8_t a_imu_initialized = 0;
 uint8_t pot_tx_data[2];
 
 // Debug variables for Live Expression Watch
-uint8_t g_debug_gyro_can_data[6];
 volatile HAL_StatusTypeDef g_debug_i2c_status = HAL_OK;
 volatile uint32_t g_debug_can_tx_errors = 0;
 volatile uint32_t g_debug_i2c_recoveries = 0;
+
+volatile HAL_StatusTypeDef a_debug_i2c_status = HAL_OK;
+volatile uint32_t a_debug_can_tx_errors = 0;
+volatile uint32_t a_debug_i2c_recoveries = 0;
 
 /**
  * @brief Non-fatal CAN transmit - logs error but continues operation
@@ -35,6 +52,7 @@ static HAL_StatusTypeDef CAN_Transmit(uint32_t id, uint8_t *data,
                                      .FDFormat = FDCAN_CLASSIC_CAN,
                                      .TxEventFifoControl = FDCAN_NO_TX_EVENTS,
                                      .MessageMarker = 0};
+
 
   if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &tx_header, data) != HAL_OK) {
     // Non-fatal: increment error counter and continue
@@ -172,7 +190,9 @@ HAL_StatusTypeDef IMU_Init(void) {
   HAL_StatusTypeDef status;
 
   g_imu_initialized = 0;
+  a_imu_initialized = 0;
 
+  // Try initialization with retries
   // Try initialization with retries
   for (int retry = 0; retry < IMU_INIT_RETRY_COUNT; retry++) {
     // Check WHO_AM_I with short timeout
@@ -180,26 +200,31 @@ HAL_StatusTypeDef IMU_Init(void) {
                               &check, 1, 50);
 
     if (status == HAL_OK && check == WHO_AM_I_VAL) {
-      // Configure Gyroscope: +/- 2000 dps, ODR = 100 Hz
-      // FS (6:5): 00 = 2000dps, ODR (3:0): 0111 = 100Hz
+      // 1. Configure Gyroscope: +/- 2000 dps, ODR = 100 Hz
       data = 0x07;
       status = HAL_I2C_Mem_Write(&hi2c1, ICM_ADDR, GYRO_CONFIG0,
                                  I2C_MEMADD_SIZE_8BIT, &data, 1, 50);
-      if (status != HAL_OK)
-        continue;
+      if (status != HAL_OK) continue;
 
-      // Power Management: Gyro LN Mode, Accel Off
-      // GYRO_MODE (3:2): 11 = Low Noise, ACCEL_MODE (1:0): 00 = Off
-      data = 0x0C;
+      // 2. NEW: Configure Accelerometer: +/- 16g, ODR = 100 Hz
+      // FS (6:5): 00 = 16g, ODR (3:0): 0111 = 100Hz
+      data = 0x07;
+      status = HAL_I2C_Mem_Write(&hi2c1, ICM_ADDR, ACCEL_CONFIG0,
+                                 I2C_MEMADD_SIZE_8BIT, &data, 1, 50);
+      if (status != HAL_OK) continue;
+
+      // 3. UPDATED Power Management: Enable BOTH Accel and Gyro in Low Noise mode
+      // ACCEL_MODE (1:0): 11 (LN), GYRO_MODE (3:2): 11 (LN) -> 1111 = 0x0F
+      data = 0x0F;
       status = HAL_I2C_Mem_Write(&hi2c1, ICM_ADDR, PWR_MGMT0,
                                  I2C_MEMADD_SIZE_8BIT, &data, 1, 50);
-      if (status != HAL_OK)
-        continue;
+      if (status != HAL_OK) continue;
 
-      // Wait for gyro to stabilize after power mode change
+      // Wait for sensors to stabilize after power mode change
       HAL_Delay(IMU_STARTUP_DELAY_MS);
 
       g_imu_initialized = 1;
+      a_imu_initialized = 1;
       return HAL_OK;
     }
 
@@ -234,7 +259,7 @@ void SendPotOnCan(uint32_t can_id) {
     HAL_ADC_Start(&hadc1);
     if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
       uint32_t adcRaw = HAL_ADC_GetValue(&hadc1);
-      float voltage = ((float)adcRaw * 3.3f) / 65535.0f;
+      float voltage = ((float)adcRaw * 1.8f) / 65535.0f;
       float position = VoltageToPosition(voltage);
       posSum += position;
     }
@@ -242,6 +267,7 @@ void SendPotOnCan(uint32_t can_id) {
   }
 
   float posAvg = posSum / samples;
+  live_pot = posAvg;
   uint16_t posCan = (uint16_t)(posAvg * 100.0f);
   pot_tx_data[0] = (posCan >> 8) & 0xFF;
   pot_tx_data[1] = posCan & 0xFF;
@@ -249,69 +275,95 @@ void SendPotOnCan(uint32_t can_id) {
   CAN_Transmit(can_id, pot_tx_data, FDCAN_DLC_BYTES_2);
 }
 
-/**
- * @brief Read gyroscope data and transmit on CAN with robust error recovery
- * @param can_id CAN message ID for gyro data
- */
 void SendGyroOnCan(uint32_t can_id) {
   uint8_t raw_data[6] = {0};
 
-  // Skip if IMU was never initialized
-  if (!g_imu_initialized) {
-    return;
-  }
+  if (!g_imu_initialized) return;
 
-  // Check if I2C is stuck in BUSY state from previous failed transfer
   if (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) {
-    // Abort any ongoing transfer
     HAL_I2C_Master_Abort_IT(&hi2c1, ICM_ADDR);
     HAL_Delay(5);
-
-    // If still not ready, do full bus recovery
     if (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) {
       I2C_BusRecovery();
       IMU_Init();
-      return; // Skip this cycle
+      return;
     }
   }
 
-  // Read 6 bytes starting from GYRO_DATA_X1 (0x11) with short timeout
   g_debug_i2c_status = HAL_I2C_Mem_Read(&hi2c1, ICM_ADDR, GYRO_DATA_START,
                                         I2C_MEMADD_SIZE_8BIT, raw_data, 6, 50);
 
   if (g_debug_i2c_status == HAL_OK) {
-    // Success: copy debug data and transmit
-    memcpy(g_debug_gyro_can_data, raw_data, 6);
+    // Convert to signed 16-bit for CLion Live Watch
+    int16_t x = (int16_t)((raw_data[0] << 8) | raw_data[1]);
+    int16_t y = (int16_t)((raw_data[2] << 8) | raw_data[3]);
+    int16_t z = (int16_t)((raw_data[4] << 8) | raw_data[5]);
+
+    live_gyro_x = (float)x / GYRO_SENSITIVITY_2000DPS;
+    live_gyro_y = (float)y / GYRO_SENSITIVITY_2000DPS;
+    live_gyro_z = (float)z / GYRO_SENSITIVITY_2000DPS;
+
     CAN_Transmit(can_id, raw_data, FDCAN_DLC_BYTES_6);
   } else {
-    // I2C error: attempt recovery
-    if (I2C_BusRecovery() == HAL_OK) {
-      // Try to re-initialize IMU
+    if (I2C_BusRecovery() == HAL_OK) IMU_Init();
+  }
+}
+
+void SendAccelOnCan(uint32_t can_id) {
+  uint8_t raw_data[6] = {0};
+
+  if (!a_imu_initialized) return;
+
+  if (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) {
+    HAL_I2C_Master_Abort_IT(&hi2c1, ICM_ADDR);
+    HAL_Delay(5);
+    if (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) {
+      I2C_BusRecovery();
       IMU_Init();
+      return;
     }
-    // Skip this transmission cycle - will retry next loop
+  }
+
+  a_debug_i2c_status = HAL_I2C_Mem_Read(&hi2c1, ICM_ADDR, ACCEL_DATA_START,
+                                        I2C_MEMADD_SIZE_8BIT, raw_data, 6, 50);
+
+  if (a_debug_i2c_status == HAL_OK) {
+    // Convert to signed 16-bit for CLion Live Watch
+    int16_t x = (int16_t)((raw_data[0] << 8) | raw_data[1]);
+    int16_t y = (int16_t)((raw_data[2] << 8) | raw_data[3]);
+    int16_t z = (int16_t)((raw_data[4] << 8) | raw_data[5]);
+
+    live_accel_x = (float)x / ACCEL_SENSITIVITY_16G;
+    live_accel_y = (float)y / ACCEL_SENSITIVITY_16G;
+    live_accel_z = (float)z / ACCEL_SENSITIVITY_16G;
+
+    CAN_Transmit(can_id, raw_data, FDCAN_DLC_BYTES_6);
+  } else {
+    if (I2C_BusRecovery() == HAL_OK) IMU_Init();
   }
 }
 
-void SendStrainOnCan(uint32_t can_id, uint32_t channel) {
-  ADC_ChannelConfTypeDef sConfig = {0};
-  uint16_t strain_val = 0;
 
-  // Configure ADC1 to the requested Strain Gauge channel
-  sConfig.Channel = channel;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_64CYCLES_5;
-  sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
-  sConfig.Offset = 0;
-  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
-  HAL_ADC_Start(&hadc1);
-  if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
-    strain_val = (uint16_t)HAL_ADC_GetValue(&hadc1);
-  }
-  HAL_ADC_Stop(&hadc1);
-
-  uint8_t data[2] = {(strain_val >> 8) & 0xFF, strain_val & 0xFF};
-  CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
-}
+// void SendStrainOnCan(uint32_t can_id, uint32_t channel) {
+//   ADC_ChannelConfTypeDef sConfig = {0};
+//   uint16_t strain_val = 0;
+//
+//   // Configure ADC1 to the requested Strain Gauge channel
+//   sConfig.Channel = channel;
+//   sConfig.Rank = ADC_REGULAR_RANK_1;
+//   sConfig.SamplingTime = ADC_SAMPLETIME_64CYCLES_5;
+//   sConfig.SingleDiff = ADC_SINGLE_ENDED;
+//   sConfig.OffsetNumber = ADC_OFFSET_NONE;
+//   sConfig.Offset = 0;
+//   HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+//
+//   HAL_ADC_Start(&hadc1);
+//   if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+//     strain_val = (uint16_t)HAL_ADC_GetValue(&hadc1);
+//   }
+//   HAL_ADC_Stop(&hadc1);
+//
+//   uint8_t data[2] = {(strain_val >> 8) & 0xFF, strain_val & 0xFF};
+//   CAN_Transmit(can_id, data, FDCAN_DLC_BYTES_2);
+// }
