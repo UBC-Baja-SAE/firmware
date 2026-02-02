@@ -8,9 +8,10 @@ repositories {
 }
 
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.compose")
-    id("org.jetbrains.compose")
+    kotlin("jvm") version "2.1.20"
+    id("org.jetbrains.compose") version "1.6.10"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.20"
 }
 
 group = "org.baja.dashboard"
@@ -18,6 +19,8 @@ version = "1.0"
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 }
 
 kotlin {
@@ -31,7 +34,7 @@ kotlin {
         }
 
         application {
-            mainClass = "org.baja.dashboard.ApplicationKt"
+            mainClass = "ApplicationKt"
 
             /*
              * Configures the build to target the Windows and Debian platforms,
