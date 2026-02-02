@@ -1,5 +1,11 @@
 package view
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.*
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -65,7 +71,7 @@ fun Dashboard() {
             delay(2000) // Update every 2 seconds
             
             // Slowly drain fuel, reset to 1.0 if it hits empty for demo purposes
-            targetFuel = if (targetFuel > 0.05f) targetFuel - 0.02f else 1.0f
+            targetFuel = if (targetFuel.toFloat() > 0.05f) targetFuel - 0.02f else 1.0f
             
             // Jitter temperature between 40 and 60
             targetTemp = (40..60).random().toFloat()

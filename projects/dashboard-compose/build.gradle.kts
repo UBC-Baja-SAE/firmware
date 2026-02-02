@@ -8,9 +8,9 @@ repositories {
 }
 
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.compose")
-    id("org.jetbrains.compose")
+    kotlin("jvm") version "2.1.20"
+    id("org.jetbrains.compose") version "1.6.10"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.1.20"
 }
 
 group = "org.baja.dashboard"

@@ -7,6 +7,7 @@
 #include <cstring>
 #include "can_processor.h"
 #include "can_id.h"
+#include "i2c_processor.h"
 
 #define I2C_BUS "/dev/i2c-1"
 #define IMU_ADDR 0x68

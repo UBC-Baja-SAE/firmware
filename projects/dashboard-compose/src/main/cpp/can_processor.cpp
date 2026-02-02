@@ -5,6 +5,7 @@
 #include <cstring>
 #include "can_processor.h"
 #include "can_bridge.h"
+#include "i2c_processor.h"
 
 extern "C"
 {
@@ -66,7 +67,7 @@ void start()
 {
     can_init();
 
-    start_i2c_processor();
+//    start_i2c_processor();
 
     can_filter_init(socket_fd, 0x000, 0x000);
     
