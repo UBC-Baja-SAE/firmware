@@ -25,41 +25,7 @@ import org.baja.dashboard.viewmodel.DataViewModel
 @Composable
 fun Dashboard() {
     val speed by DataViewModel.getSpeed().collectAsState()
-    val temp by DataViewModel.getTemperature().collectAsState()
     val rpm by DataViewModel.getRPM().collectAsState()
-    val fuel by DataViewModel.getFuel().collectAsState()
-
-    // --- Front Left (FL) ---
-    val flAccel by DataViewModel.getFLAccel().collectAsState()
-    val flGyro by DataViewModel.getFLGyro().collectAsState()
-    val flSuspension by DataViewModel.getFLSuspension().collectAsState()
-    val flStrainL by DataViewModel.getFLStrainL().collectAsState()
-    val flStrainR by DataViewModel.getFLStrainR().collectAsState()
-
-    // --- Front Right (FR) ---
-    val frAccel by DataViewModel.getFRAccel().collectAsState()
-    val frGyro by DataViewModel.getFRGyro().collectAsState()
-    val frSuspension by DataViewModel.getFRSuspension().collectAsState()
-    val frStrainL by DataViewModel.getFRStrainL().collectAsState()
-    val frStrainR by DataViewModel.getFRStrainR().collectAsState()
-
-    // --- Rear Left (RL) ---
-    val rlAccel by DataViewModel.getRLAccel().collectAsState()
-    val rlGyro by DataViewModel.getRLGyro().collectAsState()
-    val rlSuspension by DataViewModel.getRLSuspension().collectAsState()
-    val rlStrainL by DataViewModel.getRLStrainL().collectAsState()
-    val rlStrainR by DataViewModel.getRLStrainR().collectAsState()
-
-    // --- Rear Right (RR) ---
-    val rrAccel by DataViewModel.getRRAccel().collectAsState()
-    val rrGyro by DataViewModel.getRRGyro().collectAsState()
-    val rrSuspension by DataViewModel.getRRSuspension().collectAsState()
-    val rrStrainL by DataViewModel.getRRStrainL().collectAsState()
-    val rrStrainR by DataViewModel.getRRStrainR().collectAsState()
-
-    // --- Pi IMU ---
-    val piAccel by DataViewModel.getPiAccel().collectAsState()
-    val piGyro by DataViewModel.getPiGyro().collectAsState()
 
     // Hard-coded simulation state
     var targetFuel by remember { mutableStateOf(1.0f) }
