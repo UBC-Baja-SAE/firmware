@@ -46,7 +46,6 @@ void SendSpeedOnCan(uint32_t can_id) {
 void SendTachometerOnCan(uint32_t can_id) {
     uint8_t data[4] = {0};
 
-    // Create a local copy to avoid interrupt changing it mid-read (atomic access for 32-bit usually fine, but safer)
     uint32_t freq_to_send = measured_tachometer_frequency;
 
     // Split 32-bit integer into 4 bytes (Little Endian)
