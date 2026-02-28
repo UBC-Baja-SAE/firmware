@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UBC Baja Telemetry</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body { background-color: #121212; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .status { font-size: 0.9em; color: #ff5252; }
+        .status.connected { color: #00e676; }
+        
+        /* Grid Layout */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        
+        /* Cards */
+        .card { background: #1e1e1e; border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card-title { margin: 0 0 10px 0; font-size: 1.1em; color: #bb86fc; }
+        .big-value { font-size: 2.5em; font-weight: bold; color: #ffffff; }
+        .unit { font-size: 0.4em; color: #888; }
+
+        canvas { width: 100% !important; height: 250px !important; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🏎️ Baja Live Telemetry</h1>
+    <div id="status" class="status">● Disconnected</div>
+</div>
+
+<div class="dashboard-grid" style="margin-bottom: 20px; grid-template-columns: repeat(4, 1fr);">
+    <div class="card">
+        <h3 class="card-title">Speed</h3>
+        <div class="big-value"><span id="val-speed">0.0</span> <span class="unit">km/h</span></div>
+    </div>
+    <div class="card">
+        <h3 class="card-title">RPM</h3>
+        <div class="big-value"><span id="val-rpm">0</span> <span class="unit">rpm</span></div>
+    </div>
+    <div class="card">
+        <h3 class="card-title">Fuel</h3>
+        <div class="big-value"><span id="val-fuel">0.0</span> <span class="unit">%</span></div>
+    </div>
+    <div class="card">
+        <h3 class="card-title">Temp</h3>
+        <div class="big-value"><span id="val-temp">0.0</span> <span class="unit">°C</span></div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <h3 class="card-title">Suspension Travel (mm)</h3>
+        <canvas id="chartSuspension"></canvas>
+    </div>
+    <div class="card">
+        <h3 class="card-title">Wheel Acceleration (G)</h3>
+        <canvas id="chartAccel"></canvas>
+    </div>
+</div>
+
+<script>
+    // --- CONFIGURATION ---
+    // Change this to your Pi's IP address (e.g., '192.168.1.5')
+    const BROKER_IP = "127.0.0.1"; 
+    const BROKER_PORT = 9001; // WebSocket port
+    const TOPIC = "baja/telemetry";
+
+    // --- CHART SETUP ---
+    const maxDataPoints = 100;
+    
+    function createChart(ctx, labels) {
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(maxDataPoints).fill(''),
+                datasets: labels.map((label, i) => ({
+                    label: label,
+                    data: Array(maxDataPoints).fill(null),
+                    borderColor: ['#03dac6', '#bb86fc', '#cf6679', '#ffb74d'][i],
+                    borderWidth: 2,
+                    tension: 0.4, // Smooth curves
+                    pointRadius: 0
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false, // Performance optimization
+                plugins: { legend: { labels: { color: '#ccc' } } },
+                scales: {
+                    x: { display: false },
+                    y: { grid: { color: '#333' }, ticks: { color: '#888' } }
+                }
+            }
+        });
+    }
+
+    const chartSusp = createChart(document.getElementById('chartSuspension').getContext('2d'), ['FL', 'FR', 'RL', 'RR']);
+    const chartAccel = createChart(document.getElementById('chartAccel').getContext('2d'), ['FL', 'FR', 'RL', 'RR']);
+
+    // --- MQTT CONNECTION ---
+    const client = new Paho.MQTT.Client(BROKER_IP, BROKER_PORT, "web_dashboard_" + new Date().getTime());
+
+    client.onConnectionLost = (responseObject) => {
+        document.getElementById("status").innerHTML = "● Disconnected";
+        document.getElementById("status").classList.remove("connected");
+        console.log("Connection Lost: " + responseObject.errorMessage);
+    };
+
+    client.onMessageArrived = (message) => {
+        try {
+            const data = JSON.parse(message.payloadString);
+            
+            // Update Text Values
+            document.getElementById("val-speed").innerText = data.speed.toFixed(1);
+            document.getElementById("val-rpm").innerText = data.rpm.toFixed(0);
+            document.getElementById("val-temp").innerText = data.temp.toFixed(1);
+            document.getElementById("val-fuel").innerText = data.fuel.toFixed(1);
+
+            // Update Charts
+            updateChartData(chartSusp, [data.fl.suspension, data.fr.suspension, data.rl.suspension, data.rr.suspension]);
+            updateChartData(chartAccel, [data.fl.accel, data.fr.accel, data.rl.accel, data.rr.accel]);
+
+        } catch (e) { console.error("Parse Error", e); }
+    };
+
+    function updateChartData(chart, newValues) {
+        chart.data.datasets.forEach((dataset, i) => {
+            dataset.data.push(newValues[i]);
+            if (dataset.data.length > maxDataPoints) dataset.data.shift();
+        });
+        chart.update();
+    }
+
+    console.log("Connecting...");
+    client.connect({
+        onSuccess: () => {
+            document.getElementById("status").innerHTML = "● Live Connected";
+            document.getElementById("status").classList.add("connected");
+            client.subscribe(TOPIC);
+        },
+        onFailure: (e) => {
+            document.getElementById("status").innerHTML = "● Connection Failed (Check Console)";
+            console.log(e);
+        }
+    });
+</script>
+</body>
+</html>
