@@ -1,0 +1,4 @@
+protobuf
+mcap
+mcap-protobuf-support
+foxglove-websocket

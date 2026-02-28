@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package vehicle;
+
+message ECU {
+    //IMU Data
+    float x = 1;
+    float y = 2;
+    float z = 3;
+    float w = 4;
+
+    //Linear Potentiometer & Strain Gauge Data
+    uint32 scaled_linpot = 5;
+    sint32 scaled_strain1 = 6;
+    sint32 scaled_strain2 = 7;
+
+}
+
+message BajaTelemetry {
+    //ECU Data
+    ECU fr = 1;
+    ECU fl = 2;
+    ECU rr = 3;
+    ECU rl = 4;
+
+    //GPS Data
+    sint32 scaled_latitude =  5;
+    sint32 scaled_longitude = 6;
+    sint32 scaled_altitude = 7;
+
+    //Engine Data
+    uint32 scaled_speed = 8;
+    uint32 rpm = 9;
+
+}
