@@ -13,6 +13,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     pkg-config \
     meson \
     ninja-build \
+    libglfw3-wayland \
     libglfw3-dev \
     libgl1-mesa-dev \
     libegl1-mesa-dev \
