@@ -113,6 +113,7 @@ int main(void) {
   /* USER CODE END 2 */
 
   /* Infinite loop */
+
   /* USER CODE BEGIN WHILE */
   while (1) {
     /* USER CODE END WHILE */
@@ -122,9 +123,9 @@ int main(void) {
     // Purposefully not sending strain gauges over CAN for EDN 2026
 
    // FL
-   SendPotOnCan(CAN_ID_ESUS_FL_SUSPENSION);
-   SendAccelOnCan(CAN_ID_ESUS_FL_IMU_ACCEL);
-   SendGyroOnCan(CAN_ID_ESUS_FL_IMU_GYRO);
+   // SendPotOnCan(CAN_ID_ESUS_FL_SUSPENSION);
+   // SendAccelOnCan(CAN_ID_ESUS_FL_IMU_ACCEL);
+   // SendGyroOnCan(CAN_ID_ESUS_FL_IMU_GYRO);
    // SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_L, ADC_CHANNEL_16);
    // SendStrainOnCan(CAN_ID_ESUS_FL_STRAIN_R, ADC_CHANNEL_17);
 
@@ -149,9 +150,9 @@ int main(void) {
 
 
     // // RL
-    // SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
-    // SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
-    // SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
+    SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
+    SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
+    SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
     // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
     // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
 

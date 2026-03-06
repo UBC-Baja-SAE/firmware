@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="SSH (ecaff472-63a5-47f6-9b3b-5bc5452166ec)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.GP1f6JiPBG/dashboard-vg" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-ssh" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="graphics-dev (813a8920-30b5-47c2-b894-200ae0b1be66)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.YXV4DQQs92/dashboard-vg" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-graphics-dev" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
