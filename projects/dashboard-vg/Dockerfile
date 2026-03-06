@@ -1,42 +1,43 @@
-# Use Debian Bookworm (matches current Raspberry Pi OS) for ARM64
-FROM --platform=linux/arm64 debian:bookworm-slim
+# syntax=docker/dockerfile:1
+FROM debian:bookworm-slim
 
-# Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Update and install essential build tools and dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Let Debian manage its native pkg-config paths for ARM64 multiarch
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     build-essential \
-    git \
     pkg-config \
     meson \
     ninja-build \
-    # GLFW and OpenGL/Wayland/X11 dependencies
     libglfw3-dev \
     libgl1-mesa-dev \
     libegl1-mesa-dev \
     libgles2-mesa-dev \
     libxkbcommon-dev \
-    wayland-protocols \
-    && rm -rf /var/lib/apt/lists/*
+    wayland-protocols
 
-# Set working directory for building ThorVG
 WORKDIR /opt/src
 
-# Clone, build, and install ThorVG
-RUN git clone https://github.com/thorvg/thorvg.git && \
-    cd thorvg && \
-    meson setup build && \
+COPY thorvg ./thorvg
+
+# Build, install, and use a wildcard to find the versioned .pc file
+RUN cd thorvg && \
+    meson setup build --prefix=/usr && \
     ninja -C build && \
     ninja -C build install && \
-    ldconfig
+    ldconfig && \
+    PC_PATH=$(find /usr -name "thorvg*.pc" | head -n 1) && \
+    mkdir -p /usr/share/pkgconfig && \
+    ln -sf "$PC_PATH" /usr/share/pkgconfig/thorvg.pc
 
-# Set the default working directory for your application
 WORKDIR /app
 
-# (Optional) Verify installations
+# Verify installations
 RUN pkg-config --modversion glfw3 && \
     pkg-config --modversion thorvg
 
-# Default command
 CMD ["/bin/bash"]
