@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="graphics-dev (813a8920-30b5-47c2-b894-200ae0b1be66)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.O5wkRogMe5/bluepill_wheel" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-stm32" />
+            <excludedPath local="true" path="$PROJECT_DIR$/build/Release" />
+            <excludedPath local="true" path="$PROJECT_DIR$/build/Debug" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
