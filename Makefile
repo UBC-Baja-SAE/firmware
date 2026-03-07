@@ -28,7 +28,7 @@ endif
 SRC_DIR   = src
 BUILD_DIR = build
 
-# Find all source files in src
+# Find all source files in esus_layout
 SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
