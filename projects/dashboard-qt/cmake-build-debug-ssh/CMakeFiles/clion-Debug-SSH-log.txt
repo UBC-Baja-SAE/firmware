@@ -1,0 +1,6 @@
+/usr/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "Unix Makefiles" -S /tmp/dashboard-qt -B /tmp/dashboard-qt/cmake-build-debug-ssh
+CMake Error at CMakeLists.txt:1 (cmake_minimum_required):
+  CMake 4.1 or higher is required.  You are running version 3.31.6
+
+
+-- Configuring incomplete, errors occurred!
