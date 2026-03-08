@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.1)
+cmake_minimum_required(VERSION 3.3)
 project(dashboard_qt)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -14,4 +14,4 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
 
 add_executable(dashboard_qt main.cpp)
 
-target_link_libraries(BajaDashboard PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(dashboard_qt PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
