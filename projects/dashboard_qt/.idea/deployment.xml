@@ -2,14 +2,13 @@
 <project version="4">
   <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="SSH (445ab426-afb3-434d-bc10-1af7609a9de1)">
+      <paths name="SSH (ecaff472-63a5-47f6-9b3b-5bc5452166ec)">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/tmp.Z52C4LhAq5/dashboard-qt" local="$PROJECT_DIR$" />
+            <mapping deploy="/tmp/tmp.8bwRgHv5CV/dashboard_qt" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-ssh" />
-            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
           </excludedPaths>
         </serverdata>
       </paths>

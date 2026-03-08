@@ -12,6 +12,11 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
 
 
-add_executable(dashboard_qt main.cpp)
+add_executable(dashboard_qt
+        main.cpp
+        mainwindow.cpp
+        mainwindow.h
+        mainwindow.ui
+)
 
 target_link_libraries(dashboard_qt PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
