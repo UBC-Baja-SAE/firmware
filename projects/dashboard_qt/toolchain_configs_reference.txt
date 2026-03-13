@@ -6,3 +6,5 @@ XDG_RUNTIME_DIR=/run/user/1000;WAYLAND_DISPLAY=wayland-0
 
 Run on pi before deploying with screen connected
 sudo systemctl start cage-canvas.service
+
+WAYLAND_DISPLAY=wayland-0 wlr-randr --output HDMI-A-1 --mode 1280x720

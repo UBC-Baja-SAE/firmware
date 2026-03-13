@@ -9,6 +9,18 @@
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-ssh" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-vm" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="VM (e932f3ae-18b0-44f5-aada-874bb37e97ab)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.jtFODf6LVi/dashboard_qt" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-ssh" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-vm" />
           </excludedPaths>
         </serverdata>
       </paths>

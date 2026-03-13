@@ -13,10 +13,11 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
 
 
 add_executable(dashboard_qt
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
+        Core/Src/main.cpp
+        Core/Src/mainwindow.cpp
+        Core/Inc/mainwindow.h
+        Core/Src/mainwindow.ui
+        Resources/resources.qrc
 )
 
 target_link_libraries(dashboard_qt PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)

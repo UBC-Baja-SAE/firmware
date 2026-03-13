@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="/">
+    <file>Images/tachspeedo.png</file>
+    <file>Fonts/FOT-NewRodin Pro M.otf</file>
+    <file>Images/flame.gif</file>
+  </qresource>
+</RCC>
