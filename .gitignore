@@ -11,3 +11,8 @@ build
 # JVM crash logs
 hs_err_pid*.log
 replay_pid*.log
+
+# IntelliJ/CLion IDEA files
+.idea/
+*.iml
+cmake-build-*/
