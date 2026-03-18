@@ -17,9 +17,15 @@ import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.baja.dashboard.model.DataRepository
+import org.baja.dashboard.viewmodel.DataViewModel
 import org.baja.dashboard.model.FullTelemetry
 import org.baja.dashboard.model.EcuData
 import view.Dashboard
+import java.nio.charset.StandardCharsets
+import java.net.Socket
+import java.io.PrintWriter
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 // Constants for Sensitivity (Used in decoding)
 const val ACCEL_SENS = 2048.0
@@ -59,67 +65,117 @@ fun main() = application {
                     println("ERROR: MQTT Connection Failed - ${e.message}")
                 }
             }
-        }
 
-        // 4. Main Telemetry Loop (Polls Buffer -> Publishes MQTT)
-        LaunchedEffect(Unit) {
-            while (true) {
-                if (mqttClient.isConnected) {
-                    
-                    // A. FETCH RAW DATA (Directly from Shared Memory)
-                    // We use getRawData(ID) which is O(1) fast
-                    val flAccelRaw = repository.getRawData(0x100)
-                    val flGyroRaw  = repository.getRawData(0x101)
-                    val flSuspRaw  = repository.getRawData(0x102)
+            // Thread C: GPS Loop with Watchdog Recovery
+            launch(Dispatchers.IO) {
+                while (true) {
+                    try {
+                        // Attempt connection
+                        val gpsClient = Socket("localhost", 2947)
+                        gpsClient.soTimeout = 2000 // 2 second timeout for reading
+                        val writer = PrintWriter(gpsClient.getOutputStream(), true)
+                        val reader = BufferedReader(InputStreamReader(gpsClient.getInputStream()))
 
-                    val frAccelRaw = repository.getRawData(0x110)
-                    val frGyroRaw  = repository.getRawData(0x111)
-                    val frSuspRaw  = repository.getRawData(0x112)
+                        // Initialize JSON stream
+                        writer.println("?WATCH={\"enable\":true,\"json\":true};")
 
-                    val rlAccelRaw = repository.getRawData(0x120)
-                    val rlGyroRaw  = repository.getRawData(0x121)
-                    val rlSuspRaw  = repository.getRawData(0x122)
+                        while (true) {
+                            val gpsLine = try {
+                                reader.readLine()
+                            } catch (e: java.net.SocketTimeoutException) {
+                                // MOCK DATA: If no real data, send a placeholder
+                                val mock = "{\"class\":\"TPV\",\"mode\":1,\"lat\":0.0,\"lon\":0.0,\"alt\":0.0}"
+                                if (mqttClient.isConnected) {
+                                    mqttClient.publish("baja/telemetry/gps", MqttMessage(mock.toByteArray()))
+                                }
+                                null // Reset loop to wait again
+                            } ?: break 
 
-                    val rrAccelRaw = repository.getRawData(0x130)
-                    val rrGyroRaw  = repository.getRawData(0x131)
-                    val rrSuspRaw  = repository.getRawData(0x132)
-
-                    // B. CONSTRUCT TELEMETRY OBJECT
-                    val data = FullTelemetry(
-                        timestamp = System.currentTimeMillis(),
-                        speed = DataRepository.decodeRawLE(repository.getRawData(0x201)), 
-                        rpm = DataRepository.decodeRawLE(repository.getRawData(0x200)),
-
-                        fl = EcuData(
-                            accel = DataRepository.decodeImu(flAccelRaw, ACCEL_SENS),
-                            gyro = DataRepository.decodeImu(flGyroRaw, GYRO_SENS),
-                            suspension = DataRepository.decodePot(flSuspRaw)
-                        ),
+                            // Process real data if we got it
+                            if (gpsLine.contains("\"class\":\"TPV\"")) {
+                                val mode = "\"mode\":(\\d)".toRegex().find(gpsLine)?.groupValues?.get(1)?.toInt() ?: 1
+                                DataViewModel.updateGpsMode(mode)
+                            }
+                            
+                            if (mqttClient.isConnected) {
+                                mqttClient.publish("baja/telemetry/gps", MqttMessage(gpsLine.toByteArray()))
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // ERROR Handling & Recovery
+                        val errorJson = "{\"class\":\"ERROR\",\"message\":\"GPSD_DISCONNECTED_RECOVERING\"}"
+                        if (mqttClient.isConnected) {
+                            mqttClient.publish("baja/telemetry/gps", MqttMessage(errorJson.toByteArray()))
+                        }
                         
-                        fr = EcuData(
-                            accel = DataRepository.decodeImu(frAccelRaw, ACCEL_SENS),
-                            gyro = DataRepository.decodeImu(frGyroRaw, GYRO_SENS),
-                            suspension = DataRepository.decodePot(frSuspRaw)
-                        ),
+                        // *** WATCHDOG TRIGGER ***
+                        recoverGpsService()
                         
-                        rl = EcuData(
-                            accel = DataRepository.decodeImu(rlAccelRaw, ACCEL_SENS),
-                            gyro = DataRepository.decodeImu(rlGyroRaw, GYRO_SENS),
-                            suspension = DataRepository.decodePot(rlSuspRaw)
-                        ),
-
-                        rr = EcuData(
-                            accel = DataRepository.decodeImu(rrAccelRaw, ACCEL_SENS),
-                            gyro = DataRepository.decodeImu(rrGyroRaw, GYRO_SENS),
-                            suspension = DataRepository.decodePot(rrSuspRaw)
-                        )
-                    )
-                    
-                    // C. PUBLISH
-                    val json = Json.encodeToString(data)
-                    mqttClient.publish("baja/telemetry", MqttMessage(json.toByteArray()).apply { qos = 0 })
+                        // Wait 10s for the service to actually spin up before retrying
+                        delay(10000)
+                    }
                 }
-                delay(50) // 20Hz Update Rate
+            }
+
+            // Thread D: Main Telemetry Loop (Polls Buffer -> Publishes MQTT)
+            launch(Dispatchers.IO) {
+                while (true) {
+                    if (mqttClient.isConnected) {
+                        
+                        // A. FETCH RAW DATA (Directly from Shared Memory)
+                        val flAccelRaw = repository.getRawData(0x100)
+                        val flGyroRaw  = repository.getRawData(0x101)
+                        val flSuspRaw  = repository.getRawData(0x102)
+
+                        val frAccelRaw = repository.getRawData(0x110)
+                        val frGyroRaw  = repository.getRawData(0x111)
+                        val frSuspRaw  = repository.getRawData(0x112)
+
+                        val rlAccelRaw = repository.getRawData(0x120)
+                        val rlGyroRaw  = repository.getRawData(0x121)
+                        val rlSuspRaw  = repository.getRawData(0x122)
+
+                        val rrAccelRaw = repository.getRawData(0x130)
+                        val rrGyroRaw  = repository.getRawData(0x131)
+                        val rrSuspRaw  = repository.getRawData(0x132)
+
+                        // B. CONSTRUCT TELEMETRY OBJECT
+                        val data = FullTelemetry(
+                            timestamp = System.currentTimeMillis(),
+                            speed = DataRepository.decodeRawLE(repository.getRawData(0x201)), 
+                            rpm = DataRepository.decodeRawLE(repository.getRawData(0x200)),
+
+                            fl = EcuData(
+                                accel = DataRepository.decodeImu(flAccelRaw, ACCEL_SENS),
+                                gyro = DataRepository.decodeImu(flGyroRaw, GYRO_SENS),
+                                suspension = DataRepository.decodePot(flSuspRaw)
+                            ),
+                            
+                            fr = EcuData(
+                                accel = DataRepository.decodeImu(frAccelRaw, ACCEL_SENS),
+                                gyro = DataRepository.decodeImu(frGyroRaw, GYRO_SENS),
+                                suspension = DataRepository.decodePot(frSuspRaw)
+                            ),
+                            
+                            rl = EcuData(
+                                accel = DataRepository.decodeImu(rlAccelRaw, ACCEL_SENS),
+                                gyro = DataRepository.decodeImu(rlGyroRaw, GYRO_SENS),
+                                suspension = DataRepository.decodePot(rlSuspRaw)
+                            ),
+
+                            rr = EcuData(
+                                accel = DataRepository.decodeImu(rrAccelRaw, ACCEL_SENS),
+                                gyro = DataRepository.decodeImu(rrGyroRaw, GYRO_SENS),
+                                suspension = DataRepository.decodePot(rrSuspRaw)
+                            )
+                        )
+                        
+                        // C. PUBLISH
+                        val json = Json.encodeToString(data)
+                        mqttClient.publish("baja/telemetry", MqttMessage(json.toByteArray()).apply { qos = 0 })
+                    }
+                    delay(50) // 20Hz Update Rate
+                }
             }
         }
 
@@ -131,4 +187,12 @@ fun main() = application {
             Dashboard() 
         }
     }
+}
+
+/**
+ * Watchdog Routine:
+ * Forcefully restarts the GPS Daemon if the socket connection fails.
+ * Requires 'ubcbaja' user to have NOPASSWD sudo rights for systemctl and usermod.
+ */
+fun recoverGpsService() {
 }

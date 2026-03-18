@@ -1,87 +1,116 @@
 package view
 
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.core.*
-import kotlinx.coroutines.delay
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import org.baja.dashboard.view.gauge.LinearGauge
 import org.baja.dashboard.view.gauge.RadialGauge
 import org.baja.dashboard.viewmodel.DataViewModel
+import org.baja.dashboard.view.resources.BAJA_PURPLE
+import java.net.NetworkInterface
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
-/**
- * The top level `Composable` element in the user-interface.
- */
 @Composable
 fun Dashboard() {
     val speed by DataViewModel.getSpeed().collectAsState()
     val rpm by DataViewModel.getRPM().collectAsState()
+    val gpsMode by DataViewModel.getGpsMode().collectAsState()
+    
+    var networkSSID by remember { mutableStateOf("Disconnected") }
+    var localIp by remember { mutableStateOf("0.0.0.0") }
+    var currentTime by remember { mutableStateOf(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))) }
 
-    // Hard-coded simulation state
     var targetFuel by remember { mutableStateOf(1.0f) }
     var targetTemp by remember { mutableStateOf(45.0f) }
 
-    // Simulation loop: Drains fuel and jitters temp
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(2000) // Update every 2 seconds
-            
-            // Slowly drain fuel, reset to 1.0 if it hits empty for demo purposes
-            targetFuel = if (targetFuel.toFloat() > 0.05f) targetFuel - 0.02f else 1.0f
-            
-            // Jitter temperature between 40 and 60
+        while (true) {  
+            currentTime = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+            targetFuel = if (targetFuel > 0.05f) targetFuel - 0.02f else 1.0f
             targetTemp = (40..60).random().toFloat()
+            delay(1000)
         }
     }
 
-    // Animation smoothing
-    val animatedFuel by animateFloatAsState(
-        targetValue = targetFuel,
-        animationSpec = tween(durationMillis = 1500, easing = LinearEasing),
-        label = "fuelAnimation"
-    )
+    LaunchedEffect(Unit) {
+        while (true) {
+            try {
+                val ip = NetworkInterface.getNetworkInterfaces().toList()
+                    .flatMap { it.inetAddresses.toList() }
+                    .firstOrNull { !it.isLoopbackAddress && it.hostAddress.contains(".") }
+                    ?.hostAddress ?: "No IP"
+                localIp = ip
+                val process = Runtime.getRuntime().exec("iwgetid -r")
+                networkSSID = process.inputStream.bufferedReader().readText().trim().ifEmpty { "No WiFi" }
+            } catch (e: Exception) {
+                localIp = "Error"
+            }
+            delay(5000)
+        }
+    }
 
-    val animatedTemp by animateFloatAsState(
-        targetValue = targetTemp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "tempAnimation"
-    )
+    val animatedSpeed by animateFloatAsState(targetValue = speed.toFloat(), animationSpec = tween(500, easing = LinearOutSlowInEasing))
+    val animatedRpm by animateFloatAsState(targetValue = (rpm / 1000.0).toFloat(), animationSpec = tween(200, easing = LinearEasing))
+    val animatedFuel by animateFloatAsState(targetValue = targetFuel, animationSpec = tween(1500))
+    val animatedTemp by animateFloatAsState(targetValue = targetTemp, animationSpec = spring())
 
-    RadialGauge(
-        Modifier.offset(200.dp, 120.dp), 
-        speed.toFloat(), 60f, true, "km/h"
-    )
-    RadialGauge(
-        Modifier.offset(680.dp, 120.dp),
-        (rpm / 1000.0).toFloat(),
-        6f, 
-        false, 
-        "rpm (x1000)"
-    )
-    LinearGauge(Modifier.offset(50.dp, 150.dp),
-        animatedFuel, 1f, "images/fuel.png", Pair('E', 'F')
-    )
-    LinearGauge(Modifier.offset(125.dp, 150.dp),
-        animatedTemp, 100f, "images/temp.png", Pair('C', 'H')
-    )
-    Image(
-        painter = painterResource("images/logo.png"),
-        contentDescription = "",
-        modifier = Modifier
-            .size(200.dp)
-            .offset(540.dp, 50.dp)
-    )
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        
+        Column(modifier = Modifier.align(Alignment.TopStart).padding(top = 10.dp, start = 20.dp)) {
+            Text(text = if (gpsMode >= 2) "🛰️ LOCKED" else "🛰️ SEARCH", color = if (gpsMode >= 2) Color.Green else Color.Yellow, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(5.dp))
+            Text(text = "📶 $networkSSID", color = BAJA_PURPLE, fontSize = 14.sp)
+            Text(text = "IP: $localIp", color = BAJA_PURPLE, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+        }
+
+        // --- All main components lowered to Y = 120 ---
+        
+        LinearGauge(Modifier.offset(x = 30.dp, y = 140.dp), animatedFuel, 1f, "images/fuel.png", Pair('E', 'F'))
+        LinearGauge(Modifier.offset(x = 100.dp, y = 140.dp), animatedTemp, 100f, "images/temp.png", Pair('C', 'H'))
+
+        RadialGauge(
+            modifier = Modifier.offset(x = 180.dp, y = 120.dp),
+            currentValue = animatedSpeed,
+            maxValue = 60f,
+            showReading = true,
+            label = "km/h"
+        )
+        
+        Image(
+            painter = painterResource("images/logo.png"),
+            contentDescription = null,
+            modifier = Modifier.size(160.dp).offset(x = 560.dp, y = 120.dp)
+        )
+
+        RadialGauge(
+            modifier = Modifier.offset(x = 740.dp, y = 120.dp),
+            currentValue = animatedRpm,
+            maxValue = 6f,
+            showReading = true,
+            label = "RPM",
+            textScale = 1000
+        )
+
+        Text(
+            text = currentTime,
+            color = Color.White,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.TopCenter).padding(bottom = 5.dp)
+        )
+    }
 }

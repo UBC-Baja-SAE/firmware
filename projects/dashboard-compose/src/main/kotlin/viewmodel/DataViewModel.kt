@@ -12,6 +12,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 // Constants
 const val ACCEL_SENS = 2048.0 
@@ -66,6 +68,13 @@ object DataViewModel {
         }
     }
 
+    private val _gpsMode = MutableStateFlow(1) // 1 = No Fix, 2 = 2D, 3 = 3D
+    fun getGpsMode(): StateFlow<Int> = _gpsMode
+
+    fun updateGpsMode(newMode: Int) {
+        _gpsMode.value = newMode
+    }
+
     private fun initLogger() {
         try {
             val folder = File("/home/ubcbaja/firmware/logs")
@@ -104,7 +113,7 @@ object DataViewModel {
         
         // 1. Scalar Values (Speed/RPM)
         speed.value = DataRepository.decodeRawLE(repository.getRawData(0x201))
-        rpm.value = DataRepository.decodeRawLE(repository.getRawData(0x200))
+        rpm.value = DataRepository.decodeRawLE(repository.getRawData(0x200)) * 2.0
 
         // 2. Vector Values (IMU)
         flAccel.value = DataRepository.decodeImu(repository.getRawData(0x100), ACCEL_SENS)
