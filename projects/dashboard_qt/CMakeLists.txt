@@ -33,7 +33,6 @@ add_executable(dashboard_qt
         Core/Inc/can_id.h
         Core/Src/can_messaging.cpp
         Resources/resources.qrc
-        Core/Src/mcap_writer.cpp
 )
 
 target_link_libraries(dashboard_qt
