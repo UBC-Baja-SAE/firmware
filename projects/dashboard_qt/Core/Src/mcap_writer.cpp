@@ -1,52 +1,54 @@
-#define MCAP_IMPLEMENTATION  // Define this in exactly one .cpp file
 #include <mcap/writer.hpp>
-
 #include <chrono>
-#include <cstring>
 #include <iostream>
+#include <string>
 
-// Returns the system time in nanoseconds. std::chrono is used here, but any
-// high resolution clock API (such as clock_gettime) can be used.
+// Returns the system time in nanoseconds
 mcap::Timestamp now() {
     return mcap::Timestamp(std::chrono::duration_cast<std::chrono::nanoseconds>(
                              std::chrono::system_clock::now().time_since_epoch())
                              .count());
 }
 
-int mcapwrite() {
-    // Initialize an MCAP writer with the "ros1" profile and write the file header
+// Notice we added the RPM parameter here
+int mcapwrite(int currentRpm) {
     mcap::McapWriter writer;
-    auto status = writer.open("output.mcap", mcap::McapWriterOptions("ros1"));
+
+    // 1. Open the file in the dedicated data folder using JSON format
+    auto status = writer.open("/home/ubcbaja/telemetry_data/output.mcap", mcap::McapWriterOptions("x-jsonschema"));
     if (!status.ok()) {
         std::cerr << "Failed to open MCAP file for writing: " << status.message << "\n";
-        return 1;
+        return 1; // Error
     }
 
-    // Register a Schema
-    mcap::Schema stdMsgsString("std_msgs/String", "ros1msg", "string data");
-    writer.addSchema(stdMsgsString);
+    // 2. Register a JSON Schema for your engine data
+    mcap::Schema rpmSchema("EngineTelemetry", "jsonschema",
+        "{\"type\":\"object\",\"properties\":{\"rpm\":{\"type\":\"integer\"}}}");
+    writer.addSchema(rpmSchema);
 
-    // Register a Channel
-    mcap::Channel chatterPublisher("/chatter", "ros1", stdMsgsString.id);
-    writer.addChannel(chatterPublisher);
+    // 3. Register the Channel (the specific pipe for this data)
+    mcap::Channel rpmChannel("engine/rpm", "json", rpmSchema.id);
+    writer.addChannel(rpmChannel);
 
-    // Create a message payload. This would typically be done by your own
-    // serialization library. In this example, we manually create ROS1 binary data
-    std::array<std::byte, 4 + 13> payload;
-    const uint32_t length = 13;
-    std::memcpy(payload.data(), &length, 4);
-    std::memcpy(payload.data() + 4, "Hello, world!", 13);
+    // 4. Create the JSON payload using the live data passed from Qt
+    std::string payload = "{\"rpm\": " + std::to_string(currentRpm) + "}";
 
-    // Write our message
+    // 5. Pack the message
     mcap::Message msg;
-    msg.channelId = chatterPublisher.id;
-    msg.sequence = 1; // Optional
-    msg.logTime = now(); // Required nanosecond timestamp
-    msg.publishTime = msg.logTime; // Set to logTime if not available
-    msg.data = payload.data();
+    msg.channelId = rpmChannel.id;
+    msg.sequence = 0;
+    msg.logTime = now();
+    msg.publishTime = msg.logTime;
+    msg.data = reinterpret_cast<const std::byte*>(payload.data());
     msg.dataSize = payload.size();
-    writer.write(msg);
 
-    // Finish writing the file
+    // 6. Write the message and catch the status to clear the nodiscard warning
+    auto writeStatus = writer.write(msg);
+    if (!writeStatus.ok()) {
+        std::cerr << "Warning: Failed to write MCAP message: " << writeStatus.message << "\n";
+    }
+
+    // Finish writing the file and return 0 (Success) to clear the void warning
     writer.close();
+    return 0;
 }
