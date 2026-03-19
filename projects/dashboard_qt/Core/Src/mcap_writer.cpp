@@ -15,7 +15,7 @@ int mcapwrite(int currentRpm) {
     mcap::McapWriter writer;
 
     // 1. Open the file in the dedicated data folder using JSON format
-    auto status = writer.open("/home/ubcbaja/telemetry_data/output.mcap", mcap::McapWriterOptions("x-jsonschema"));
+    auto status = writer.open("/home/ubcbaja/logs/output.mcap", mcap::McapWriterOptions("x-jsonschema"));
     if (!status.ok()) {
         std::cerr << "Failed to open MCAP file for writing: " << status.message << "\n";
         return 1; // Error
