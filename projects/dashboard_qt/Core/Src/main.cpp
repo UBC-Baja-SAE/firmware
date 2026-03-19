@@ -1,8 +1,6 @@
 #include "../Inc/mainwindow.h"
 #include <QApplication>
-#include <QTimer>
 #include <QFontDatabase>
-#include <cmath>
 
 int main(int argc, char *argv[]) {
     // Initialize the application

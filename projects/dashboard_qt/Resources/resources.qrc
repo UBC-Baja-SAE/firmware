@@ -1,7 +1,18 @@
 <RCC>
   <qresource prefix="/">
-    <file>Images/tachspeedo.png</file>
+    <file>Images/tach.png</file>
+    <file>Images/orange.png</file>
+    <file>Images/pb.png</file>
+    <file>Images/red.png</file>
+    <file>Images/green.png</file>
+    <file>Images/purple.png</file>
+    <file>Images/bg.png</file>
+    <file>Images/temp.png</file>
+    <file>Images/oil.png</file>
+    <file>Images/fuel.png</file>
+    <file>Images/tachometer.png</file>
+    <file>Images/minimap.png</file>
+    <file>Images/Guides.png</file>
     <file>Fonts/FOT-NewRodin Pro M.otf</file>
-    <file>Images/flame.gif</file>
   </qresource>
 </RCC>

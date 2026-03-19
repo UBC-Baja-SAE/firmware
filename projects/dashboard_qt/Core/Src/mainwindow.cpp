@@ -10,7 +10,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Example: Once you start adding UI elements in Qt Designer,
     // you will access them here like this:
-    ui->tach_value->setText("1283");
+    //ui->speedo_value->setText("12");
+
+    //ui->tach_value->setText("56");
 }
 
 MainWindow::~MainWindow()
