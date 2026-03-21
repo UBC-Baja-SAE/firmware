@@ -48,6 +48,15 @@
 #define CAN_ID_REAR_FUEL               0x201 // Fuel
 #define CAN_ID_REAR_TEMPERATURE        0x201 // Temperature
 
+// -- ECU Stepper (0x300 - 0x30F) --
+#define CAN_ID_PI_ESUS_STEPPER         0x300 // 0x00 - SNA, 0x01 - FWD, 0x10 - BWD, 0x11 RST
+#define CAN_ID_ESUS_FL_STEPPER_STATUS  0x301
+#define CAN_ID_ESUS_FR_STEPPER_STATUS  0x302
+#define CAN_ID_ESUS_RL_STEPPER_STATUS  0x303
+#define CAN_ID_ESUS_RR_STEPPER_STATUS  0x304
+
+
+
 // -----------------------------------------------------------------------------
 // 2. Data Structure Definitions (Payloads)
 // The payload structures can be RE-USED, as the ID defines the source.
