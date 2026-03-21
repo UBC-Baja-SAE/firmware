@@ -13,6 +13,10 @@ MainWindow::MainWindow(QWidget *parent)
     //ui->speedo_value->setText("12");
 
     //ui->tach_value->setText("56");
+
+    int currentRpm = 7500;
+
+    ui->tach_value->setText(QString::number(currentRpm));
 }
 
 MainWindow::~MainWindow()

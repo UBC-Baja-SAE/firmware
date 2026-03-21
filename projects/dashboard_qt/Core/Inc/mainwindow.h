@@ -16,7 +16,7 @@ public:
     ~MainWindow();
 
 private:
-    Ui::MainWindow *ui; // Pointer to the graphical elements you design
+    Ui::MainWindow *ui; // Pointer to the graphical elements
 };
 
 #endif // MAINWINDOW_H

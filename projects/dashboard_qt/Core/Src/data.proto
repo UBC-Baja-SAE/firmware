@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package test;
+
+message Quaternion {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  float w = 4;
+}
+
+message ECU {
+  float travel = 1;
+  float strain_l = 2;
+  float strain_r = 3;
+  Quaternion orientation = 4;
+}
+
+message CANData {
+  ECU ecu_fl = 1;
+  ECU ecu_fr = 2;
+  ECU ecu_rl = 3;
+  ECU ecu_rr = 4;
+  uint32 tach = 5;
+}
