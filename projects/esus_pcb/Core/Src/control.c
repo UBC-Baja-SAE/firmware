@@ -6,6 +6,7 @@ extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern FDCAN_HandleTypeDef hfdcan1;
 extern I2C_HandleTypeDef hi2c1;
+extern SPI_HandleTypeDef hspi1;
 
 // Global variables for CLion Live Watches
 volatile float live_gyro_x = 0.0f;
@@ -343,7 +344,125 @@ void SendAccelOnCan(uint32_t can_id) {
   }
 }
 
+/**
+ * @brief SPI Transfer for a specific motor
+ */
+uint16_t DRV8461_Transfer(MotorID_t motor, uint8_t addr, uint8_t data) {
+  uint16_t tx_frame = ((uint16_t)addr << 8) | data;
+  uint16_t rx_frame = 0;
+  
+  GPIO_TypeDef* ncs_port;
+  uint16_t ncs_pin;
 
+  // Select the correct Chip Select pin
+  if (motor == MOTOR_NEMA17) {
+    ncs_port = N17_NCS_PORT; ncs_pin = N17_NCS_PIN;
+  } else {
+    ncs_port = N23_NCS_PORT; ncs_pin = N23_NCS_PIN;
+  }
+
+  HAL_GPIO_WritePin(ncs_port, ncs_pin, GPIO_PIN_RESET); // Select
+  HAL_SPI_TransmitReceive(&hspi1, (uint8_t*)&tx_frame, (uint8_t*)&rx_frame, 1, 10);
+  HAL_GPIO_WritePin(ncs_port, ncs_pin, GPIO_PIN_SET);   // Deselect
+  
+  return rx_frame;
+}
+
+void Motors_Init(void) {
+  // Wake up both
+  HAL_GPIO_WritePin(N17_SLEEP_PORT, N17_SLEEP_PIN, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(N23_SLEEP_PORT, N23_SLEEP_PIN, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET);
+  HAL_Delay(5);
+
+  // Initialize NEMA 17 settings
+  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL2, 0x06); // 1/16 step
+  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x07); // Smart Tune
+
+  // Initialize NEMA 23 settings
+  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL2, 0x06);
+  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x07);
+}
+
+void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps) {
+  GPIO_TypeDef* step_port; uint16_t step_pin;
+  GPIO_TypeDef* dir_port;  uint16_t dir_pin;
+
+  if (motor == MOTOR_NEMA17) {
+    step_port = N17_STEP_PORT; step_pin = N17_STEP_PIN;
+    dir_port = N17_DIR_PORT;   dir_pin = N17_DIR_PIN;
+  } else {
+    step_port = N23_STEP_PORT; step_pin = N23_STEP_PIN;
+    dir_port = N23_DIR_PORT;   dir_pin = N23_DIR_PIN;
+  }
+
+  HAL_GPIO_WritePin(dir_port, dir_pin, direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  for(volatile int i=0; i<200; i++); 
+
+  for(uint32_t i = 0; i < steps; i++) {
+    HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_SET);
+    HAL_Delay(1); 
+    HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_RESET);
+    HAL_Delay(1);
+  }
+}
+
+void Motor_Calibrate(MotorID_t motor) {
+  GPIO_TypeDef* step_port;  uint16_t step_pin;
+  GPIO_TypeDef* dir_port;   uint16_t dir_pin;
+
+  if (motor == MOTOR_NEMA17) {
+    step_port = N17_STEP_PORT; step_pin = N17_STEP_PIN;
+    dir_port = N17_DIR_PORT;   dir_pin = N17_DIR_PIN;
+  } else {
+    step_port = N23_STEP_PORT; step_pin = N23_STEP_PIN;
+    dir_port = N23_DIR_PORT;   dir_pin = N23_DIR_PIN;
+  }
+  
+  HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_RESET); // Move in negative direction
+
+  for (volatile int i=0; i<200; i++); // Short delay before starting
+
+  // step back a large amount
+  for (uint32_t i = 0; i < 3000; i++) {
+    HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_SET);
+    HAL_Delay(2);
+    HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_RESET);
+    HAL_Delay(2);
+  }
+
+  DRV8461_Transfer(motor, DRV_REG_CTRL1, 0x20);
+}
+
+/**
+ * @brief Reads motor driver status and broadcasts over CAN
+ * Payload Structure (8 Bytes):
+ * Byte 0: NEMA17 Hardware Status (0=OK, 1=Fault/Short)
+ * Byte 1: NEMA17 SPI Status (Bit 0: Stall, Bit 1: Over-temp)
+ * Byte 2: NEMA23 Hardware Status (0=OK, 1=Fault/Short)
+ * Byte 3: NEMA23 SPI Status (Bit 0: Stall, Bit 1: Over-temp)
+ */
+void SendEsusStatusOnCan(uint32_t can_id) {
+    uint8_t status_msg[8] = {0};
+
+    // Check Hardware Pins (Active Low)
+    status_msg[0] = (HAL_GPIO_ReadPin(N17_FAULT_PORT, N17_FAULT_PIN) == GPIO_PIN_RESET) ? 1 : 0;
+    status_msg[2] = (HAL_GPIO_ReadPin(N23_FAULT_PORT, N23_FAULT_PIN) == GPIO_PIN_RESET) ? 1 : 0;
+
+    // Query SPI Registers for detailed diagnostics
+    // We read DIAG2 (0x02) which contains Stall and Temp info
+    uint16_t n17_diag = DRV8461_Transfer(MOTOR_NEMA17, (0x80 | DRV_REG_DIAG2), 0x00); // 0x80 is READ bit
+    uint16_t n23_diag = DRV8461_Transfer(MOTOR_NEMA23, (0x80 | DRV_REG_DIAG2), 0x00);
+
+    // Byte 1 & 3: Map SPI bits to our CAN payload
+    // Bit 3 of DIAG2 is STALL, Bit 6 is OTW (Over-temp warning)
+    status_msg[1] = (uint8_t)(n17_diag & 0xFF); 
+    status_msg[3] = (uint8_t)(n23_diag & 0xFF);
+
+    // Broadcast
+    CAN_Transmit(can_id, status_msg, FDCAN_DLC_BYTES_8);
+}
 
 // void SendStrainOnCan(uint32_t can_id, uint32_t channel) {
 //   ADC_ChannelConfTypeDef sConfig = {0};

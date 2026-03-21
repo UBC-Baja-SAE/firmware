@@ -24,6 +24,47 @@
 #define IMU_INIT_RETRY_COUNT 3
 #define IMU_STARTUP_DELAY_MS 100
 
+// DRV8461 Stepper Definitions
+/* --- NEMA 17 Pins (Corner A) --- */
+#define N17_SLEEP_PIN   GPIO_PIN_4
+#define N17_SLEEP_PORT  GPIOD
+#define N17_ENABLE_PIN  GPIO_PIN_5
+#define N17_ENABLE_PORT GPIOD
+#define N17_DIR_PIN     GPIO_PIN_6
+#define N17_DIR_PORT    GPIOD
+#define N17_STEP_PIN    GPIO_PIN_10
+#define N17_STEP_PORT   GPIOG
+#define N17_NCS_PIN     GPIO_PIN_12
+#define N17_NCS_PORT    GPIOG
+#define N17_FAULT_PIN   GPIO_PIN_13
+#define N17_FAULT_PORT  GPIOG
+
+/* --- NEMA 23 Pins (Corner B) --- */
+#define N23_SLEEP_PIN   GPIO_PIN_5
+#define N23_SLEEP_PORT  GPIOE
+#define N23_ENABLE_PIN  GPIO_PIN_4
+#define N23_ENABLE_PORT GPIOE
+#define N23_DIR_PIN     GPIO_PIN_3
+#define N23_DIR_PORT    GPIOE
+#define N23_STEP_PIN    GPIO_PIN_2
+#define N23_STEP_PORT   GPIOE
+#define N23_NCS_PIN     GPIO_PIN_3
+#define N23_NCS_PORT    GPIOB
+#define N23_FAULT_PIN   GPIO_PIN_14
+#define N23_FAULT_PORT  GPIOG
+
+// SPI Registers (DRV8461)
+#define DRV_REG_FAULT     0x00
+#define DRV_REG_DIAG2     0x02
+#define DRV_REG_CTRL1     0x04
+#define DRV_REG_CTRL2     0x05
+
+// Motor Identifiers
+typedef enum {
+    MOTOR_NEMA17 = 0,
+    MOTOR_NEMA23 = 1
+} MotorID_t;
+
 // Function Declarations
 HAL_StatusTypeDef I2C_BusRecovery(void);
 HAL_StatusTypeDef IMU_Init(void);
@@ -33,5 +74,11 @@ void SendPotOnCan(uint32_t can_id);
 void SendGyroOnCan(uint32_t can_id);
 void SendAccelOnCan(uint32_t can_id);
 void SendStrainOnCan(uint32_t can_id, uint32_t channel);
+void SendEsusStatusOnCan(uint32_t can_id);
+
+void Motors_Init(void);
+void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps);
+void Motor_Calibrate(MotorID_t motor);
+uint16_t DRV8461_Transfer(MotorID_t motor, uint8_t addr, uint8_t data);
 
 #endif // __CONTROL_H
