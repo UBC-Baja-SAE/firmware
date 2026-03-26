@@ -14,6 +14,13 @@
           </excludedPaths>
         </serverdata>
       </paths>
+      <paths name="VM (e932f3ae-18b0-44f5-aada-874bb37e97ab)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/bluepill_wheel" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="graphics-dev (813a8920-30b5-47c2-b894-200ae0b1be66)">
         <serverdata>
           <mappings>

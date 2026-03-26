@@ -2,7 +2,7 @@
 #define DASHBOARD_QT_DATA_MANAGER_H
 
 #include <mutex>
-#include "Core/Src/data.pb.h"
+#include "data.pb.h"
 
 class DataManager {
 public:

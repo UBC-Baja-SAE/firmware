@@ -30,6 +30,7 @@ set(PROTO_FILES
         Core/Src/can_handler.cpp
         Core/Src/can_translator.cpp
         Core/Src/mcap_logger.cpp
+        Core/Src/uart_handler.cpp
 
 )
 
@@ -48,6 +49,8 @@ add_executable(dashboard_qt
         Core/Inc/mcap_logger.h
         Core/Src/data_manager.cpp
         Core/Inc/data_manager.h
+        Core/Src/uart_handler.cpp
+        Core/Inc/uart_handler.h
 )
 
 target_include_directories(dashboard_qt
