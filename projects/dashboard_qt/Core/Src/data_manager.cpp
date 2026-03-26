@@ -5,7 +5,7 @@ DataManager& DataManager::getInstance() {
     return instance;
 }
 
-test::CANData DataManager::getLatestData() {
+test::Data DataManager::getLatestData() {
     std::lock_guard<std::mutex> lock(dataMutex_);
     return masterData_;
 }

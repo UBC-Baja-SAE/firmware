@@ -590,23 +590,42 @@ QLabel {
      <number>10</number>
     </property>
    </widget>
-   <widget class="QLabel" name="minimap_placeholder">
+   <widget class="QLabel" name="suspensionModeLabel">
     <property name="geometry">
      <rect>
-      <x>60</x>
-      <y>150</y>
-      <width>291</width>
-      <height>211</height>
+      <x>20</x>
+      <y>210</y>
+      <width>371</width>
+      <height>71</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>Andale Mono</family>
+      <pointsize>36</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string/>
+     <string>None</string>
     </property>
-    <property name="pixmap">
-     <pixmap resource="../../Resources/resources.qrc">:/Images/minimap.png</pixmap>
+   </widget>
+   <widget class="QLabel" name="suspensionModeLabel_2">
+    <property name="geometry">
+     <rect>
+      <x>22</x>
+      <y>180</y>
+      <width>370</width>
+      <height>30</height>
+     </rect>
     </property>
-    <property name="scaledContents">
-     <bool>true</bool>
+    <property name="font">
+     <font>
+      <family>Andale Mono</family>
+      <pointsize>18</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Suspension Mode:</string>
     </property>
    </widget>
    <zorder>pb_color</zorder>
@@ -630,7 +649,8 @@ QLabel {
    <zorder>label</zorder>
    <zorder>tach_value</zorder>
    <zorder>tach_units</zorder>
-   <zorder>minimap_placeholder</zorder>
+   <zorder>suspensionModeLabel</zorder>
+   <zorder>suspensionModeLabel_2</zorder>
   </widget>
  </widget>
  <resources>

@@ -2,7 +2,7 @@
 #define DASHBOARD_QT_DATA_MANAGER_H
 
 #include <mutex>
-#include "data.pb.h"
+#include "Core/Src/data.pb.h"
 
 class DataManager {
 public:
@@ -11,7 +11,7 @@ public:
     DataManager(DataManager const&) = delete;
     void operator=(DataManager const&) = delete;
 
-    test::CANData getLatestData();
+    test::Data getLatestData();
 
     void setTach(uint32_t rpm);
 
@@ -27,7 +27,7 @@ public:
 private:
     DataManager() {}
 
-    test::CANData masterData_;
+    test::Data masterData_;
     std::mutex dataMutex_;
 };
 
