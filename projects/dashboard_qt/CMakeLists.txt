@@ -25,10 +25,19 @@ find_package(mcap REQUIRED)
 
 find_package(Protobuf REQUIRED)
 
+# Optional: Foxglove SDK for WebSocket streaming
+# Uncomment to enable Foxglove WebSocket streaming
+# Download from: https://github.com/foxglove/foxglove-sdk/releases
+# option(USE_FOXGLOVE_SDK "Enable Foxglove WebSocket streaming" OFF)
+# if(USE_FOXGLOVE_SDK)
+#     find_package(foxglove REQUIRED)
+#     add_compile_definitions(USE_FOXGLOVE_SDK)
+# endif()
+
 set(PROTO_FILES
         Core/Src/data.proto
-        Core/Src/can_handler.cpp
-        Core/Src/can_translator.cpp
+        Core/Src/can_bridge.cpp
+        Core/Src/can_processor.cpp
         Core/Src/mcap_logger.cpp
         Core/Src/uart_handler.cpp
 
@@ -41,10 +50,10 @@ add_executable(dashboard_qt
         Core/Src/mainwindow.cpp
         Core/Inc/mainwindow.h
         Core/Src/mainwindow.ui
-        Core/Src/can_handler.cpp
-        Core/Inc/can_handler.h
-        Core/Src/can_translator.cpp
-        Core/Inc/can_translator.h
+        Core/Src/can_bridge.cpp
+        Core/Inc/can_bridge.h
+        Core/Src/can_processor.cpp
+        Core/Inc/can_processor.h
         Core/Src/mcap_logger.cpp
         Core/Inc/mcap_logger.h
         Core/Src/data_manager.cpp
@@ -65,5 +74,10 @@ target_link_libraries(dashboard_qt
         mcap
         protobuf::libprotobuf
 )
+
+# Link Foxglove SDK if enabled
+# if(USE_FOXGLOVE_SDK)
+#     target_link_libraries(dashboard_qt PRIVATE foxglove::foxglove)
+# endif()
 
 protobuf_generate(TARGET dashboard_qt)

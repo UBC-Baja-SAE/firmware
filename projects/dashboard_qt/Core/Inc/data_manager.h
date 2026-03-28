@@ -13,7 +13,11 @@ public:
 
     test::Data getLatestData();
 
+    // Dashboard sensors
     void setTach(uint32_t rpm);
+    void setSpeed(uint32_t speed);
+    void setTemp(uint32_t temp);
+    void setFuel(uint32_t fuel);
 
     enum EcuPosition {
         FRONT_LEFT = 0,
@@ -22,7 +26,14 @@ public:
         REAR_RIGHT = 3
     };
 
+    // ECU sensors
     void setEcuTravel(EcuPosition pos, float travel);
+    void setEcuStrain(EcuPosition pos, float strain_l, float strain_r);
+    void setEcuAccel(EcuPosition pos, float x, float y, float z);
+    void setEcuGyro(EcuPosition pos, float x, float y, float z);
+
+    // GPS data
+    void setGps(float latitude, float longitude, float speed, bool has_fix);
 
 private:
     DataManager() {}
