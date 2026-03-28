@@ -61,5 +61,14 @@ static const int rr_strain_r_id =   0x134;
 static const int pi_imu_accel_id =  0x180;
 static const int pi_imu_gyro_id =   0x181;
 
+/*
+ * @brief The stepper control and status ids
+ */
+static const int pi_esus_stepper_id = 0x300;
+static const int fl_stepper_status_id = 0x301;
+static const int fr_stepper_status_id = 0x302;
+static const int rl_stepper_status_id = 0x303;
+static const int rr_stepper_status_id = 0x304;
+
 
 #endif // CAN_ID_H
