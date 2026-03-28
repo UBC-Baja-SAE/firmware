@@ -120,6 +120,8 @@ int main(void)
 
   HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
 
+  Motors_Init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -158,18 +160,25 @@ int main(void)
 
 
     // // RL
-    SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
-    SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
-    SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
-    // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
-    // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
-    SendEsusStatusOnCan(CAN_ID_ESUS_RL_STEPPER_STATUS);
+    // SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
+    // SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
+    // SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
+    // // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
+    // // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
+    // SendEsusStatusOnCan(CAN_ID_ESUS_RL_STEPPER_STATUS);
 
-    // handle incoming ESUS stepper CAN message
-    HAL_FDCAN_RxFifo0Callback(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE);
+    // // handle incoming ESUS stepper CAN message
+    // HAL_FDCAN_RxFifo0Callback(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE);
 
+    Motor_Step(MOTOR_NEMA17, 1, 1000);
+    Motor_Step(MOTOR_NEMA23, 1, 1000);
+
+//    HAL_Delay(500);
+
+//    Motor_Step(MOTOR_NEMA17, 0, 50);
+//    Motor_Step(MOTOR_NEMA23, 0, 50);
     // Send message every 100 ms
-    HAL_Delay(100);
+    HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
@@ -734,44 +743,74 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
-  FDCAN_RxHeaderTypeDef rx_header;
-  uint8_t rx_data[8];
+// void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
+//   Motor_Step(MOTOR_NEMA17, 1, 10); // TEMP: Step motor on any received message for testing
+//   Motor_Step(MOTOR_NEMA23, 1, 10);
 
+//   HAL_Delay(100); // TEMP: Add delay to slow down stepping for testing
+// }
+
+
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
   if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0) {
+    FDCAN_RxHeaderTypeDef rx_header;
+    uint8_t rx_data[8];
+
     if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
       
       if (rx_header.Identifier == 0x300) {
-        uint8_t cmd       = rx_data[0]; 
-        uint8_t motor_sel = rx_data[1]; 
-        uint8_t count     = rx_data[2]; 
+        uint8_t cmd        = rx_data[0]; // 0x01 = Go to Setting, 0x11 = Emergency Reset
+        uint8_t setting_id = rx_data[1]; // 0, 1, 2, or 3
 
-        MotorID_t id = (motor_sel == 0) ? MOTOR_NEMA17 : MOTOR_NEMA23;
-
-        switch (cmd) {
-          case 0x01: // FORWARD
-            Motor_Step(id, 1, count);
-            break;
-
-          case 0x10: // BACKWARD
-            Motor_Step(id, 0, count);
-            break;
-
-          case 0x11: // RESET / CALIBRATE
-              Motor_Calibrate(MOTOR_NEMA17);
-              Motor_Calibrate(MOTOR_NEMA23);
-            break;
-
-          case 0x00: // SNA (Signal Not Available) / Do Nothing
-            break;
-
-          default:
-            break;
+        if (cmd == 0x11) {
+            Motor_Calibrate_All();
+        } 
+        else if (cmd == 0x01) {
+            Motor_GoTo_Setting(setting_id);
         }
       }
     }
   }
 }
+
+
+
+  // FDCAN_RxHeaderTypeDef rx_header;
+  // uint8_t rx_data[8];
+
+  // if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0) {
+  //   if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
+      
+  //     if (rx_header.Identifier == 0x300) {
+  //       uint8_t cmd       = rx_data[0]; 
+  //       uint8_t motor_sel = rx_data[1]; 
+  //       uint8_t count     = rx_data[2]; 
+
+  //       MotorID_t id = (motor_sel == 0) ? MOTOR_NEMA17 : MOTOR_NEMA23;
+
+  //       switch (cmd) {
+  //         case 0x01: // FORWARD
+  //           Motor_Step(id, 1, count);
+  //           break;
+
+  //         case 0x10: // BACKWARD
+  //           Motor_Step(id, 0, count);
+  //           break;
+
+  //         case 0x11: // RESET / CALIBRATE
+  //             Motor_Calibrate(MOTOR_NEMA17);
+  //             Motor_Calibrate(MOTOR_NEMA23);
+  //           break;
+
+  //         case 0x00: // SNA (Signal Not Available) / Do Nothing
+  //           break;
+
+  //         default:
+  //           break;
+  //       }
+  //     }
+  //   }
+  // }
 /* USER CODE END 4 */
 
  /* MPU Configuration */
