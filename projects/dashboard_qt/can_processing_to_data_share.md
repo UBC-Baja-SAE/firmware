@@ -36,6 +36,8 @@ The dashboard's data processing pipeline uses a multi-threaded C++ architecture 
   - Real-time WebSocket streaming to Foxglove Studio
   - Simultaneous MCAP file recording
   - Proper MCAP format with schema registration
+  - Automatic protobuf schema generation (FileDescriptorSet)
+  - Schema includes: `test.Data`, `ECU`, `GPS`, `Quaternion` messages
 - **Without Foxglove SDK** (fallback):
   - Basic binary file writing (length-prefixed protobuf)
 
@@ -153,6 +155,54 @@ startMcapLogger("/tmp/dashboard_data.mcap", 100, false);
 5. Click "Open"
 
 Data will stream in real-time with proper schema definitions.
+
+## Protobuf Schema
+
+The telemetry data uses the following protobuf schema (defined in `Core/Src/data.proto`):
+
+```protobuf
+syntax = "proto3";
+package test;
+
+message Quaternion {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  float w = 4;
+}
+
+message ECU {
+  float travel = 1;           // Suspension travel
+  float strain_l = 2;         // Left strain gauge
+  float strain_r = 3;         // Right strain gauge
+  Quaternion orientation = 4; // IMU data (accel in x/y/z, gyro in w)
+}
+
+message GPS {
+  float latitude = 1;
+  float longitude = 2;
+  float gps_speed = 3;
+  bool has_fix = 4;
+}
+
+message Data {
+  ECU ecu_fl = 1;    // Front Left ECU
+  ECU ecu_fr = 2;    // Front Right ECU
+  ECU ecu_rl = 3;    // Rear Left ECU
+  ECU ecu_rr = 4;    // Rear Right ECU
+  uint32 tach = 5;   // RPM
+  uint32 speedo = 6; // Speed
+  uint32 temp = 7;   // Engine temperature
+  uint32 fuel = 8;   // Fuel level
+  GPS location = 9;  // GPS data
+}
+```
+
+**Schema Registration:**
+- The MCAP logger automatically generates a `FileDescriptorSet` from the compiled protobuf
+- This includes all message types and their dependencies
+- Foxglove uses this to properly decode and visualize the data
+- No manual schema export required - handled at runtime via `getProtobufSchema()`
 
 ## Configuration
 

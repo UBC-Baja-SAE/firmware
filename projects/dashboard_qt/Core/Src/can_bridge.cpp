@@ -43,7 +43,7 @@ double getData(int id) {
 
         double raw_bits;
         memset(&raw_bits, 0, sizeof(double));
-        memcpy(&raw_bits, &observed_data[id], 6);
+        memcpy(&raw_bits, (const void*)&observed_data[id], 6);
 
         return raw_bits;
     }

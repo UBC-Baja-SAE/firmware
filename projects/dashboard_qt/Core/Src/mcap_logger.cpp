@@ -3,9 +3,11 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <google/protobuf/descriptor.pb.h>
 
 // Foxglove SDK includes
 // NOTE: You need to install Foxglove SDK from https://github.com/foxglove/foxglove-sdk
@@ -29,6 +31,50 @@ struct LoggerConfig {
 };
 
 static LoggerConfig config;
+
+/**
+ * @brief Generate protobuf FileDescriptorSet for the Data message.
+ * This is required by Foxglove to understand the message schema.
+ */
+static std::string getProtobufSchema() {
+    // Get the descriptor for the Data message
+    const google::protobuf::Descriptor* descriptor = test::Data::descriptor();
+    if (!descriptor) {
+        std::cerr << "MCAP Logger: Failed to get Data descriptor" << std::endl;
+        return "";
+    }
+
+    // Get the file descriptor
+    const google::protobuf::FileDescriptor* file_descriptor = descriptor->file();
+    if (!file_descriptor) {
+        std::cerr << "MCAP Logger: Failed to get file descriptor" << std::endl;
+        return "";
+    }
+
+    // Build a FileDescriptorSet containing this file and all its dependencies
+    google::protobuf::FileDescriptorSet fd_set;
+
+    // Add dependencies first
+    for (int i = 0; i < file_descriptor->dependency_count(); ++i) {
+        const google::protobuf::FileDescriptor* dep = file_descriptor->dependency(i);
+        dep->CopyTo(fd_set.add_file());
+    }
+
+    // Add the main file
+    file_descriptor->CopyTo(fd_set.add_file());
+
+    // Serialize to string
+    std::string serialized;
+    if (!fd_set.SerializeToString(&serialized)) {
+        std::cerr << "MCAP Logger: Failed to serialize FileDescriptorSet" << std::endl;
+        return "";
+    }
+
+    std::cout << "MCAP Logger: Generated protobuf schema (" << serialized.size()
+              << " bytes)" << std::endl;
+
+    return serialized;
+}
 
 #ifdef USE_FOXGLOVE_SDK
 // Foxglove SDK implementation
@@ -78,13 +124,15 @@ static void foxgloveLoggerLoop() {
         return;
     }
 
+    // Get protobuf schema as FileDescriptorSet
+    std::string schema_data = getProtobufSchema();
+
     // Create channel for protobuf messages
     foxglove::ChannelOptions channel_opts;
     channel_opts.topic = "/vehicle/telemetry";
     channel_opts.encoding = "protobuf";
     channel_opts.schema_name = "test.Data";
-    // TODO: Add actual protobuf schema definition
-    channel_opts.schema = ""; // Protobuf FileDescriptorSet would go here
+    channel_opts.schema = schema_data;
 
     std::shared_ptr<foxglove::Channel> channel;
     for (auto& sink : sinks) {

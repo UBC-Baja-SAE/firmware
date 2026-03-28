@@ -26,13 +26,31 @@ find_package(mcap REQUIRED)
 find_package(Protobuf REQUIRED)
 
 # Optional: Foxglove SDK for WebSocket streaming
-# Uncomment to enable Foxglove WebSocket streaming
-# Download from: https://github.com/foxglove/foxglove-sdk/releases
-# option(USE_FOXGLOVE_SDK "Enable Foxglove WebSocket streaming" OFF)
-# if(USE_FOXGLOVE_SDK)
-#     find_package(foxglove REQUIRED)
-#     add_compile_definitions(USE_FOXGLOVE_SDK)
-# endif()
+option(USE_FOXGLOVE_SDK "Enable Foxglove WebSocket streaming" OFF)
+if(USE_FOXGLOVE_SDK)
+    include(FetchContent)
+
+    # Disable git credential prompts
+    set(ENV{GIT_TERMINAL_PROMPT} 0)
+    set(ENV{GIT_ASKPASS} "echo")
+    set(ENV{SSH_ASKPASS} "echo")
+
+    FetchContent_Declare(
+        foxglove
+        GIT_REPOSITORY https://github.com/foxglove/foxglove-sdk.git
+        GIT_TAG        main
+        GIT_SHALLOW    TRUE
+        GIT_CONFIG     advice.detachedHead=false
+    )
+
+    FetchContent_MakeAvailable(foxglove)
+    add_compile_definitions(USE_FOXGLOVE_SDK)
+
+    # Add Foxglove SDK sources and includes
+    file(GLOB FOXGLOVE_SOURCES "${foxglove_SOURCE_DIR}/cpp/src/*.cpp")
+    set(FOXGLOVE_SOURCES ${FOXGLOVE_SOURCES} PARENT_SCOPE)
+    set(FOXGLOVE_INCLUDE_DIR "${foxglove_SOURCE_DIR}/cpp/include" PARENT_SCOPE)
+endif()
 
 set(PROTO_FILES
         Core/Src/data.proto
@@ -45,6 +63,7 @@ set(PROTO_FILES
 
 add_executable(dashboard_qt
         ${PROTO_FILES}
+        ${FOXGLOVE_SOURCES}
         Resources/resources.qrc
         Core/Src/main.cpp
         Core/Src/mainwindow.cpp
@@ -65,6 +84,7 @@ add_executable(dashboard_qt
 target_include_directories(dashboard_qt
         PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}
+        ${FOXGLOVE_INCLUDE_DIR}
 )
 
 target_link_libraries(dashboard_qt
@@ -75,9 +95,5 @@ target_link_libraries(dashboard_qt
         protobuf::libprotobuf
 )
 
-# Link Foxglove SDK if enabled
-# if(USE_FOXGLOVE_SDK)
-#     target_link_libraries(dashboard_qt PRIVATE foxglove::foxglove)
-# endif()
 
 protobuf_generate(TARGET dashboard_qt)
