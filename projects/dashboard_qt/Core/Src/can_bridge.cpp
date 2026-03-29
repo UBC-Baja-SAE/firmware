@@ -15,6 +15,7 @@
 #include <sys/ioctl.h>
 #endif
 
+
 // Global data array
 volatile uint64_t observed_data[2048] = {0};
 

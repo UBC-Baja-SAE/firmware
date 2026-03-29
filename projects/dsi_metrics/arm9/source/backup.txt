@@ -1,0 +1,130 @@
+#include <nds.h>
+#include <stdio.h>
+#include <dswifi9.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+
+// Function to draw a colored rectangle on a 16-bit background
+void drawRect(u16* bgPtr, int x, int y, int width, int height, u16 color) {
+    for (int iy = 0; iy < height; iy++) {
+        for (int ix = 0; ix < width; ix++) {
+            bgPtr[(y + iy) * 256 + (x + ix)] = color;
+        }
+    }
+}
+
+int main(void) {
+    touchPosition touch;
+
+    // Set top screen to text console
+    videoSetMode(MODE_0_2D);
+    vramSetBankA(VRAM_A_MAIN_BG);
+    consoleInit(NULL, 0, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
+
+    // Set bottom screen to 16-bit bitmap for icons
+    videoSetModeSub(MODE_5_2D);
+    vramSetBankC(VRAM_C_SUB_BG);
+    int bgSub = bgInitSub(3, BgType_Bmp16, BgSize_B16_256x256, 0, 0);
+    u16* bgSubPtr = bgGetGfxPtr(bgSub);
+
+    // Clear bottom screen to black
+    drawRect(bgSubPtr, 0, 0, 256, 192, RGB15(0,0,0) | BIT(15));
+
+    // Draw 4 placeholder icons (colored squares) in a 4x1 row at the top
+    drawRect(bgSubPtr, 0, 0, 64, 64, RGB15(31,0,0) | BIT(15));
+    drawRect(bgSubPtr, 64, 0, 64, 64, RGB15(0,31,0) | BIT(15));
+    drawRect(bgSubPtr, 128, 0, 64, 64, RGB15(0,0,31) | BIT(15));
+    drawRect(bgSubPtr, 192, 0, 64, 64, RGB15(31,31,0) | BIT(15));
+
+    int suspensionMode = 1;
+    int speed = 0;
+    int rpm = 0;
+
+    iprintf("\x1b[2J"); // Clear screen
+    iprintf("Connecting to WiFi...\n");
+
+    if(Wifi_InitDefault(WFC_CONNECT)) {
+        iprintf("Connected to WiFi!\n");
+
+        int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (sockfd < 0) {
+            iprintf("socket() failed!\n");
+        } else {
+            struct sockaddr_in serveraddr;
+            serveraddr.sin_family = AF_INET;
+            serveraddr.sin_port = htons(12345); // Port to listen on
+            serveraddr.sin_addr.s_addr = INADDR_ANY;
+
+            if (bind(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+                iprintf("bind() failed!\n");
+            } else {
+                iprintf("Listening on port 12345\n");
+                char buffer[32];
+                while (1) {
+                    int len = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+                    if (len > 0) {
+                        buffer[len] = 0;
+                        sscanf(buffer, "%d,%d", &speed, &rpm);
+                    }
+                    // Break the inner loop to update the screen
+                    break;
+                }
+            }
+        }
+    } else {
+        iprintf("WiFi connection failed!\n");
+    }
+
+
+    while (pmMainLoop()) {
+        swiWaitForVBlank();
+        scanKeys();
+        if (keysDown() & KEY_START) break;
+
+        // Check for touch input on the bottom screen
+        int keys = keysDown();
+        if (keys & KEY_TOUCH) {
+            touchRead(&touch);
+
+            if (touch.py >= 0 && touch.py <= 64) {
+                if (touch.px >= 0 && touch.px < 64) suspensionMode = 1;
+                else if (touch.px >= 64 && touch.px < 128) suspensionMode = 2;
+                else if (touch.px >= 128 && touch.px < 192) suspensionMode = 3;
+                else if (touch.px >= 192 && touch.px < 256) suspensionMode = 4;
+            }
+        }
+
+        // Update the top screen
+        iprintf("\x1b[0;0H");
+        iprintf("\n\n\tUBC Baja Mochi Data\n\n");
+        iprintf("\t========================\n\n");
+        iprintf("\tSpeed: %3d km/h\n", speed);
+        iprintf("\t[");
+        for (int i = 0; i < 20; i++) {
+            if (i < speed / 6) iprintf("#");
+            else iprintf(" ");
+        }
+        iprintf("]\n\n");
+        iprintf("\tRPM:   %4d rpm\n", rpm);
+        iprintf("\t[");
+        for (int i = 0; i < 20; i++) {
+            if (i < rpm / 400) iprintf("#");
+            else iprintf(" ");
+        }
+        iprintf("]\n\n");
+        iprintf("\t========================\n\n");
+        iprintf("\tSuspension Mode: %d\n", suspensionMode);
+
+        const char* modeName = "";
+        switch (suspensionMode) {
+            case 1: modeName = "Mode 1 (Red)   "; break;
+            case 2: modeName = "Mode 2 (Green) "; break;
+            case 3: modeName = "Mode 3 (Blue)  "; break;
+            case 4: modeName = "Mode 4 (Yellow)"; break;
+        }
+        iprintf("\t%s\n", modeName);
+    }
+
+    return 0;
+}

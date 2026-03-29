@@ -7,16 +7,15 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <optional>
 #include <google/protobuf/descriptor.pb.h>
 
-// Foxglove SDK includes
-// NOTE: You need to install Foxglove SDK from https://github.com/foxglove/foxglove-sdk
-// and link against the foxglove library in your CMakeLists.txt
 #ifdef USE_FOXGLOVE_SDK
-#include <foxglove/server.hpp>
-#include <foxglove/mcap_writer.hpp>
-#include <foxglove/channel.hpp>
-#include <foxglove/message.hpp>
+    #include <foxglove/server.hpp>
+    #include <foxglove/mcap.hpp>
+    #include <foxglove/channel.hpp>
+#else
+    #include <mcap/writer.hpp>
 #endif
 
 static std::atomic<bool> logger_running(false);
@@ -34,210 +33,179 @@ static LoggerConfig config;
 
 /**
  * @brief Generate protobuf FileDescriptorSet for the Data message.
- * This is required by Foxglove to understand the message schema.
  */
 static std::string getProtobufSchema() {
-    // Get the descriptor for the Data message
     const google::protobuf::Descriptor* descriptor = test::Data::descriptor();
     if (!descriptor) {
         std::cerr << "MCAP Logger: Failed to get Data descriptor" << std::endl;
         return "";
     }
 
-    // Get the file descriptor
     const google::protobuf::FileDescriptor* file_descriptor = descriptor->file();
     if (!file_descriptor) {
         std::cerr << "MCAP Logger: Failed to get file descriptor" << std::endl;
         return "";
     }
 
-    // Build a FileDescriptorSet containing this file and all its dependencies
     google::protobuf::FileDescriptorSet fd_set;
 
-    // Add dependencies first
     for (int i = 0; i < file_descriptor->dependency_count(); ++i) {
         const google::protobuf::FileDescriptor* dep = file_descriptor->dependency(i);
         dep->CopyTo(fd_set.add_file());
     }
 
-    // Add the main file
     file_descriptor->CopyTo(fd_set.add_file());
 
-    // Serialize to string
     std::string serialized;
     if (!fd_set.SerializeToString(&serialized)) {
         std::cerr << "MCAP Logger: Failed to serialize FileDescriptorSet" << std::endl;
         return "";
     }
 
-    std::cout << "MCAP Logger: Generated protobuf schema (" << serialized.size()
-              << " bytes)" << std::endl;
-
     return serialized;
 }
 
 #ifdef USE_FOXGLOVE_SDK
-// Foxglove SDK implementation
+// ---------------------------------------------------------
+// MODERN FOXGLOVE SDK IMPLEMENTATION (v0.18.0+)
+// ---------------------------------------------------------
 static void foxgloveLoggerLoop() {
-    std::cout << "MCAP Logger: Initializing Foxglove SDK..." << std::endl;
+    std::cout << "MCAP Logger: Initializing modern Foxglove SDK..." << std::endl;
 
-    // Vector to hold sinks (MCAP writer and/or WebSocket server)
-    std::vector<std::shared_ptr<foxglove::Sink>> sinks;
-
-    // Create MCAP writer if output path is specified
-    std::shared_ptr<foxglove::McapWriter> mcap_writer;
-    if (!config.output_file_path.empty()) {
-        auto writer_result = foxglove::McapWriter::create(config.output_file_path);
-        if (!writer_result.has_value()) {
-            std::cerr << "MCAP Logger: Failed to create MCAP writer: "
-                      << foxglove::strerror(writer_result.error()) << std::endl;
-        } else {
-            mcap_writer = std::move(writer_result.value());
-            sinks.push_back(mcap_writer);
-            std::cout << "MCAP Logger: Writing to file " << config.output_file_path << std::endl;
-        }
-    }
-
-    // Create WebSocket server if enabled
-    std::shared_ptr<foxglove::WebSocketServer> ws_server;
+    // 1. Initialize WebSocket Server
+    std::optional<foxglove::WebSocketServer> server;
     if (config.enable_websocket) {
         foxglove::WebSocketServerOptions ws_options;
         ws_options.host = config.websocket_host;
-        ws_options.port = config.websocket_port;
+        ws_options.port = static_cast<uint16_t>(config.websocket_port);
 
-        auto server_result = foxglove::WebSocketServer::create(std::move(ws_options));
-        if (!server_result.has_value()) {
-            std::cerr << "MCAP Logger: Failed to create WebSocket server: "
-                      << foxglove::strerror(server_result.error()) << std::endl;
+        auto server_res = foxglove::WebSocketServer::create(std::move(ws_options));
+        if (server_res.has_value()) {
+            server = std::move(server_res.value());
+            std::cout << "MCAP Logger: WebSocket server listening on ws://"
+                      << config.websocket_host << ":" << server->port() << std::endl;
         } else {
-            ws_server = std::move(server_result.value());
-            sinks.push_back(ws_server);
-            std::cout << "MCAP Logger: WebSocket server listening on "
-                      << config.websocket_host << ":" << config.websocket_port << std::endl;
-            std::cout << "MCAP Logger: Connect Foxglove to ws://"
-                      << config.websocket_host << ":" << config.websocket_port << std::endl;
+            std::cerr << "MCAP Logger: Failed to start WebSocket server" << std::endl;
         }
     }
 
-    if (sinks.empty()) {
-        std::cerr << "MCAP Logger: No sinks configured, exiting" << std::endl;
+    // 2. Initialize MCAP Writer
+    std::optional<foxglove::McapWriter> writer;
+    if (!config.output_file_path.empty()) {
+        foxglove::McapWriterOptions mcap_options;
+        mcap_options.path = config.output_file_path;
+
+        auto writer_res = foxglove::McapWriter::create(std::move(mcap_options));
+        if (writer_res.has_value()) {
+            writer = std::move(writer_res.value());
+            std::cout << "MCAP Logger: Writing MCAP to " << config.output_file_path << std::endl;
+        } else {
+            std::cerr << "MCAP Logger: Failed to create MCAP writer" << std::endl;
+        }
+    }
+
+    if (!server.has_value() && !writer.has_value()) {
+        std::cerr << "MCAP Logger: No outputs configured, exiting" << std::endl;
         return;
     }
 
-    // Get protobuf schema as FileDescriptorSet
+    // 3. Create Schema and Channel
     std::string schema_data = getProtobufSchema();
 
-    // Create channel for protobuf messages
-    foxglove::ChannelOptions channel_opts;
-    channel_opts.topic = "/vehicle/telemetry";
-    channel_opts.encoding = "protobuf";
-    channel_opts.schema_name = "test.Data";
-    channel_opts.schema = schema_data;
+    foxglove::Schema schema;
+    schema.name = "test.Data";
+    schema.encoding = "protobuf";
+    schema.data = reinterpret_cast<const std::byte*>(schema_data.data());
+    schema.data_len = schema_data.size();
 
-    std::shared_ptr<foxglove::Channel> channel;
-    for (auto& sink : sinks) {
-        auto channel_result = sink->advertise_channel(channel_opts);
-        if (!channel_result.has_value()) {
-            std::cerr << "MCAP Logger: Failed to advertise channel: "
-                      << foxglove::strerror(channel_result.error()) << std::endl;
-            continue;
-        }
-        if (!channel) {
-            channel = std::move(channel_result.value());
-        }
-    }
-
-    if (!channel) {
+    auto channel_res = foxglove::RawChannel::create("/vehicle/telemetry", "protobuf", std::move(schema));
+    if (!channel_res.has_value()) {
         std::cerr << "MCAP Logger: Failed to create channel" << std::endl;
         return;
     }
+    auto channel = std::move(channel_res.value());
 
-    auto sleep_duration = std::chrono::milliseconds(1000 / config.sample_rate);
     std::cout << "MCAP Logger: Started at " << config.sample_rate << "Hz" << std::endl;
+    auto sleep_duration = std::chrono::milliseconds(1000 / config.sample_rate);
 
+    // 4. Main Logging Loop
     while (logger_running.load()) {
         auto start = std::chrono::steady_clock::now();
 
-        // Get latest data from DataManager
         test::Data data = DataManager::getInstance().getLatestData();
 
-        // Serialize protobuf message
         std::string serialized;
         if (data.SerializeToString(&serialized)) {
-            // Get current timestamp in nanoseconds
-            auto now = std::chrono::system_clock::now();
-            auto timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                now.time_since_epoch()).count();
-
-            // Create message
-            foxglove::Message msg;
-            msg.timestamp = static_cast<uint64_t>(timestamp_ns);
-            msg.data = std::vector<uint8_t>(serialized.begin(), serialized.end());
-
-            // Publish to all sinks
-            for (auto& sink : sinks) {
-                auto result = sink->publish_message(channel, msg);
-                if (!result.has_value()) {
-                    std::cerr << "MCAP Logger: Failed to publish message: "
-                              << foxglove::strerror(result.error()) << std::endl;
-                }
-            }
+            channel.log(reinterpret_cast<const std::byte*>(serialized.data()), serialized.size());
         }
 
-        // Sleep for the remainder of the sample period
+        // Sleep to maintain sample rate
         auto elapsed = std::chrono::steady_clock::now() - start;
         auto remaining = sleep_duration - elapsed;
         if (remaining > std::chrono::milliseconds(0)) {
             std::this_thread::sleep_for(remaining);
         }
-    }
-
-    // Cleanup
-    for (auto& sink : sinks) {
-        sink->unadvertise_channel(channel);
     }
 
     std::cout << "MCAP Logger: Stopped" << std::endl;
 }
 
 #else
-// Fallback implementation without Foxglove SDK
+// ---------------------------------------------------------
+// OFFICIAL MCAP WRITER FALLBACK (No WebSocket)
+// ---------------------------------------------------------
 static void fallbackLoggerLoop() {
-    std::cout << "MCAP Logger: Foxglove SDK not available, using fallback implementation" << std::endl;
-    std::cout << "MCAP Logger: To enable Foxglove WebSocket streaming, build with -DUSE_FOXGLOVE_SDK" << std::endl;
+    std::cout << "MCAP Logger: Foxglove SDK not available, using official MCAP writer." << std::endl;
 
-    // Basic implementation without Foxglove SDK
     if (config.output_file_path.empty()) {
-        std::cerr << "MCAP Logger: No output file specified and Foxglove SDK not available" << std::endl;
+        std::cerr << "MCAP Logger: No output file specified." << std::endl;
         return;
     }
 
-    std::ofstream mcap_file(config.output_file_path, std::ios::binary);
-    if (!mcap_file.is_open()) {
-        std::cerr << "MCAP Logger: Failed to open " << config.output_file_path << std::endl;
+    mcap::McapWriter writer;
+    mcap::McapWriterOptions options("");
+
+    auto status = writer.open(config.output_file_path, options);
+    if (!status.ok()) {
+        std::cerr << "MCAP Logger: Failed to open " << config.output_file_path
+                  << " - " << status.message << std::endl;
         return;
     }
 
-    std::cout << "MCAP Logger: Writing to " << config.output_file_path
+    mcap::Schema schema("test.Data", "protobuf", getProtobufSchema());
+    writer.addSchema(schema);
+
+    mcap::Channel channel("/vehicle/telemetry", "protobuf", schema.id);
+    writer.addChannel(channel);
+
+    std::cout << "MCAP Logger: Writing valid MCAP to " << config.output_file_path
               << " at " << config.sample_rate << "Hz" << std::endl;
 
     auto sleep_duration = std::chrono::milliseconds(1000 / config.sample_rate);
+    uint32_t sequence_number = 0;
 
     while (logger_running.load()) {
         auto start = std::chrono::steady_clock::now();
 
-        // Get latest data from DataManager
         test::Data data = DataManager::getInstance().getLatestData();
 
-        // Serialize protobuf directly (simple format, not proper MCAP)
         std::string serialized;
         if (data.SerializeToString(&serialized)) {
-            uint32_t length = serialized.size();
-            mcap_file.write(reinterpret_cast<const char*>(&length), sizeof(length));
-            mcap_file.write(serialized.data(), serialized.size());
+            auto now = std::chrono::system_clock::now();
+            uint64_t timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                now.time_since_epoch()).count();
+
+            mcap::Message msg;
+            msg.channelId = channel.id;
+            msg.sequence = sequence_number++;
+            msg.logTime = timestamp_ns;
+            msg.publishTime = timestamp_ns;
+            msg.data = reinterpret_cast<const std::byte*>(serialized.data());
+            msg.dataSize = serialized.size();
+
+            writer.write(msg);
         }
 
-        // Sleep for the remainder of the sample period
         auto elapsed = std::chrono::steady_clock::now() - start;
         auto remaining = sleep_duration - elapsed;
         if (remaining > std::chrono::milliseconds(0)) {
@@ -245,8 +213,8 @@ static void fallbackLoggerLoop() {
         }
     }
 
-    mcap_file.close();
-    std::cout << "MCAP Logger: Stopped" << std::endl;
+    writer.close();
+    std::cout << "MCAP Logger: Stopped and finalized MCAP file." << std::endl;
 }
 #endif
 
