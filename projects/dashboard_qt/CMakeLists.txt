@@ -66,7 +66,6 @@ set(SOURCES
         "Core/Src/main.cpp"
         "Core/Src/mainwindow.cpp"
         "Core/Src/can_bridge.cpp"
-        "Core/Src/can_processor.cpp"
         "Core/Src/mcap_logger.cpp"
         "Core/Src/data_manager.cpp"
         "Core/Src/uart_handler.cpp"
@@ -77,7 +76,6 @@ set(SOURCES
 set(HEADERS
         "Core/Inc/mainwindow.h"
         "Core/Inc/can_bridge.h"
-        "Core/Inc/can_processor.h"
         "Core/Inc/mcap_logger.h"
         "Core/Inc/data_manager.h"
         "Core/Inc/uart_handler.h"

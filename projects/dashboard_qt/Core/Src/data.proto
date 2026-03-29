@@ -2,18 +2,24 @@ syntax = "proto3";
 
 package test;
 
-message Quaternion {
+message accel {
   float x = 1;
   float y = 2;
   float z = 3;
-  float w = 4;
+}
+
+message gyro {
+  float x = 1;
+  float y = 2;
+  float z = 3;
 }
 
 message ECU {
   float travel = 1;
   float strain_l = 2;
   float strain_r = 3;
-  Quaternion orientation = 4;
+  accel accel = 4;
+  gyro gyro =5;
 }
 
 message GPS {

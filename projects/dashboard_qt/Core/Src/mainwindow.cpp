@@ -3,9 +3,18 @@
 #include "../Inc/uart_handler.h"
 #include "../Inc/data_manager.h"
 #include "../Inc/can_bridge.h"
-#include "../Inc/can_processor.h"
 #include "../Inc/mcap_logger.h"
 #include <QTimer>
+#include <QApplication>
+#include <csignal>
+
+// ── Signal handler — ensures clean shutdown on Ctrl+C ────────────────────────
+// Must be a plain function, not a lambda, for std::signal compatibility
+static void handleSignal(int) {
+    stopMcapLogger();
+    stopCanBridge();
+    QApplication::quit();
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -14,57 +23,58 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Start CAN Bridge and Processor
+    // Register signal handler before starting any threads
+    std::signal(SIGINT,  handleSignal);
+    std::signal(SIGTERM, handleSignal); // also catches kill/systemd stop
+
+    // Start CAN Bridge
     startCanBridge();
-    startCanProcessor();
 
     // Start MCAP Logger with Foxglove WebSocket streaming
-    // Options:
-    // 1. Stream only (no file): startMcapLogger("", 100, true);
-    // 2. File + stream: startMcapLogger("/tmp/dashboard_data.mcap", 100, true);
-    // 3. File only: startMcapLogger("/tmp/dashboard_data.mcap", 100, false);
-    startMcapLogger("/tmp/dashboard_data.mcap", 100, true, "0.0.0.0", 8765);
+
+    // Generate timestamped filename
+    auto now = std::chrono::system_clock::now();
+    auto t   = std::chrono::system_clock::to_time_t(now);
+    char filename[128];
+    std::strftime(filename, sizeof(filename),
+                  "/home/ubcbaja/firmware/logs/foxglove/%Y%m%d_%H%M%S.mcap",
+                  std::localtime(&t));
+
+    startMcapLogger(filename, 100, true, "0.0.0.0", 8765);
 
     // UART Handler for steering wheel
     auto *uart = new UARTHandler(this);
-    connect(uart, &UARTHandler::modeChanged, this, [this](QString mode){
+    connect(uart, &UARTHandler::modeChanged, this, [this](QString mode) {
         ui->suspensionModeLabel->setText(mode);
     });
     uart->connectPort("/dev/ttyAMA0");
 
-    // Setup update timer (30Hz for smooth UI)
+    // Setup update timer (~30Hz)
     connect(updateTimer, &QTimer::timeout, this, &MainWindow::updateDisplay);
-    updateTimer->start(33); // ~30Hz (33ms interval)
+    updateTimer->start(33);
 }
 
 MainWindow::~MainWindow()
 {
-    // Stop all threads
-    stopCanProcessor();
+    // Normal shutdown path (window closed via UI)
     stopCanBridge();
     stopMcapLogger();
-
     delete ui;
 }
 
 void MainWindow::updateDisplay() {
-    // Get latest data from DataManager
     test::Data data = DataManager::getInstance().getLatestData();
 
-    // Update dashboard sensors
     ui->tach_value->setText(QString::number(data.tach()));
 
-    // Add more UI updates as you create the widgets in Qt Designer:
     // ui->speedo_value->setText(QString::number(data.speedo()));
     // ui->temp_value->setText(QString::number(data.temp()));
     // ui->fuel_value->setText(QString::number(data.fuel()));
 
-    // ECU data (example for front left)
     // ui->fl_travel_value->setText(QString::number(data.ecu_fl().travel()));
     // ui->fl_strain_l_value->setText(QString::number(data.ecu_fl().strain_l()));
     // ui->fl_strain_r_value->setText(QString::number(data.ecu_fl().strain_r()));
 
-    // GPS data
     // if (data.location().has_fix()) {
     //     ui->gps_lat->setText(QString::number(data.location().latitude(), 'f', 6));
     //     ui->gps_lon->setText(QString::number(data.location().longitude(), 'f', 6));

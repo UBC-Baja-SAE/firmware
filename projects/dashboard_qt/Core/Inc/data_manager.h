@@ -20,10 +20,10 @@ public:
     void setFuel(uint32_t fuel);
 
     enum EcuPosition {
-        FRONT_LEFT = 0,
+        FRONT_LEFT  = 0,
         FRONT_RIGHT = 1,
-        REAR_LEFT = 2,
-        REAR_RIGHT = 3
+        REAR_LEFT   = 2,
+        REAR_RIGHT  = 3
     };
 
     // ECU sensors
@@ -32,14 +32,16 @@ public:
     void setEcuAccel(EcuPosition pos, float x, float y, float z);
     void setEcuGyro(EcuPosition pos, float x, float y, float z);
 
-    // GPS data
+    // GPS
     void setGps(float latitude, float longitude, float speed, bool has_fix);
 
 private:
-    DataManager() {}
+    DataManager() = default;
 
-    test::Data masterData_;
-    std::mutex dataMutex_;
+    static test::ECU* getEcu(test::Data& data, EcuPosition pos);
+
+    test::Data  masterData_;
+    std::mutex  dataMutex_;
 };
 
 #endif //DASHBOARD_QT_DATA_MANAGER_H

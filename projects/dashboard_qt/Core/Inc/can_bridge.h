@@ -2,33 +2,32 @@
 #define DASHBOARD_QT_CAN_BRIDGE_H
 
 #include <stdint.h>
-#include <atomic>
 
-// Array to store the last received data for each CAN ID (up to 2048 IDs)
+// Mirror of the last received payload for each CAN ID (legacy UI support)
 extern volatile uint64_t observed_data[2048];
 
 /**
- * @brief Observes the last received CAN message with the given id and converts it to the appropriate type.
- * @param id    the id of the CAN message to observe.
- * @return the data received from the CAN message as a double.
- */
-double getData(int id);
-
-/**
- * @brief Starts the CAN reader thread (SocketCAN or UART).
+ * @brief Starts the CAN reader thread on can0, falling back to vcan0.
+ *        Dispatches frames to DataManager for:
+ *          - Powertrain  (tach, speed, temp, fuel)
+ *          - Suspension  (travel per corner)
+ *          - Strain      (strain_l, strain_r per corner)
+ *          - IMU accel   (x, y, z per corner)
+ *          - IMU gyro    (x, y, z per corner)
+ *          - GPS         (latitude, longitude, speed, fix)
  */
 void startCanBridge();
 
 /**
- * @brief Stops the CAN reader thread.
+ * @brief Stops the CAN reader thread and joins it.
  */
 void stopCanBridge();
 
 /**
- * @brief Manually inject a CAN frame (for testing).
- * @param can_id The CAN ID
- * @param data Pointer to the data bytes
- * @param len Length of data
+ * @brief Injects a CAN frame manually (for testing/simulation).
+ * @param can_id  CAN ID (0–2047)
+ * @param data    Pointer to frame payload
+ * @param len     Payload length in bytes (clamped to 8)
  */
 void injectCanFrame(int can_id, uint8_t* data, int len);
 

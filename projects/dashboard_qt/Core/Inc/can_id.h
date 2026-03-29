@@ -55,11 +55,4 @@ static const int rr_suspension =    0x132;
 static const int rr_strain_l_id =   0x133;
 static const int rr_strain_r_id =   0x134;
 
-/*
- * @brief The PI signal ids
- */
-static const int pi_imu_accel_id =  0x180;
-static const int pi_imu_gyro_id =   0x181;
-
-
 #endif // CAN_ID_H

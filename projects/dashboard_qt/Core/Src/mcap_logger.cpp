@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <optional>
+#include <filesystem>
 #include <google/protobuf/descriptor.pb.h>
 
 #ifdef USE_FOXGLOVE_SDK
@@ -31,9 +32,8 @@ struct LoggerConfig {
 
 static LoggerConfig config;
 
-/**
- * @brief Generate protobuf FileDescriptorSet for the Data message.
- */
+// ─── Protobuf Schema ──────────────────────────────────────────────────────────
+
 static std::string getProtobufSchema() {
     const google::protobuf::Descriptor* descriptor = test::Data::descriptor();
     if (!descriptor) {
@@ -66,11 +66,10 @@ static std::string getProtobufSchema() {
 }
 
 #ifdef USE_FOXGLOVE_SDK
-// ---------------------------------------------------------
-// MODERN FOXGLOVE SDK IMPLEMENTATION (v0.18.0+)
-// ---------------------------------------------------------
+// ─── Foxglove SDK Implementation ─────────────────────────────────────────────
+
 static void foxgloveLoggerLoop() {
-    std::cout << "MCAP Logger: Initializing modern Foxglove SDK..." << std::endl;
+    std::cout << "MCAP Logger: Initializing Foxglove SDK..." << std::endl;
 
     // 1. Initialize WebSocket Server
     std::optional<foxglove::WebSocketServer> server;
@@ -92,15 +91,27 @@ static void foxgloveLoggerLoop() {
     // 2. Initialize MCAP Writer
     std::optional<foxglove::McapWriter> writer;
     if (!config.output_file_path.empty()) {
-        foxglove::McapWriterOptions mcap_options;
-        mcap_options.path = config.output_file_path;
 
-        auto writer_res = foxglove::McapWriter::create(std::move(mcap_options));
-        if (writer_res.has_value()) {
-            writer = std::move(writer_res.value());
-            std::cout << "MCAP Logger: Writing MCAP to " << config.output_file_path << std::endl;
+        // Create output directory if it doesn't exist
+        std::filesystem::path file_path(config.output_file_path);
+        std::error_code ec;
+        std::filesystem::create_directories(file_path.parent_path(), ec);
+        if (ec) {
+            std::cerr << "MCAP Logger: Failed to create directory '"
+                      << file_path.parent_path() << "': " << ec.message() << std::endl;
         } else {
-            std::cerr << "MCAP Logger: Failed to create MCAP writer" << std::endl;
+            foxglove::McapWriterOptions mcap_options;
+            mcap_options.path = config.output_file_path;
+
+            auto writer_res = foxglove::McapWriter::create(std::move(mcap_options));
+            if (writer_res.has_value()) {
+                writer = std::move(writer_res.value());
+                std::cout << "MCAP Logger: Writing MCAP to " << config.output_file_path << std::endl;
+            } else {
+                std::cerr << "MCAP Logger: Failed to create MCAP writer at '"
+                          << config.output_file_path << "' (error code: "
+                          << static_cast<int>(writer_res.error()) << ")" << std::endl;
+            }
         }
     }
 
@@ -113,9 +124,9 @@ static void foxgloveLoggerLoop() {
     std::string schema_data = getProtobufSchema();
 
     foxglove::Schema schema;
-    schema.name = "test.Data";
+    schema.name     = "test.Data";
     schema.encoding = "protobuf";
-    schema.data = reinterpret_cast<const std::byte*>(schema_data.data());
+    schema.data     = reinterpret_cast<const std::byte*>(schema_data.data());
     schema.data_len = schema_data.size();
 
     auto channel_res = foxglove::RawChannel::create("/vehicle/telemetry", "protobuf", std::move(schema));
@@ -139,26 +150,43 @@ static void foxgloveLoggerLoop() {
             channel.log(reinterpret_cast<const std::byte*>(serialized.data()), serialized.size());
         }
 
-        // Sleep to maintain sample rate
-        auto elapsed = std::chrono::steady_clock::now() - start;
+        auto elapsed   = std::chrono::steady_clock::now() - start;
         auto remaining = sleep_duration - elapsed;
         if (remaining > std::chrono::milliseconds(0)) {
             std::this_thread::sleep_for(remaining);
         }
     }
 
+    // 5. Finalize outputs
+    if (writer.has_value()) {
+        writer->close();
+        std::cout << "MCAP Logger: File finalized at " << config.output_file_path << std::endl;
+    }
+    if (server.has_value()) {
+        server->stop();
+    }
+
     std::cout << "MCAP Logger: Stopped" << std::endl;
 }
 
 #else
-// ---------------------------------------------------------
-// OFFICIAL MCAP WRITER FALLBACK (No WebSocket)
-// ---------------------------------------------------------
+// ─── Fallback MCAP Writer (no WebSocket) ─────────────────────────────────────
+
 static void fallbackLoggerLoop() {
-    std::cout << "MCAP Logger: Foxglove SDK not available, using official MCAP writer." << std::endl;
+    std::cout << "MCAP Logger: Foxglove SDK not available, using fallback MCAP writer." << std::endl;
 
     if (config.output_file_path.empty()) {
         std::cerr << "MCAP Logger: No output file specified." << std::endl;
+        return;
+    }
+
+    // Create output directory if it doesn't exist
+    std::filesystem::path file_path(config.output_file_path);
+    std::error_code ec;
+    std::filesystem::create_directories(file_path.parent_path(), ec);
+    if (ec) {
+        std::cerr << "MCAP Logger: Failed to create directory '"
+                  << file_path.parent_path() << "': " << ec.message() << std::endl;
         return;
     }
 
@@ -167,8 +195,8 @@ static void fallbackLoggerLoop() {
 
     auto status = writer.open(config.output_file_path, options);
     if (!status.ok()) {
-        std::cerr << "MCAP Logger: Failed to open " << config.output_file_path
-                  << " - " << status.message << std::endl;
+        std::cerr << "MCAP Logger: Failed to open '" << config.output_file_path
+                  << "': " << status.message << std::endl;
         return;
     }
 
@@ -178,11 +206,11 @@ static void fallbackLoggerLoop() {
     mcap::Channel channel("/vehicle/telemetry", "protobuf", schema.id);
     writer.addChannel(channel);
 
-    std::cout << "MCAP Logger: Writing valid MCAP to " << config.output_file_path
+    std::cout << "MCAP Logger: Writing MCAP to " << config.output_file_path
               << " at " << config.sample_rate << "Hz" << std::endl;
 
-    auto sleep_duration = std::chrono::milliseconds(1000 / config.sample_rate);
-    uint32_t sequence_number = 0;
+    auto sleep_duration  = std::chrono::milliseconds(1000 / config.sample_rate);
+    uint32_t sequence_no = 0;
 
     while (logger_running.load()) {
         auto start = std::chrono::steady_clock::now();
@@ -191,22 +219,22 @@ static void fallbackLoggerLoop() {
 
         std::string serialized;
         if (data.SerializeToString(&serialized)) {
-            auto now = std::chrono::system_clock::now();
+            auto     now          = std::chrono::system_clock::now();
             uint64_t timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                now.time_since_epoch()).count();
+                                        now.time_since_epoch()).count();
 
             mcap::Message msg;
-            msg.channelId = channel.id;
-            msg.sequence = sequence_number++;
-            msg.logTime = timestamp_ns;
+            msg.channelId  = channel.id;
+            msg.sequence   = sequence_no++;
+            msg.logTime    = timestamp_ns;
             msg.publishTime = timestamp_ns;
-            msg.data = reinterpret_cast<const std::byte*>(serialized.data());
-            msg.dataSize = serialized.size();
+            msg.data       = reinterpret_cast<const std::byte*>(serialized.data());
+            msg.dataSize   = serialized.size();
 
             writer.write(msg);
         }
 
-        auto elapsed = std::chrono::steady_clock::now() - start;
+        auto elapsed   = std::chrono::steady_clock::now() - start;
         auto remaining = sleep_duration - elapsed;
         if (remaining > std::chrono::milliseconds(0)) {
             std::this_thread::sleep_for(remaining);
@@ -214,25 +242,27 @@ static void fallbackLoggerLoop() {
     }
 
     writer.close();
-    std::cout << "MCAP Logger: Stopped and finalized MCAP file." << std::endl;
+    std::cout << "MCAP Logger: Stopped and finalized " << config.output_file_path << std::endl;
 }
 #endif
 
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 void startMcapLogger(const std::string& output_path,
-                    int sample_rate_hz,
-                    bool enable_websocket,
-                    const std::string& websocket_host,
-                    int websocket_port) {
+                     int sample_rate_hz,
+                     bool enable_websocket,
+                     const std::string& websocket_host,
+                     int websocket_port) {
     if (logger_running.load()) {
         std::cerr << "MCAP Logger: Already running" << std::endl;
         return;
     }
 
     config.output_file_path = output_path;
-    config.sample_rate = sample_rate_hz;
+    config.sample_rate      = sample_rate_hz;
     config.enable_websocket = enable_websocket;
-    config.websocket_host = websocket_host;
-    config.websocket_port = websocket_port;
+    config.websocket_host   = websocket_host;
+    config.websocket_port   = websocket_port;
 
     logger_running.store(true);
 
