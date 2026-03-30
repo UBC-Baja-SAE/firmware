@@ -1,9 +1,10 @@
-#include "../Inc/mainwindow.h"
 #include "ui_mainwindow.h"
+#include "../Inc/mainwindow.h"
 #include "../Inc/uart_handler.h"
 #include "../Inc/data_manager.h"
 #include "../Inc/can_bridge.h"
 #include "../Inc/mcap_logger.h"
+#include "../Inc/nrf24_handler.h"
 #include <QTimer>
 #include <QApplication>
 #include <csignal>
@@ -14,6 +15,8 @@ static void handleSignal(int) {
     stopMcapLogger();
     stopCanBridge();
     QApplication::quit();
+    stopNrf24();
+
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -30,6 +33,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Start CAN Bridge
     startCanBridge();
 
+    startNrf24();
+
     // Start MCAP Logger with Foxglove WebSocket streaming
 
     // Generate timestamped filename
@@ -40,7 +45,12 @@ MainWindow::MainWindow(QWidget *parent)
                   "/home/ubcbaja/firmware/logs/foxglove/%Y%m%d_%H%M%S.mcap",
                   std::localtime(&t));
 
-    startMcapLogger(filename, 100, true, "0.0.0.0", 8765);
+    // File and Websocket
+    // startMcapLogger(filename, 100, true, "0.0.0.0", 8765);
+
+    // File only, no websocket
+    startMcapLogger("/home/ubcbaja/firmware/logs/foxglove/dashboard_data.mcap",
+                    100, false, "", 0);
 
     // UART Handler for steering wheel
     auto *uart = new UARTHandler(this);
@@ -59,6 +69,7 @@ MainWindow::~MainWindow()
     // Normal shutdown path (window closed via UI)
     stopCanBridge();
     stopMcapLogger();
+    stopNrf24();
     delete ui;
 }
 
@@ -81,3 +92,5 @@ void MainWindow::updateDisplay() {
     //     ui->gps_speed->setText(QString::number(data.location().gps_speed()));
     // }
 }
+
+

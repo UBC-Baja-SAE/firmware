@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package test;
+
+message accel {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message gyro {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message ECU {
+  float travel = 1;
+  float strain_l = 2;
+  float strain_r = 3;
+  accel accel = 4;
+  gyro gyro =5;
+}
+
+message GPS {
+  float latitude = 1;
+  float longitude = 2;
+  float gps_speed = 3;
+  bool has_fix = 4;
+}
+
+message Data {
+  ECU ecu_fl = 1;
+  ECU ecu_fr = 2;
+  ECU ecu_rl = 3;
+  ECU ecu_rr = 4;
+  uint32 tach = 5;
+  uint32 speedo = 6;
+  uint32 temp = 7;
+  uint32 fuel = 8;
+  GPS location = 9;
+}

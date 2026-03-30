@@ -53,227 +53,11 @@ QLabel {
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QLabel" name="current_time_value">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>30</y>
-      <width>250</width>
-      <height>60</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>36</pointsize>
-      <kerning>false</kerning>
-     </font>
-    </property>
-    <property name="text">
-     <string>88:88</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
-    </property>
-    <property name="indent">
-     <number>7</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="current_time_label">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>90</y>
-      <width>200</width>
-      <height>30</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>16</pointsize>
-      <kerning>false</kerning>
-     </font>
-    </property>
-    <property name="text">
-     <string>Current Time</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
-    </property>
-    <property name="indent">
-     <number>7</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="lap_time_value">
-    <property name="geometry">
-     <rect>
-      <x>250</x>
-      <y>30</y>
-      <width>250</width>
-      <height>60</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>36</pointsize>
-      <kerning>false</kerning>
-     </font>
-    </property>
-    <property name="text">
-     <string>88:88</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
-    </property>
-    <property name="indent">
-     <number>7</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="lap_time_label">
-    <property name="geometry">
-     <rect>
-      <x>250</x>
-      <y>90</y>
-      <width>200</width>
-      <height>30</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>16</pointsize>
-      <kerning>false</kerning>
-     </font>
-    </property>
-    <property name="text">
-     <string>Lap Time</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
-    </property>
-    <property name="indent">
-     <number>7</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="speedo_value">
-    <property name="geometry">
-     <rect>
-      <x>534</x>
-      <y>90</y>
-      <width>161</width>
-      <height>80</height>
-     </rect>
-    </property>
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>55</pointsize>
-      <bold>false</bold>
-      <kerning>true</kerning>
-     </font>
-    </property>
-    <property name="autoFillBackground">
-     <bool>false</bool>
-    </property>
-    <property name="text">
-     <string>20</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-    </property>
-    <property name="wordWrap">
-     <bool>true</bool>
-    </property>
-    <property name="margin">
-     <number>0</number>
-    </property>
-    <property name="indent">
-     <number>0</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="speedo_units">
-    <property name="geometry">
-     <rect>
-      <x>700</x>
-      <y>90</y>
-      <width>80</width>
-      <height>41</height>
-     </rect>
-    </property>
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>80</width>
-      <height>0</height>
-     </size>
-    </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>16</pointsize>
-      <bold>false</bold>
-      <kerning>false</kerning>
-     </font>
-    </property>
-    <property name="acceptDrops">
-     <bool>false</bool>
-    </property>
-    <property name="autoFillBackground">
-     <bool>false</bool>
-    </property>
-    <property name="text">
-     <string>km/h</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-    </property>
-    <property name="wordWrap">
-     <bool>false</bool>
-    </property>
-    <property name="margin">
-     <number>0</number>
-    </property>
-    <property name="indent">
-     <number>10</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label">
-    <property name="geometry">
-     <rect>
-      <x>390</x>
-      <y>260</y>
-      <width>500</width>
-      <height>175</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="pixmap">
-     <pixmap resource="../../Resources/resources.qrc">:/Images/tach.png</pixmap>
-    </property>
-    <property name="scaledContents">
-     <bool>false</bool>
-    </property>
-   </widget>
    <widget class="QLabel" name="tach_value">
     <property name="geometry">
      <rect>
-      <x>560</x>
-      <y>350</y>
+      <x>1010</x>
+      <y>380</y>
       <width>251</width>
       <height>80</height>
      </rect>
@@ -311,81 +95,11 @@ QLabel {
      <number>0</number>
     </property>
    </widget>
-   <widget class="QLabel" name="tach_units">
-    <property name="geometry">
-     <rect>
-      <x>810</x>
-      <y>350</y>
-      <width>121</width>
-      <height>41</height>
-     </rect>
-    </property>
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>80</width>
-      <height>0</height>
-     </size>
-    </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>16</pointsize>
-      <bold>false</bold>
-      <kerning>false</kerning>
-     </font>
-    </property>
-    <property name="acceptDrops">
-     <bool>false</bool>
-    </property>
-    <property name="autoFillBackground">
-     <bool>false</bool>
-    </property>
-    <property name="text">
-     <string>rpm</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-    </property>
-    <property name="wordWrap">
-     <bool>false</bool>
-    </property>
-    <property name="margin">
-     <number>0</number>
-    </property>
-    <property name="indent">
-     <number>10</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="suspensionModeLabel_2">
-    <property name="geometry">
-     <rect>
-      <x>22</x>
-      <y>140</y>
-      <width>191</width>
-      <height>30</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>18</pointsize>
-     </font>
-    </property>
-    <property name="text">
-     <string>Suspension Mode:</string>
-    </property>
-   </widget>
    <widget class="QLabel" name="suspensionModeLabel">
     <property name="geometry">
      <rect>
-      <x>210</x>
-      <y>140</y>
+      <x>1080</x>
+      <y>370</y>
       <width>191</width>
       <height>30</height>
      </rect>
@@ -403,13 +117,16 @@ QLabel {
    <widget class="QWidget" name="widget" native="true">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>210</y>
-      <width>250</width>
-      <height>250</height>
+      <x>40</x>
+      <y>40</y>
+      <width>1200</width>
+      <height>400</height>
      </rect>
     </property>
    </widget>
+   <zorder>widget</zorder>
+   <zorder>tach_value</zorder>
+   <zorder>suspensionModeLabel</zorder>
   </widget>
  </widget>
  <resources>

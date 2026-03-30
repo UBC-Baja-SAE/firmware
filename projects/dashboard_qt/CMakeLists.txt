@@ -71,6 +71,7 @@ set(SOURCES
         "Core/Src/uart_handler.cpp"
         "Resources/resources.qrc"
         ${FOXGLOVE_SOURCES}
+        Core/Src/nrf24_handler.cpp
 )
 
 set(HEADERS
@@ -80,6 +81,7 @@ set(HEADERS
         "Core/Inc/data_manager.h"
         "Core/Inc/uart_handler.h"
         "Core/Src/mainwindow.ui"
+        Core/Inc/nrf24_handler.h
 )
 
 # --- 4. Build Executable ---
