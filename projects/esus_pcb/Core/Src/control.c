@@ -35,6 +35,16 @@ volatile HAL_StatusTypeDef a_debug_i2c_status = HAL_OK;
 volatile uint32_t a_debug_can_tx_errors = 0;
 volatile uint32_t a_debug_i2c_recoveries = 0;
 
+const StepperSetting_t suspension_profiles[4] = {
+    {0,    0},     // Setting 0: Full Soft / Home
+    {450,  600},   // Setting 1: Profile 1 (N17 moves 450, N23 moves 600)
+    {1200, 300},   // Setting 2: Profile 2
+    {2000, 1800}   // Setting 3: Full Hard / Max Extension
+};
+
+volatile int32_t nema17_current_pos = 0;
+volatile int32_t nema23_current_pos = 0;
+
 /**
  * @brief Non-fatal CAN transmit - logs error but continues operation
  * @param id CAN message ID
@@ -376,13 +386,22 @@ void Motors_Init(void) {
   HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET);
   HAL_Delay(5);
 
-  // Initialize NEMA 17 settings
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL2, 0x06); // 1/16 step
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x07); // Smart Tune
+  // // Initialize NEMA 17 settings
+  // DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL2, 0x06); // 1/16 step
+  // DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x07); // Smart Tune
 
-  // Initialize NEMA 23 settings
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL2, 0x06);
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x07);
+  // // Initialize NEMA 23 settings
+  // DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL2, 0x06);
+  // DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x07);
+  // 2. SPI ENABLE COMMANDS
+    // CTRL1 (0x04): Set EN_OUT = 1 (Bit 7) and Smart Tune (Bits 2:0 = 111)
+    // Hex value: 0x87 (Binary 1000 0111)
+    DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x87); 
+    DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x87);
+
+    // CTRL2 (0x05): Set Microstepping (e.g., 1/16 is 0x06)
+    DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL2, 0x06);
+    DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL2, 0x06);
 }
 
 void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps) {
@@ -398,7 +417,7 @@ void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps) {
   }
 
   HAL_GPIO_WritePin(dir_port, dir_pin, direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
-  for(volatile int i=0; i<200; i++); 
+ for(volatile int i=0; i<200; i++);
 
   for(uint32_t i = 0; i < steps; i++) {
     HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_SET);
@@ -408,31 +427,84 @@ void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps) {
   }
 }
 
-void Motor_Calibrate(MotorID_t motor) {
-  GPIO_TypeDef* step_port;  uint16_t step_pin;
-  GPIO_TypeDef* dir_port;   uint16_t dir_pin;
+void Motors_Step_Simultaneous(int32_t move17, int32_t move23) {
+    // Determine Directions
+    uint8_t dir17 = (move17 > 0);
+    uint8_t dir23 = (move23 > 0);
+    
+    // Convert to absolute steps
+    uint32_t steps17 = (move17 > 0) ? move17 : -move17;
+    uint32_t steps23 = (move23 > 0) ? move23 : -move23;
 
-  if (motor == MOTOR_NEMA17) {
-    step_port = N17_STEP_PORT; step_pin = N17_STEP_PIN;
-    dir_port = N17_DIR_PORT;   dir_pin = N17_DIR_PIN;
-  } else {
-    step_port = N23_STEP_PORT; step_pin = N23_STEP_PIN;
-    dir_port = N23_DIR_PORT;   dir_pin = N23_DIR_PIN;
-  }
-  
-  HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_RESET); // Move in negative direction
+    // Set Direction pins
+    HAL_GPIO_WritePin(N17_DIR_PORT, N17_DIR_PIN, dir17 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(N23_DIR_PORT, N23_DIR_PIN, dir23 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    
+    // Setup delay
+    for(volatile int i=0; i<200; i++); 
 
-  for (volatile int i=0; i<200; i++); // Short delay before starting
+    // Combined Step Loop
+    // Find the maximum number of steps required
+    uint32_t max_steps = (steps17 > steps23) ? steps17 : steps23;
 
-  // step back a large amount
-  for (uint32_t i = 0; i < 3000; i++) {
-    HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_SET);
-    HAL_Delay(2);
-    HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_RESET);
-    HAL_Delay(2);
-  }
+    for (uint32_t i = 0; i < max_steps; i++) {
+        // Pulse HIGH for any motor that hasn't finished its steps yet
+        if (i < steps17) HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_SET);
+        if (i < steps23) HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_SET);
+        
+        HAL_Delay(1); // pulse width
 
-  DRV8461_Transfer(motor, DRV_REG_CTRL1, 0x20);
+        // Pulse LOW
+        if (i < steps17) HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_RESET);
+        if (i < steps23) HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_RESET);
+        
+        HAL_Delay(1); // inter-pulse delay
+    }
+}
+
+void Motor_GoTo_Setting(uint8_t setting_id) {
+    if (setting_id > 3) return;
+
+    StepperSetting_t target = suspension_profiles[setting_id];
+
+    // Calculate displacement for both
+    int32_t diff17 = target.nema17_target - nema17_current_pos;
+    int32_t diff23 = target.nema23_target - nema23_current_pos;
+
+    // If either needs to move, move them together
+    if (diff17 != 0 || diff23 != 0) {
+        Motors_Step_Simultaneous(diff17, diff23);
+        
+        // Update trackers to the final profile targets
+        nema17_current_pos = target.nema17_target;
+        nema23_current_pos = target.nema23_target;
+    }
+}
+
+void Motor_Calibrate_All(void) {
+    // Force both directions to backward
+    HAL_GPIO_WritePin(N17_DIR_PORT, N17_DIR_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(N23_DIR_PORT, N23_DIR_PIN, GPIO_PIN_RESET);
+    
+    HAL_Delay(1);
+
+    // Blind home both together
+    for (uint32_t i = 0; i < 3000; i++) {
+        HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_SET);
+        HAL_Delay(2);
+        HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_RESET);
+        HAL_Delay(2);
+    }
+
+    // Reset trackers
+    nema17_current_pos = 0;
+    nema23_current_pos = 0;
+
+    // Reset Indexers via SPI
+    DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0xA7);
+    DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0xA7);
 }
 
 /**
