@@ -24,7 +24,7 @@
 #define NRF_REG_SETUP_AW    0x03
 #define NRF_REG_SETUP_RETR  0x04
 #define NRF_REG_RF_CH       0x05
-#define NRF_REG_RF_SETUP    0x06
+#define NRF_REG_RF_SETUP    0x0E
 #define NRF_REG_STATUS      0x07
 #define NRF_REG_RX_ADDR_P0  0x0A
 #define NRF_REG_TX_ADDR     0x10
@@ -225,7 +225,7 @@ static bool nrfInit() {
     nrfWriteRegister(NRF_REG_SETUP_AW,   0x03); // 5-byte address
     nrfWriteRegister(NRF_REG_SETUP_RETR, 0x00); // No retransmit
     nrfWriteRegister(NRF_REG_RF_CH,      NRF_CHANNEL);
-    nrfWriteRegister(NRF_REG_RF_SETUP,   0x06); // 2Mbps, low power (avoids brownout)
+    nrfWriteRegister(NRF_REG_RF_SETUP,   0x0E); // 2Mbps, low power (avoids brownout)
     nrfWriteRegisterMulti(NRF_REG_RX_ADDR_P0, PIPE_ADDRESS, 5);
     nrfWriteRegisterMulti(NRF_REG_TX_ADDR,    PIPE_ADDRESS, 5);
     nrfWriteRegister(NRF_REG_RX_PW_P0,  NRF_PAYLOAD_SIZE);
