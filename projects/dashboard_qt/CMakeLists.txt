@@ -108,6 +108,7 @@ target_link_libraries(dashboard_qt
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::SerialPort
         mcap
+        gpiod
         protobuf::libprotobuf
         PkgConfig::LZ4
         PkgConfig::ZSTD

@@ -48,9 +48,7 @@ MainWindow::MainWindow(QWidget *parent)
     // File and Websocket
     // startMcapLogger(filename, 100, true, "0.0.0.0", 8765);
 
-    // File only, no websocket
-    startMcapLogger("/home/ubcbaja/firmware/logs/foxglove/dashboard_data.mcap",
-                    100, false, "", 0);
+startMcapLogger(filename, 100, false, "", 0);
 
     // UART Handler for steering wheel
     auto *uart = new UARTHandler(this);

@@ -24,7 +24,7 @@
 #define NRF_REG_SETUP_AW    0x03
 #define NRF_REG_SETUP_RETR  0x04
 #define NRF_REG_RF_CH       0x05
-#define NRF_REG_RF_SETUP    0x06  // ← was 0x20 (wrong — that's NRF_CMD_W_REGISTER)
+#define NRF_REG_RF_SETUP    0x06
 #define NRF_REG_STATUS      0x07
 #define NRF_REG_RX_ADDR_P0  0x0A
 #define NRF_REG_TX_ADDR     0x10
@@ -47,9 +47,10 @@
 #define NRF_STATUS_TX_DS    0x20
 #define NRF_STATUS_MAX_RT   0x10
 
+// Config
 #define NRF_PAYLOAD_SIZE  32
 #define NRF_CHANNEL       76
-#define NRF_SPI_DEVICE    "/dev/spidev0.0"
+#define NRF_SPI_DEVICE    "/dev/spidev0.1"
 #define NRF_SPI_SPEED_HZ  8000000
 
 static const uint8_t PIPE_ADDRESS[5] = { 0xE7, 0xE7, 0xE7, 0xE7, 0xE7 };
@@ -60,6 +61,7 @@ static int               spi_fd = -1;
 static std::mutex        spi_mutex;
 static std::atomic<bool> nrf_running(false);
 static std::thread       nrf_thread;
+static std::thread       nrf_tx_thread;
 
 // ─── SPI Helpers ─────────────────────────────────────────────────────────────
 
@@ -121,7 +123,7 @@ static void nrfFlushTx() {
 // ─── CE GPIO (libgpiod v2) ────────────────────────────────────────────────────
 
 #define NRF_CE_GPIO_CHIP "/dev/gpiochip0"
-#define NRF_CE_GPIO_LINE  22  // ← update to pit Pi CE GPIO
+#define NRF_CE_GPIO_LINE  22  // ← update to your actual CE GPIO
 
 static struct gpiod_chip*         ce_chip    = nullptr;
 static struct gpiod_line_request* ce_request = nullptr;
@@ -152,7 +154,7 @@ static bool ceInit() {
         gpiod_line_settings_free(settings);
         return false;
     }
-    gpiod_request_config_set_consumer(req_cfg, "nrf24_ce_pit");
+    gpiod_request_config_set_consumer(req_cfg, "nrf24_ce");
 
     ce_request = gpiod_chip_request_lines(ce_chip, req_cfg, line_cfg);
 
@@ -193,6 +195,7 @@ static bool nrfInit() {
     if (!ceInit()) return false;
     ceLow();
 
+    // Open SPI device
     spi_fd = open(NRF_SPI_DEVICE, O_RDWR);
     if (spi_fd < 0) {
         perror("NRF24: Failed to open SPI device");
@@ -216,38 +219,39 @@ static bool nrfInit() {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-    nrfWriteRegister(NRF_REG_EN_AA,      0x00);
-    nrfWriteRegister(NRF_REG_EN_RXADDR,  0x01);
-    nrfWriteRegister(NRF_REG_SETUP_AW,   0x03);
-    nrfWriteRegister(NRF_REG_SETUP_RETR, 0x00);
+    // Configure NRF24
+    nrfWriteRegister(NRF_REG_EN_AA,      0x00); // No auto-ack
+    nrfWriteRegister(NRF_REG_EN_RXADDR,  0x01); // Pipe 0 RX enabled
+    nrfWriteRegister(NRF_REG_SETUP_AW,   0x03); // 5-byte address
+    nrfWriteRegister(NRF_REG_SETUP_RETR, 0x00); // No retransmit
     nrfWriteRegister(NRF_REG_RF_CH,      NRF_CHANNEL);
-    nrfWriteRegister(NRF_REG_RF_SETUP,   0x06); // 2Mbps, low power — matches car side
+    nrfWriteRegister(NRF_REG_RF_SETUP,   0x06); // 2Mbps, low power (avoids brownout)
     nrfWriteRegisterMulti(NRF_REG_RX_ADDR_P0, PIPE_ADDRESS, 5);
     nrfWriteRegisterMulti(NRF_REG_TX_ADDR,    PIPE_ADDRESS, 5);
     nrfWriteRegister(NRF_REG_RX_PW_P0,  NRF_PAYLOAD_SIZE);
     nrfWriteRegister(NRF_REG_DYNPD,     0x00);
     nrfWriteRegister(NRF_REG_FEATURE,   0x00);
 
+    // Clear interrupts and flush FIFOs
     nrfWriteRegister(NRF_REG_STATUS,
                      NRF_STATUS_RX_DR | NRF_STATUS_TX_DS | NRF_STATUS_MAX_RT);
     nrfFlushRx();
     nrfFlushTx();
 
-    nrfWriteRegister(NRF_REG_CONFIG, 0x0B); // PRX, PWR_UP, CRC
+    // Power up in RX mode
+    nrfWriteRegister(NRF_REG_CONFIG, 0x0B);
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
+    // Diagnostic
     printf("NRF24 DIAG: CONFIG=0x%02X RF_CH=0x%02X RF_SETUP=0x%02X STATUS=0x%02X\n",
            nrfReadRegister(NRF_REG_CONFIG),
            nrfReadRegister(NRF_REG_RF_CH),
            nrfReadRegister(NRF_REG_RF_SETUP),
            nrfGetStatus());
-    uint8_t addr_tx[6] = { NRF_REG_RX_ADDR_P0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-    uint8_t addr_rx[6] = {};
-    spiTransfer(addr_tx, addr_rx, 6);
-    printf("NRF24 DIAG: RX_ADDR_P0=%02X:%02X:%02X:%02X:%02X\n",
-           addr_rx[1], addr_rx[2], addr_rx[3], addr_rx[4], addr_rx[5]);
 
-    ceHigh(); // enter RX mode
+    // CE high — enter RX mode
+    ceHigh();
+
     printf("NRF24: Initialized on %s, channel %d, CE=GPIO%d\n",
            NRF_SPI_DEVICE, NRF_CHANNEL, NRF_CE_GPIO_LINE);
     return true;
@@ -256,8 +260,6 @@ static bool nrfInit() {
 // ─── Packet Dispatch ─────────────────────────────────────────────────────────
 
 static void dispatchPacket(const NrfPacket& pkt) {
-    printf("NRF24: RX packet type 0x%02X\n", pkt.raw[0]); // remove after confirmed
-
     auto& dm = DataManager::getInstance();
 
     switch (pkt.raw[0]) {
@@ -336,6 +338,140 @@ static void nrfReaderThread() {
     printf("NRF24: Reader thread stopped\n");
 }
 
+// ─── TX Thread ───────────────────────────────────────────────────────────────
+
+static void nrfTransmitThread() {
+    printf("NRF24: Transmit thread started\n");
+
+    int sequence = 0;
+
+    while (nrf_running.load()) {
+        auto start = std::chrono::steady_clock::now();
+
+        test::Data data = DataManager::getInstance().getLatestData();
+
+        NrfPacket pkt;
+        memset(pkt.raw, 0, NRF_PAYLOAD_SIZE);
+
+        switch (sequence % 6) {
+        case 0:
+            pkt.ecu.packet_type = PKT_ECU_FL;
+            pkt.ecu.accel_x  = (int16_t)data.ecu_fl().accel().x();
+            pkt.ecu.accel_y  = (int16_t)data.ecu_fl().accel().y();
+            pkt.ecu.accel_z  = (int16_t)data.ecu_fl().accel().z();
+            pkt.ecu.gyro_x   = (int16_t)data.ecu_fl().gyro().x();
+            pkt.ecu.gyro_y   = (int16_t)data.ecu_fl().gyro().y();
+            pkt.ecu.gyro_z   = (int16_t)data.ecu_fl().gyro().z();
+            pkt.ecu.strain_l = (int16_t)data.ecu_fl().strain_l();
+            pkt.ecu.strain_r = (int16_t)data.ecu_fl().strain_r();
+            pkt.ecu.travel   = (uint16_t)data.ecu_fl().travel();
+            break;
+        case 1:
+            pkt.ecu.packet_type = PKT_ECU_FR;
+            pkt.ecu.accel_x  = (int16_t)data.ecu_fr().accel().x();
+            pkt.ecu.accel_y  = (int16_t)data.ecu_fr().accel().y();
+            pkt.ecu.accel_z  = (int16_t)data.ecu_fr().accel().z();
+            pkt.ecu.gyro_x   = (int16_t)data.ecu_fr().gyro().x();
+            pkt.ecu.gyro_y   = (int16_t)data.ecu_fr().gyro().y();
+            pkt.ecu.gyro_z   = (int16_t)data.ecu_fr().gyro().z();
+            pkt.ecu.strain_l = (int16_t)data.ecu_fr().strain_l();
+            pkt.ecu.strain_r = (int16_t)data.ecu_fr().strain_r();
+            pkt.ecu.travel   = (uint16_t)data.ecu_fr().travel();
+            break;
+        case 2:
+            pkt.ecu.packet_type = PKT_ECU_RL;
+            pkt.ecu.accel_x  = (int16_t)data.ecu_rl().accel().x();
+            pkt.ecu.accel_y  = (int16_t)data.ecu_rl().accel().y();
+            pkt.ecu.accel_z  = (int16_t)data.ecu_rl().accel().z();
+            pkt.ecu.gyro_x   = (int16_t)data.ecu_rl().gyro().x();
+            pkt.ecu.gyro_y   = (int16_t)data.ecu_rl().gyro().y();
+            pkt.ecu.gyro_z   = (int16_t)data.ecu_rl().gyro().z();
+            pkt.ecu.strain_l = (int16_t)data.ecu_rl().strain_l();
+            pkt.ecu.strain_r = (int16_t)data.ecu_rl().strain_r();
+            pkt.ecu.travel   = (uint16_t)data.ecu_rl().travel();
+            break;
+        case 3:
+            pkt.ecu.packet_type = PKT_ECU_RR;
+            pkt.ecu.accel_x  = (int16_t)data.ecu_rr().accel().x();
+            pkt.ecu.accel_y  = (int16_t)data.ecu_rr().accel().y();
+            pkt.ecu.accel_z  = (int16_t)data.ecu_rr().accel().z();
+            pkt.ecu.gyro_x   = (int16_t)data.ecu_rr().gyro().x();
+            pkt.ecu.gyro_y   = (int16_t)data.ecu_rr().gyro().y();
+            pkt.ecu.gyro_z   = (int16_t)data.ecu_rr().gyro().z();
+            pkt.ecu.strain_l = (int16_t)data.ecu_rr().strain_l();
+            pkt.ecu.strain_r = (int16_t)data.ecu_rr().strain_r();
+            pkt.ecu.travel   = (uint16_t)data.ecu_rr().travel();
+            break;
+        case 4:
+            pkt.powertrain.packet_type = PKT_POWERTRAIN;
+            pkt.powertrain.tach   = data.tach();
+            pkt.powertrain.speedo = data.speedo();
+            pkt.powertrain.temp   = data.temp();
+            pkt.powertrain.fuel   = data.fuel();
+            break;
+        case 5:
+            pkt.gps.packet_type = PKT_GPS;
+            pkt.gps.latitude    = data.location().latitude();
+            pkt.gps.longitude   = data.location().longitude();
+            pkt.gps.gps_speed   = data.location().gps_speed();
+            pkt.gps.has_fix     = data.location().has_fix() ? 1 : 0;
+            break;
+        }
+
+        // ── TX ────────────────────────────────────────────────────────────────
+        ceLow();
+        nrfWriteRegister(NRF_REG_CONFIG, 0x0A); // PTX
+        std::this_thread::sleep_for(std::chrono::microseconds(150));
+
+        uint8_t tx[NRF_PAYLOAD_SIZE + 1];
+        uint8_t rx_buf[NRF_PAYLOAD_SIZE + 1];
+        tx[0] = NRF_CMD_W_TX_PAYLOAD;
+        memcpy(&tx[1], pkt.raw, NRF_PAYLOAD_SIZE);
+        spiTransfer(tx, rx_buf, NRF_PAYLOAD_SIZE + 1);
+
+        ceHigh();
+        std::this_thread::sleep_for(std::chrono::microseconds(15));
+        ceLow();
+
+        uint8_t status = 0;
+        for (int i = 0; i < 100; i++) {
+            status = nrfGetStatus();
+            if (status & (NRF_STATUS_TX_DS | NRF_STATUS_MAX_RT)) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+
+        if (status & NRF_STATUS_TX_DS) {
+            printf("NRF24: TX OK (seq %d)\n", sequence);
+        } else if (status & NRF_STATUS_MAX_RT) {
+            printf("NRF24: TX MAX_RT (no ack expected — check EN_AA=0)\n");
+        } else {
+            // Timeout — reinitialize chip state
+            printf("NRF24: TX timeout — recovering\n");
+            nrfFlushTx();
+            nrfFlushRx();
+            nrfWriteRegister(NRF_REG_STATUS,
+                             NRF_STATUS_RX_DR | NRF_STATUS_TX_DS | NRF_STATUS_MAX_RT);
+        }
+
+        nrfWriteRegister(NRF_REG_STATUS, NRF_STATUS_TX_DS | NRF_STATUS_MAX_RT);
+        nrfFlushTx();
+
+        // ── Back to RX ────────────────────────────────────────────────────────
+        nrfWriteRegister(NRF_REG_CONFIG, 0x0B); // PRX
+        ceHigh();
+
+        sequence++;
+
+        auto elapsed   = std::chrono::steady_clock::now() - start;
+        auto remaining = std::chrono::milliseconds(10) - elapsed;
+        if (remaining > std::chrono::milliseconds(0))
+            std::this_thread::sleep_for(remaining);
+    }
+
+    ceLow();
+    printf("NRF24: Transmit thread stopped\n");
+}
+
 #endif // __linux__
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -353,7 +489,8 @@ bool startNrf24() {
     }
 
     nrf_running.store(true);
-    nrf_thread = std::thread(nrfReaderThread);
+    nrf_thread    = std::thread(nrfReaderThread);
+    nrf_tx_thread = std::thread(nrfTransmitThread); // properly assigned — joinable on stop
     return true;
 #else
     printf("NRF24: Not available on this platform\n");
@@ -364,14 +501,15 @@ bool startNrf24() {
 void stopNrf24() {
 #ifdef __linux__
     if (!nrf_running.load()) return;
+
     nrf_running.store(false);
 
-    if (nrf_thread.joinable())
-        nrf_thread.join();
+    if (nrf_thread.joinable())    nrf_thread.join();
+    if (nrf_tx_thread.joinable()) nrf_tx_thread.join();
 
     if (spi_fd >= 0) {
         ceLow();
-        nrfWriteRegister(NRF_REG_CONFIG, 0x00);
+        nrfWriteRegister(NRF_REG_CONFIG, 0x00); // power down
         close(spi_fd);
         spi_fd = -1;
     }
@@ -382,7 +520,44 @@ void stopNrf24() {
 }
 
 bool sendCommand(uint8_t command_id, const uint8_t* data, uint8_t len) {
-    (void)command_id; (void)data; (void)len;
-    fprintf(stderr, "NRF24: sendCommand called on pit Pi — not supported\n");
+#ifdef __linux__
+    if (spi_fd < 0 || !nrf_running.load()) return false;
+
+    ceLow();
+    nrfWriteRegister(NRF_REG_CONFIG, 0x0A); // PTX
+
+    NrfPacket pkt;
+    memset(pkt.raw, 0, NRF_PAYLOAD_SIZE);
+    pkt.cmd.packet_type = PKT_CMD;
+    pkt.cmd.command_id  = command_id;
+    memcpy(pkt.cmd.payload, data, (len > 30) ? 30 : len);
+
+    uint8_t tx[NRF_PAYLOAD_SIZE + 1];
+    uint8_t rx[NRF_PAYLOAD_SIZE + 1];
+    tx[0] = NRF_CMD_W_TX_PAYLOAD;
+    memcpy(&tx[1], pkt.raw, NRF_PAYLOAD_SIZE);
+    spiTransfer(tx, rx, NRF_PAYLOAD_SIZE + 1);
+
+    ceHigh();
+    std::this_thread::sleep_for(std::chrono::microseconds(15));
+    ceLow();
+
+    uint8_t status = 0;
+    for (int i = 0; i < 100; i++) {
+        status = nrfGetStatus();
+        if (status & (NRF_STATUS_TX_DS | NRF_STATUS_MAX_RT)) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+
+    bool ok = (status & NRF_STATUS_TX_DS) != 0;
+    nrfWriteRegister(NRF_REG_STATUS, NRF_STATUS_TX_DS | NRF_STATUS_MAX_RT);
+    nrfFlushTx();
+
+    nrfWriteRegister(NRF_REG_CONFIG, 0x0B); // back to PRX
+    ceHigh();
+
+    return ok;
+#else
     return false;
+#endif
 }
