@@ -167,8 +167,25 @@ int main(void)
     // // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
     // SendEsusStatusOnCan(CAN_ID_ESUS_RL_STEPPER_STATUS);
 
-    // // handle incoming ESUS stepper CAN message
-    // HAL_FDCAN_RxFifo0Callback(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE);
+    // for (uint8_t i = 0; i < 4; i++) {
+        
+    //     // 1. Safety Check: Recover from any motor driver faults
+    //     Motor_CheckAndRecover();
+
+    //     // 2. Perform the Reboot logic you mentioned helps stability
+    //     ESUS_Reboot();
+
+    //     // 3. Command the move to the current setting (Faking the CAN command)
+    //     // This will move both motors to the positions defined in suspension_profiles[i]
+    //     Motor_GoTo_Setting(i);
+
+    //     // 4. Wait 5 seconds before the next setting change
+    //     HAL_Delay(5000);
+    // }
+
+    // handle incoming ESUS stepper CAN message
+    HAL_FDCAN_RxFifo0Callback(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE);
+    HAL_Delay(100); // Add delay to prevent overwhelming the CPU in case of many messages
 
 //	  Motors_Step_Simultaneous(100, 100);
 //    Motor_Step(MOTOR_NEMA17, 1, 1000);
@@ -204,38 +221,27 @@ int main(void)
 //         // Re-send SPI Config (Some faults wipe volatile registers)
 //         DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x87); 
 
-        Motor_CheckAndRecover();
 
-	      // 2. Re-Init SPI (In case the driver reset itself)
-	      // Motors_Init();
 
-	      // 3. Move
-	      Motors_Step_Simultaneous(500, 500);
-	      Motors_Init();
-	      MX_SPI1_Init();
-	      ESUS_Reboot();
+// 	      // 3. Move
+// 	      Motors_Step_Simultaneous(500, 500);
+// 	      ESUS_Reboot();
 
-	      // 4. Wait
-//	      HAL_Delay(1000);
+// 	      // 4. Wait
+// //	      HAL_Delay(1000);
 
-	      Motors_Step_Simultaneous(-500, -500);
-	      Motors_Init();
-	      MX_SPI1_Init();
-	      ESUS_Reboot();
+// 	      Motors_Step_Simultaneous(-500, -500);
+// 	      ESUS_Reboot();
 
-//	      HAL_Delay(1000);
+// //	      HAL_Delay(1000);
 
-	      Motors_Step_Simultaneous(500, 500);
-	      Motors_Init();
-	      MX_SPI1_Init();
-	      ESUS_Reboot();
+// 	      Motors_Step_Simultaneous(500, 500);
+// 	      ESUS_Reboot();
 
-//	      HAL_Delay(1000);
+// //	      HAL_Delay(1000);
 
-	      Motors_Step_Simultaneous(-500, -500);
-	      Motors_Init();
-	      MX_SPI1_Init();
-	      ESUS_Reboot();
+// 	      Motors_Step_Simultaneous(-500, -500);
+// 	      ESUS_Reboot();
 
 //	      HAL_Delay(1000);
   }
@@ -811,12 +817,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-// void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
-//   Motor_Step(MOTOR_NEMA17, 1, 10); // TEMP: Step motor on any received message for testing
-//   Motor_Step(MOTOR_NEMA23, 1, 10);
-
-//   HAL_Delay(100); // TEMP: Add delay to slow down stepping for testing
-// }
 
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
@@ -830,10 +830,18 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
         uint8_t cmd        = rx_data[0]; // 0x01 = Go to Setting, 0x11 = Emergency Reset
         uint8_t setting_id = rx_data[1]; // 0, 1, 2, or 3
 
+        // 1. Every time a valid command is received, reboot the driver state
+        // This ensures the SPI registers and GPIOs are cleared of any noise/faults
+        ESUS_Reboot();
+        
+        // 2. Clear any hardware latching faults from the driver
+        Motor_CheckAndRecover();
+
         if (cmd == 0x11) {
             Motor_Calibrate_All();
         } 
         else if (cmd == 0x01) {
+            // 3. Perform the move requested by the CAN message
             Motor_GoTo_Setting(setting_id);
         }
       }
