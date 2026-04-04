@@ -384,32 +384,29 @@ void Motors_Init(void) {
   HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_SET);
   HAL_GPIO_WritePin(N23_SLEEP_PORT, N23_SLEEP_PIN, GPIO_PIN_SET);
   HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET);
-  HAL_Delay(5);
+  HAL_Delay(10); // Increased wake-up delay
 
-  // --- TORQUE TUNING PARAMETER ---
-  // 0xFF = 100% Current (Max Torque, High Heat)
-  // 0x80 = ~50% Current  (Medium Torque)
-  // 0x40 = ~25% Current  (Low Torque, Runs Cool)
-  uint8_t torque_val = 0x40; 
+  // --- TORQUE TUNING ---
+  // Increased slightly from 0x02 to 0x20 to ensure 
+  // the motor has enough "grip" to move slowly.
+  uint8_t torque_val = 0x15;
 
-  // Register 0x04 (CTRL1): Enable Output + Smart Tune
   DRV8461_Transfer(MOTOR_NEMA17, 0x04, 0x87); 
   DRV8461_Transfer(MOTOR_NEMA23, 0x04, 0x87);
 
-  // Register 0x0D (STALL_CONFIG): Keep Stall Detection DISABLED
-  // This ensures it doesn't "quit" even if torque is low
   DRV8461_Transfer(MOTOR_NEMA17, 0x0D, 0x00); 
   DRV8461_Transfer(MOTOR_NEMA23, 0x0D, 0x00);
 
-  // Register 0x06 (TRQ_DAC): Applying the lower torque value
   DRV8461_Transfer(MOTOR_NEMA17, 0x06, torque_val);
   DRV8461_Transfer(MOTOR_NEMA23, 0x06, torque_val);
 
-  // Register 0x05 (CTRL2): Keep 1/2 Microstepping (0x01)
-  // If it still feels "choppy," you can try 1/4 step (0x02)
-  DRV8461_Transfer(MOTOR_NEMA17, 0x05, 0x02);
+  DRV8461_Transfer(MOTOR_NEMA17, 0x05, 0x02); // 1/4 Microstepping
   DRV8461_Transfer(MOTOR_NEMA23, 0x05, 0x02);
+
+  DRV8461_Transfer(MOTOR_NEMA17, 0x07, 0x01);
+  DRV8461_Transfer(MOTOR_NEMA23, 0x07, 0x01);
 }
+
 
 void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps) {
   GPIO_TypeDef* step_port; uint16_t step_pin;
@@ -424,48 +421,39 @@ void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps) {
   }
 
   HAL_GPIO_WritePin(dir_port, dir_pin, direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
- for(volatile int i=0; i<200; i++);
+  HAL_Delay(5); // Increased setup delay
 
   for(uint32_t i = 0; i < steps; i++) {
     HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_SET);
-    HAL_Delay(1); 
+    HAL_Delay(20); // SLOW: 5ms pulse width
     HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_RESET);
-    HAL_Delay(1);
+    HAL_Delay(20); // SLOW: 5ms inter-pulse delay
   }
 }
 
 void Motors_Step_Simultaneous(int32_t move17, int32_t move23) {
-    // Determine Directions
     uint8_t dir17 = (move17 > 0);
     uint8_t dir23 = (move23 > 0);
-    
-    // Convert to absolute steps
     uint32_t steps17 = (move17 > 0) ? move17 : -move17;
     uint32_t steps23 = (move23 > 0) ? move23 : -move23;
 
-    // Set Direction pins
     HAL_GPIO_WritePin(N17_DIR_PORT, N17_DIR_PIN, dir17 ? GPIO_PIN_SET : GPIO_PIN_RESET);
     HAL_GPIO_WritePin(N23_DIR_PORT, N23_DIR_PIN, dir23 ? GPIO_PIN_SET : GPIO_PIN_RESET);
     
-    // Setup delay
-    for(volatile int i=0; i<200; i++); 
+    HAL_Delay(5); 
 
-    // Combined Step Loop
-    // Find the maximum number of steps required
     uint32_t max_steps = (steps17 > steps23) ? steps17 : steps23;
 
     for (uint32_t i = 0; i < max_steps; i++) {
-        // Pulse HIGH for any motor that hasn't finished its steps yet
         if (i < steps17) HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_SET);
         if (i < steps23) HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_SET);
         
-        HAL_Delay(2); // pulse width
+        HAL_Delay(1); // SLOW: 5ms pulse width
 
-        // Pulse LOW
         if (i < steps17) HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_RESET);
         if (i < steps23) HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_RESET);
         
-        HAL_Delay(2); // inter-pulse delay
+        HAL_Delay(1); // SLOW: 5ms inter-pulse delay
     }
 }
 

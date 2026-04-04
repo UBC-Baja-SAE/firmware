@@ -38,6 +38,7 @@ SPI_HandleTypeDef hspi1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
+void ESUS_Reboot(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_FDCAN1_Init(void);
@@ -58,69 +59,68 @@ static void MX_SPI1_Init(void);
   */
 int main(void)
 {
+	  /* USER CODE BEGIN 1 */
+	  /* USER CODE END 1 */
 
-  /* USER CODE BEGIN 1 */
-  /* USER CODE END 1 */
+	  /* MPU Configuration--------------------------------------------------------*/
+	  MPU_Config();
 
-  /* MPU Configuration--------------------------------------------------------*/
-  MPU_Config();
+	  /* MCU Configuration--------------------------------------------------------*/
 
-  /* MCU Configuration--------------------------------------------------------*/
+	  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	  HAL_Init();
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	  /* USER CODE BEGIN Init */
+	  /* USER CODE END Init */
 
-  /* USER CODE BEGIN Init */
-  /* USER CODE END Init */
+	  /* Configure the system clock */
+	  SystemClock_Config();
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	  /* Configure the peripherals common clocks */
+	  PeriphCommonClock_Config();
 
-  /* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
+	  /* USER CODE BEGIN SysInit */
+	  /* USER CODE END SysInit */
 
-  /* USER CODE BEGIN SysInit */
-  /* USER CODE END SysInit */
+	  /* Initialize all configured peripherals */
+	  MX_GPIO_Init();
+	  MX_FDCAN1_Init();
+	  MX_ADC1_Init();
+	  MX_ADC2_Init();
+	  MX_I2C1_Init();
+	  MX_SPI1_Init();
+	  /* USER CODE BEGIN 2 */
+	  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
+	    Error_Handler();
+	  }
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_FDCAN1_Init();
-  MX_ADC1_Init();
-  MX_ADC2_Init();
-  MX_I2C1_Init();
-  MX_SPI1_Init();
-  /* USER CODE BEGIN 2 */
-  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
-    Error_Handler();
-  }
+	  HAL_FDCAN_ConfigGlobalFilter(&hfdcan1,
+	                               FDCAN_ACCEPT_IN_RX_FIFO0, // Accept standard IDs
+	                               FDCAN_ACCEPT_IN_RX_FIFO0, // Accept extended IDs
+	                               DISABLE, // No remote frames rejected
+	                               DISABLE  // No extended remote frames rejected
+	  );
 
-  HAL_FDCAN_ConfigGlobalFilter(&hfdcan1,
-                               FDCAN_ACCEPT_IN_RX_FIFO0, // Accept standard IDs
-                               FDCAN_ACCEPT_IN_RX_FIFO0, // Accept extended IDs
-                               DISABLE, // No remote frames rejected
-                               DISABLE  // No extended remote frames rejected
-  );
+	  // Initialize IMU with retry and recovery logic
+	  // IMU_Init now returns status and handles I2C bus recovery internally
+	  HAL_StatusTypeDef imu_status = HAL_ERROR;
 
-  // Initialize IMU with retry and recovery logic
-  // IMU_Init now returns status and handles I2C bus recovery internally
-  HAL_StatusTypeDef imu_status = HAL_ERROR;
+	  for (int attempt = 0; attempt < 3; attempt++) {
+	    imu_status = IMU_Init();
+	    if (imu_status == HAL_OK) {
+	      break;
+	    }
+	    // Brief delay between attempts
+	    HAL_Delay(100);
+	  }
 
-  for (int attempt = 0; attempt < 3; attempt++) {
-    imu_status = IMU_Init();
-    if (imu_status == HAL_OK) {
-      break;
-    }
-    // Brief delay between attempts
-    HAL_Delay(100);
-  }
+	  // Optional: Signal IMU status via LED or debug pin
+	  // If IMU failed, system will still run - gyro data just won't be sent
+	  (void)imu_status; // Suppress unused warning
 
-  // Optional: Signal IMU status via LED or debug pin
-  // If IMU failed, system will still run - gyro data just won't be sent
-  (void)imu_status; // Suppress unused warning
+	  HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
 
-  HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
-
-  Motors_Init();
+	  Motors_Init();
 
   /* USER CODE END 2 */
 
@@ -210,16 +210,45 @@ int main(void)
 	      // Motors_Init();
 
 	      // 3. Move
-	      Motors_Step_Simultaneous(1000, 1000);
+	      Motors_Step_Simultaneous(500, 500);
+	      Motors_Init();
+	      MX_SPI1_Init();
+	      ESUS_Reboot();
 
 	      // 4. Wait
 //	      HAL_Delay(1000);
 
-	      Motors_Step_Simultaneous(-1000, -1000);
+	      Motors_Step_Simultaneous(-500, -500);
+	      Motors_Init();
+	      MX_SPI1_Init();
+	      ESUS_Reboot();
+
+//	      HAL_Delay(1000);
+
+	      Motors_Step_Simultaneous(500, 500);
+	      Motors_Init();
+	      MX_SPI1_Init();
+	      ESUS_Reboot();
+
+//	      HAL_Delay(1000);
+
+	      Motors_Step_Simultaneous(-500, -500);
+	      Motors_Init();
+	      MX_SPI1_Init();
+	      ESUS_Reboot();
 
 //	      HAL_Delay(1000);
   }
   /* USER CODE END 3 */
+}
+
+/**
+  * @brief Performs a full peripheral and motor driver re-initialization
+  */
+void ESUS_Reboot(void) {
+	  MX_GPIO_Init();
+	  MX_SPI1_Init();
+	  Motors_Init();
 }
 
 /**
