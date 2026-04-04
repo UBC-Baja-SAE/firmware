@@ -65,6 +65,11 @@ typedef enum {
     MOTOR_NEMA23 = 1
 } MotorID_t;
 
+typedef struct {
+    int32_t nema17_target;
+    int32_t nema23_target;
+} StepperSetting_t;
+
 // Function Declarations
 HAL_StatusTypeDef I2C_BusRecovery(void);
 HAL_StatusTypeDef IMU_Init(void);
@@ -78,7 +83,11 @@ void SendEsusStatusOnCan(uint32_t can_id);
 
 void Motors_Init(void);
 void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps);
+void Motors_Step_Simultaneous(int32_t move17, int32_t move23);
+void Motor_GoTo_Setting(uint8_t setting_id);
+void Motor_Calibrate_All(void);
 void Motor_Calibrate(MotorID_t motor);
 uint16_t DRV8461_Transfer(MotorID_t motor, uint8_t addr, uint8_t data);
+uint8_t Motor_CheckAndRecover(void);
 
 #endif // __CONTROL_H

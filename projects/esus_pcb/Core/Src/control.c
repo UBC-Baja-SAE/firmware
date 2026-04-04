@@ -379,29 +379,36 @@ uint16_t DRV8461_Transfer(MotorID_t motor, uint8_t addr, uint8_t data) {
 }
 
 void Motors_Init(void) {
-  // Wake up both
+  // 1. Hardware Wake up
   HAL_GPIO_WritePin(N17_SLEEP_PORT, N17_SLEEP_PIN, GPIO_PIN_SET);
   HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_SET);
   HAL_GPIO_WritePin(N23_SLEEP_PORT, N23_SLEEP_PIN, GPIO_PIN_SET);
   HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET);
   HAL_Delay(5);
 
-  // // Initialize NEMA 17 settings
-  // DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL2, 0x06); // 1/16 step
-  // DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x07); // Smart Tune
+  // --- TORQUE TUNING PARAMETER ---
+  // 0xFF = 100% Current (Max Torque, High Heat)
+  // 0x80 = ~50% Current  (Medium Torque)
+  // 0x40 = ~25% Current  (Low Torque, Runs Cool)
+  uint8_t torque_val = 0x40; 
 
-  // // Initialize NEMA 23 settings
-  // DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL2, 0x06);
-  // DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x07);
-  // 2. SPI ENABLE COMMANDS
-    // CTRL1 (0x04): Set EN_OUT = 1 (Bit 7) and Smart Tune (Bits 2:0 = 111)
-    // Hex value: 0x87 (Binary 1000 0111)
-    DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x87); 
-    DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x87);
+  // Register 0x04 (CTRL1): Enable Output + Smart Tune
+  DRV8461_Transfer(MOTOR_NEMA17, 0x04, 0x87); 
+  DRV8461_Transfer(MOTOR_NEMA23, 0x04, 0x87);
 
-    // CTRL2 (0x05): Set Microstepping (e.g., 1/16 is 0x06)
-    DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL2, 0x06);
-    DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL2, 0x06);
+  // Register 0x0D (STALL_CONFIG): Keep Stall Detection DISABLED
+  // This ensures it doesn't "quit" even if torque is low
+  DRV8461_Transfer(MOTOR_NEMA17, 0x0D, 0x00); 
+  DRV8461_Transfer(MOTOR_NEMA23, 0x0D, 0x00);
+
+  // Register 0x06 (TRQ_DAC): Applying the lower torque value
+  DRV8461_Transfer(MOTOR_NEMA17, 0x06, torque_val);
+  DRV8461_Transfer(MOTOR_NEMA23, 0x06, torque_val);
+
+  // Register 0x05 (CTRL2): Keep 1/2 Microstepping (0x01)
+  // If it still feels "choppy," you can try 1/4 step (0x02)
+  DRV8461_Transfer(MOTOR_NEMA17, 0x05, 0x02);
+  DRV8461_Transfer(MOTOR_NEMA23, 0x05, 0x02);
 }
 
 void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps) {
@@ -452,13 +459,13 @@ void Motors_Step_Simultaneous(int32_t move17, int32_t move23) {
         if (i < steps17) HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_SET);
         if (i < steps23) HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_SET);
         
-        HAL_Delay(1); // pulse width
+        HAL_Delay(2); // pulse width
 
         // Pulse LOW
         if (i < steps17) HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_RESET);
         if (i < steps23) HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_RESET);
         
-        HAL_Delay(1); // inter-pulse delay
+        HAL_Delay(2); // inter-pulse delay
     }
 }
 
@@ -505,6 +512,44 @@ void Motor_Calibrate_All(void) {
     // Reset Indexers via SPI
     DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0xA7);
     DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0xA7);
+}
+
+/**
+ * @brief Checks for motor faults and attempts a recovery if needed
+ * @return 1 if a recovery was performed, 0 if everything is OK
+ */
+uint8_t Motor_CheckAndRecover(void) {
+    uint8_t faulted = 0;
+
+    // Check N17 Fault (Active Low)
+    if (HAL_GPIO_ReadPin(N17_FAULT_PORT, N17_FAULT_PIN) == GPIO_PIN_RESET) {
+        faulted = 1;
+        // Toggle SLEEP or ENABLE to clear latching faults
+        HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_RESET);
+        HAL_Delay(10); 
+        HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_SET);
+        
+        // Re-send SPI Config (Some faults wipe volatile registers)
+        DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x87); 
+    }
+
+    // Check N23 Fault
+    if (HAL_GPIO_ReadPin(N23_FAULT_PORT, N23_FAULT_PIN) == GPIO_PIN_RESET) {
+        faulted = 1;
+        HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_RESET);
+        HAL_Delay(10);
+        HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET);
+        
+        DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x87);
+    }
+
+    if (faulted) {
+        // Wait 1 second before allowing the motor to spin again
+        // This prevents a "vicious cycle" of instant re-faulting
+        HAL_Delay(1000); 
+    }
+
+    return faulted;
 }
 
 /**

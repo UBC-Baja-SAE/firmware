@@ -170,15 +170,54 @@ int main(void)
     // // handle incoming ESUS stepper CAN message
     // HAL_FDCAN_RxFifo0Callback(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE);
 
-    Motor_Step(MOTOR_NEMA17, 1, 1000);
-    Motor_Step(MOTOR_NEMA23, 1, 1000);
+//	  Motors_Step_Simultaneous(100, 100);
+//    Motor_Step(MOTOR_NEMA17, 1, 1000);
+//    Motor_Step(MOTOR_NEMA23, 1, 1000);
 
-//    HAL_Delay(500);
+//    HAL_Delay(1000);
 
 //    Motor_Step(MOTOR_NEMA17, 0, 50);
 //    Motor_Step(MOTOR_NEMA23, 0, 50);
     // Send message every 100 ms
-    HAL_Delay(500);
+    // HAL_Delay(500);
+
+// 	  HAL_GPIO_WritePin(N17_SLEEP_PORT, N17_SLEEP_PIN, 0);
+// 	      HAL_GPIO_WritePin(N23_SLEEP_PORT, N23_SLEEP_PIN, 0);
+// //	      HAL_Delay(1);
+// 	      HAL_GPIO_WritePin(N17_SLEEP_PORT, N17_SLEEP_PIN, 1);
+// 	      HAL_GPIO_WritePin(N23_SLEEP_PORT, N23_SLEEP_PIN, 1);
+// //	      HAL_Delay(1);
+
+
+//         HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_RESET);
+//         HAL_Delay(10); 
+//         HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_SET);
+        
+//         // Re-send SPI Config (Some faults wipe volatile registers)
+//         DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x87); 
+
+
+//         HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_RESET);
+//         HAL_Delay(10); 
+//         HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET);
+        
+//         // Re-send SPI Config (Some faults wipe volatile registers)
+//         DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x87); 
+
+        Motor_CheckAndRecover();
+
+	      // 2. Re-Init SPI (In case the driver reset itself)
+	      // Motors_Init();
+
+	      // 3. Move
+	      Motors_Step_Simultaneous(1000, 1000);
+
+	      // 4. Wait
+//	      HAL_Delay(1000);
+
+	      Motors_Step_Simultaneous(-1000, -1000);
+
+//	      HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
