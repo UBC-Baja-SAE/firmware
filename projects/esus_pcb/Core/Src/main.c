@@ -38,6 +38,7 @@ SPI_HandleTypeDef hspi1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
+void ESUS_Reboot(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_FDCAN1_Init(void);
@@ -58,48 +59,65 @@ static void MX_SPI1_Init(void);
   */
 int main(void)
 {
+	  /* USER CODE BEGIN 1 */
+	  /* USER CODE END 1 */
 
-  /* USER CODE BEGIN 1 */
-  /* USER CODE END 1 */
+	  /* MPU Configuration--------------------------------------------------------*/
+	  MPU_Config();
 
-  /* MPU Configuration--------------------------------------------------------*/
-  MPU_Config();
+	  /* MCU Configuration--------------------------------------------------------*/
 
-  /* MCU Configuration--------------------------------------------------------*/
+	  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	  HAL_Init();
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	  /* USER CODE BEGIN Init */
+	  /* USER CODE END Init */
 
-  /* USER CODE BEGIN Init */
-  /* USER CODE END Init */
+	  /* Configure the system clock */
+	  SystemClock_Config();
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	  /* Configure the peripherals common clocks */
+	  PeriphCommonClock_Config();
 
-  /* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
+	  /* USER CODE BEGIN SysInit */
+	  /* USER CODE END SysInit */
 
-  /* USER CODE BEGIN SysInit */
-  /* USER CODE END SysInit */
+	  /* Initialize all configured peripherals */
+	  MX_GPIO_Init();
+	  MX_FDCAN1_Init();
+	  MX_ADC1_Init();
+	  MX_ADC2_Init();
+	  MX_I2C1_Init();
+	  MX_SPI1_Init();
+	  /* USER CODE BEGIN 2 */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_FDCAN1_Init();
-  MX_ADC1_Init();
-  MX_ADC2_Init();
-  MX_I2C1_Init();
-  MX_SPI1_Init();
-  /* USER CODE BEGIN 2 */
-	  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
+	  // 1. Configure a "Wide Open" Standard Filter (Accepts all 11-bit IDs)
+	  FDCAN_FilterTypeDef sFilterConfig;
+	  sFilterConfig.IdType = FDCAN_STANDARD_ID;
+	  sFilterConfig.FilterIndex = 0;
+	  sFilterConfig.FilterType = FDCAN_FILTER_RANGE;
+	  sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+	  sFilterConfig.FilterID1 = 0x000;
+	  sFilterConfig.FilterID2 = 0x7FF; // Max 11-bit ID
+
+	  if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK) {
 	    Error_Handler();
 	  }
 
-	  HAL_FDCAN_ConfigGlobalFilter(&hfdcan1,
-	                               FDCAN_ACCEPT_IN_RX_FIFO0, // Accept standard IDs
-	                               FDCAN_ACCEPT_IN_RX_FIFO0, // Accept extended IDs
-	                               DISABLE, // No remote frames rejected
-	                               DISABLE  // No extended remote frames rejected
-	  );
+	  // 2. Set Global Filter to "Accept" for everything else
+	  // This ensures that even if a filter doesn't match, it goes to FIFO 0
+	  if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan1,
+	                                   FDCAN_ACCEPT_IN_RX_FIFO0, // Non-matching Std IDs
+	                                   FDCAN_ACCEPT_IN_RX_FIFO0, // Non-matching Ext IDs
+	                                   FDCAN_REJECT,             // Reject Remote Std
+	                                   FDCAN_REJECT) != HAL_OK) {
+	    Error_Handler();
+	  }
+
+	  // 3. Start the peripheral
+	  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
+	    Error_Handler();
+	  }
 
 	  // Initialize IMU with retry and recovery logic
 	  // IMU_Init now returns status and handles I2C bus recovery internally
@@ -117,8 +135,6 @@ int main(void)
 	  // Optional: Signal IMU status via LED or debug pin
 	  // If IMU failed, system will still run - gyro data just won't be sent
 	  (void)imu_status; // Suppress unused warning
-
-	  HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
 
 	  Motors_Init();
 
@@ -159,93 +175,50 @@ int main(void)
     // SendEsusStatusOnCan(CAN_ID_ESUS_RR_STEPPER_STATUS);
 
 
-    // // RL
-    // SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
-    // SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
-    // SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
-    // // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
-    // // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
-    // SendEsusStatusOnCan(CAN_ID_ESUS_RL_STEPPER_STATUS);
+    // RL
+    SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
+    SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
+    SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
+    // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
+    // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
+    SendEsusStatusOnCan(CAN_ID_ESUS_RL_STEPPER_STATUS);
 
-    // for (uint8_t i = 0; i < 4; i++) {
-        
-    //     // 1. Safety Check: Recover from any motor driver faults
-    //     Motor_CheckAndRecover();
+	  // Check for new CAN messages (Polling Method)
+	  if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0) {
+	    FDCAN_RxHeaderTypeDef rx_header;
+	    uint8_t rx_data[8];
 
-    //     // 2. Perform the Reboot logic you mentioned helps stability
-    //     ESUS_Reboot();
+	    if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
+	      // Check if it's our ESUS control ID
+	      if (rx_header.Identifier == 0x300) {
+	        uint8_t cmd = rx_data[0];
+	        uint8_t setting_id = rx_data[1];
 
-    //     // 3. Command the move to the current setting (Faking the CAN command)
-    //     // This will move both motors to the positions defined in suspension_profiles[i]
-    //     Motor_GoTo_Setting(i);
+	        ESUS_Reboot();
+	        Motor_CheckAndRecover();
 
-    //     // 4. Wait 5 seconds before the next setting change
-    //     HAL_Delay(5000);
-    // }
+	        if (cmd == 0x11) {
+	          Motor_Calibrate_All();
+	        } 
+          else if (cmd == 0x01) {
+            Motor_GoTo_Setting(setting_id);
+	        }
+	      }
+	    }
+	  }
 
-    // handle incoming ESUS stepper CAN message
-    HAL_FDCAN_RxFifo0Callback(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE);
-    HAL_Delay(100); // Add delay to prevent overwhelming the CPU in case of many messages
-
-//	  Motors_Step_Simultaneous(100, 100);
-//    Motor_Step(MOTOR_NEMA17, 1, 1000);
-//    Motor_Step(MOTOR_NEMA23, 1, 1000);
-
-//    HAL_Delay(1000);
-
-//    Motor_Step(MOTOR_NEMA17, 0, 50);
-//    Motor_Step(MOTOR_NEMA23, 0, 50);
-    // Send message every 100 ms
-    // HAL_Delay(500);
-
-// 	  HAL_GPIO_WritePin(N17_SLEEP_PORT, N17_SLEEP_PIN, 0);
-// 	      HAL_GPIO_WritePin(N23_SLEEP_PORT, N23_SLEEP_PIN, 0);
-// //	      HAL_Delay(1);
-// 	      HAL_GPIO_WritePin(N17_SLEEP_PORT, N17_SLEEP_PIN, 1);
-// 	      HAL_GPIO_WritePin(N23_SLEEP_PORT, N23_SLEEP_PIN, 1);
-// //	      HAL_Delay(1);
-
-
-//         HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_RESET);
-//         HAL_Delay(10); 
-//         HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_SET);
-        
-//         // Re-send SPI Config (Some faults wipe volatile registers)
-//         DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x87); 
-
-
-//         HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_RESET);
-//         HAL_Delay(10); 
-//         HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET);
-        
-//         // Re-send SPI Config (Some faults wipe volatile registers)
-//         DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x87); 
-
-
-
-// 	      // 3. Move
-// 	      Motors_Step_Simultaneous(500, 500);
-// 	      ESUS_Reboot();
-
-// 	      // 4. Wait
-// //	      HAL_Delay(1000);
-
-// 	      Motors_Step_Simultaneous(-500, -500);
-// 	      ESUS_Reboot();
-
-// //	      HAL_Delay(1000);
-
-// 	      Motors_Step_Simultaneous(500, 500);
-// 	      ESUS_Reboot();
-
-// //	      HAL_Delay(1000);
-
-// 	      Motors_Step_Simultaneous(-500, -500);
-// 	      ESUS_Reboot();
-
-//	      HAL_Delay(1000);
+	  HAL_Delay(10);
   }
   /* USER CODE END 3 */
+}
+
+/**
+  * @brief Performs a full peripheral and motor driver re-initialization
+  */
+void ESUS_Reboot(void) {
+	  MX_GPIO_Init();
+	  MX_SPI1_Init();
+	  Motors_Init();
 }
 
 /**
@@ -811,33 +784,8 @@ static void MX_GPIO_Init(void)
 
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
-  if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0) {
-    FDCAN_RxHeaderTypeDef rx_header;
-    uint8_t rx_data[8];
-
-    if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
-      
-      if (rx_header.Identifier == 0x300) {
-        uint8_t cmd        = rx_data[0]; // 0x01 = Go to Setting, 0x11 = Emergency Reset
-        uint8_t setting_id = rx_data[1]; // 0, 1, 2, or 3
-
-        // 1. Every time a valid command is received, reboot the driver state
-        // This ensures the SPI registers and GPIOs are cleared of any noise/faults
-        ESUS_Reboot();
-        
-        // 2. Clear any hardware latching faults from the driver
-        Motor_CheckAndRecover();
-
-        if (cmd == 0x11) {
-            Motor_Calibrate_All();
-        } 
-        else if (cmd == 0x01) {
-            // 3. Perform the move requested by the CAN message
-            Motor_GoTo_Setting(setting_id);
-        }
-      }
-    }
-  }
+	(void) hfdcan;
+	(void) RxFifo0ITs;
 }
 
 
