@@ -2,6 +2,7 @@
 #define DASHBOARD_QT_MCAP_LOGGER_H
 
 #include <string>
+#include <cstdint>
 
 /**
  * @brief Start the MCAP logger with optional file writing and WebSocket streaming.
@@ -28,5 +29,11 @@ void stopMcapLogger();
  * @brief Check if MCAP logger is running.
  */
 bool isMcapLoggerRunning();
+
+// Add alongside the existing declarations
+void logCameraFrame(const uint8_t* jpeg_data, size_t jpeg_size,
+                    uint64_t timestamp_ns, int width, int height);
+
+void logAudioFrame(const uint8_t* data, size_t size);
 
 #endif //DASHBOARD_QT_MCAP_LOGGER_H

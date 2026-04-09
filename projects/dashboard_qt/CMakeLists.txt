@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 
 # --- 1. Find Core Packages ---
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets SerialPort)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets SerialPort)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets SerialPort Quick Qml QuickWidgets)
 find_package(PkgConfig REQUIRED)
 find_package(mcap REQUIRED)
 find_package(Protobuf REQUIRED)
@@ -33,7 +33,7 @@ if(USE_FOXGLOVE_SDK)
     # The core SDK is written in Rust, so we need the pre-compiled libfoxglove.a
     FetchContent_Declare(
             foxglove
-            URL https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv0.18.0/foxglove-v0.18.0-cpp-aarch64-unknown-linux-gnu.zip
+            URL file:///home/ubcbaja/.cmake/foxglove/foxglove-v0.18.0-cpp-aarch64-unknown-linux-gnu.zip
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
 
@@ -60,7 +60,10 @@ else()
 endif()
 
 # --- 3. Define Project Files ---
-set(PROTO_FILES "Core/Src/data.proto")
+set(PROTO_FILES "Core/Src/data.proto"
+                "Core/Src/image.proto"
+                "Core/Src/audio.proto"
+)
 
 set(SOURCES
         "Core/Src/main.cpp"
@@ -72,6 +75,8 @@ set(SOURCES
         "Resources/resources.qrc"
         ${FOXGLOVE_SOURCES}
         Core/Src/nrf24_handler.cpp
+        Core/Src/camera_handler.cpp
+        Core/Src/audio_handler.cpp
 )
 
 set(HEADERS
@@ -82,6 +87,8 @@ set(HEADERS
         "Core/Inc/uart_handler.h"
         "Core/Src/mainwindow.ui"
         Core/Inc/nrf24_handler.h
+        Core/Inc/camera_handler.h
+        Core/Inc/audio_handler.h
 )
 
 # --- 4. Build Executable ---
@@ -107,8 +114,14 @@ target_link_libraries(dashboard_qt
         PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::SerialPort
+        Qt5::Core
+        Qt5::Gui
+        Qt5::Quick
+        Qt5::Qml
+        Qt5::QuickWidgets
         mcap
         gpiod
+        -lasound
         protobuf::libprotobuf
         PkgConfig::LZ4
         PkgConfig::ZSTD

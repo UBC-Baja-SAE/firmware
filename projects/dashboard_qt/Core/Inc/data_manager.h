@@ -11,7 +11,7 @@ public:
     DataManager(DataManager const&) = delete;
     void operator=(DataManager const&) = delete;
 
-    test::Data getLatestData();
+    ubcbaja::Data getLatestData();
 
     // Dashboard sensors
     void setTach(uint32_t rpm);
@@ -38,9 +38,9 @@ public:
 private:
     DataManager() = default;
 
-    static test::ECU* getEcu(test::Data& data, EcuPosition pos);
+    static ubcbaja::ECU* getEcu(ubcbaja::Data& data, EcuPosition pos);
 
-    test::Data  masterData_;
+    ubcbaja::Data  masterData_;
     std::mutex  dataMutex_;
 };
 

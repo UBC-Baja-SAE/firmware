@@ -42,8 +42,7 @@
    <bool>false</bool>
   </property>
   <property name="styleSheet">
-   <string notr="true">
-#centralwidget {
+   <string notr="true">#centralwidget {
 	background-color: rgb(0, 0, 0);
 }
 
@@ -53,82 +52,243 @@ QLabel {
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QLabel" name="tach_value">
+   <widget class="QStackedWidget" name="stackedWidget">
     <property name="geometry">
      <rect>
-      <x>1010</x>
-      <y>380</y>
-      <width>251</width>
-      <height>80</height>
+      <x>0</x>
+      <y>0</y>
+      <width>1280</width>
+      <height>480</height>
      </rect>
     </property>
     <property name="sizePolicy">
-     <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
       <horstretch>0</horstretch>
       <verstretch>0</verstretch>
      </sizepolicy>
     </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>55</pointsize>
-      <bold>false</bold>
-      <kerning>true</kerning>
-     </font>
-    </property>
     <property name="autoFillBackground">
      <bool>false</bool>
     </property>
-    <property name="text">
-     <string>2000</string>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+	
+	background-color: rgb(255, 255, 255);
+}
+QLabel {
+	background-color: rgba(0, 0, 0, 0);
+}
+
+    font-family: &quot;FOT-NewRodin Pro M&quot;;</string>
     </property>
-    <property name="alignment">
-     <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-    </property>
-    <property name="wordWrap">
-     <bool>true</bool>
-    </property>
-    <property name="margin">
+    <property name="currentIndex">
      <number>0</number>
     </property>
-    <property name="indent">
-     <number>0</number>
-    </property>
+    <widget class="QWidget" name="A_main">
+     <widget class="QQuickWidget" name="speedometerWidget">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>0</y>
+        <width>480</width>
+        <height>480</height>
+       </rect>
+      </property>
+      <property name="resizeMode">
+       <enum>QQuickWidget::ResizeMode::SizeRootObjectToView</enum>
+      </property>
+     </widget>
+     <widget class="QQuickWidget" name="tachometerWidget">
+      <property name="geometry">
+       <rect>
+        <x>660</x>
+        <y>0</y>
+        <width>480</width>
+        <height>480</height>
+       </rect>
+      </property>
+      <property name="resizeMode">
+       <enum>QQuickWidget::ResizeMode::SizeRootObjectToView</enum>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="B_gps">
+     <widget class="QLabel" name="label_4">
+      <property name="geometry">
+       <rect>
+        <x>480</x>
+        <y>210</y>
+        <width>271</width>
+        <height>101</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>36</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>GPS Page</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="C_cam">
+     <widget class="QLabel" name="label">
+      <property name="geometry">
+       <rect>
+        <x>450</x>
+        <y>200</y>
+        <width>151</width>
+        <height>81</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>future camera</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="JordiGif">
+      <property name="geometry">
+       <rect>
+        <x>970</x>
+        <y>90</y>
+        <width>131</width>
+        <height>311</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="cameraLabel">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>30</y>
+        <width>782</width>
+        <height>440</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>40</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Main Page!</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="D_stats">
+     <widget class="QLabel" name="label_2">
+      <property name="geometry">
+       <rect>
+        <x>310</x>
+        <y>120</y>
+        <width>351</width>
+        <height>241</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>40</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Stats/Debug</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="tach_value_2">
+      <property name="geometry">
+       <rect>
+        <x>960</x>
+        <y>200</y>
+        <width>240</width>
+        <height>60</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>36</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>2000</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+      </property>
+     </widget>
+     <widget class="QLabel" name="tach_value">
+      <property name="geometry">
+       <rect>
+        <x>950</x>
+        <y>250</y>
+        <width>240</width>
+        <height>60</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>36</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>2000</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+      </property>
+     </widget>
+     <widget class="QLabel" name="suspensionModeLabel">
+      <property name="geometry">
+       <rect>
+        <x>1090</x>
+        <y>310</y>
+        <width>171</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>24</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>sus mode</string>
+      </property>
+     </widget>
+    </widget>
    </widget>
-   <widget class="QLabel" name="suspensionModeLabel">
+   <widget class="QLabel" name="nyanbg">
     <property name="geometry">
      <rect>
-      <x>1080</x>
-      <y>370</y>
-      <width>191</width>
-      <height>30</height>
+      <x>0</x>
+      <y>0</y>
+      <width>1280</width>
+      <height>480</height>
      </rect>
     </property>
-    <property name="font">
-     <font>
-      <family>FOT-NewRodin Pro</family>
-      <pointsize>18</pointsize>
-     </font>
+    <property name="styleSheet">
+     <string notr="true"/>
     </property>
     <property name="text">
-     <string>None</string>
+     <string/>
     </property>
    </widget>
-   <widget class="QWidget" name="widget" native="true">
-    <property name="geometry">
-     <rect>
-      <x>40</x>
-      <y>40</y>
-      <width>1200</width>
-      <height>400</height>
-     </rect>
-    </property>
-   </widget>
-   <zorder>widget</zorder>
-   <zorder>tach_value</zorder>
-   <zorder>suspensionModeLabel</zorder>
+   <zorder>nyanbg</zorder>
+   <zorder>stackedWidget</zorder>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QQuickWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">QtQuickWidgets/QQuickWidget</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../../Resources/resources.qrc"/>
  </resources>

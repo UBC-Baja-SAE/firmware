@@ -5,7 +5,7 @@ DataManager& DataManager::getInstance() {
     return instance;
 }
 
-test::Data DataManager::getLatestData() {
+ubcbaja::Data DataManager::getLatestData() {
     std::lock_guard<std::mutex> lock(dataMutex_);
     return masterData_;
 }
@@ -34,7 +34,7 @@ void DataManager::setFuel(uint32_t fuel) {
 
 // ─── ECU Helpers ──────────────────────────────────────────────────────────────
 
-test::ECU* DataManager::getEcu(test::Data& data, EcuPosition pos) {
+ubcbaja::ECU* DataManager::getEcu(ubcbaja::Data& data, EcuPosition pos) {
     switch (pos) {
     case FRONT_LEFT:  return data.mutable_ecu_fl();
     case FRONT_RIGHT: return data.mutable_ecu_fr();

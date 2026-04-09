@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package test;
+package ubcbaja;
 
 message accel {
   float x = 1;

@@ -5,18 +5,31 @@
 #include "../Inc/can_bridge.h"
 #include "../Inc/mcap_logger.h"
 #include "../Inc/nrf24_handler.h"
+#include "../Inc/camera_handler.h"
+#include "../Inc/audio_handler.h"
+
+// ── ADDED INCLUDES FOR QML ────────────────────────────────────────────────────
+#include <QQuickWidget>
+#include <QQuickItem>
+#include <QUrl>
+
 #include <QTimer>
 #include <QApplication>
 #include <csignal>
+#include <QMovie>
+#include <QLabel>
+#include <chrono>
+#include <ctime>
+#include <thread>
 
-// ── Signal handler — ensures clean shutdown on Ctrl+C ────────────────────────
-// Must be a plain function, not a lambda, for std::signal compatibility
+// ── Signal handler ────────────────────────────────────────────────────────────
 static void handleSignal(int) {
+    stopAudio();
+    stopCamera();
     stopMcapLogger();
     stopCanBridge();
-    QApplication::quit();
     stopNrf24();
-
+    QApplication::quit();
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -26,18 +39,81 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Register signal handler before starting any threads
     std::signal(SIGINT,  handleSignal);
-    std::signal(SIGTERM, handleSignal); // also catches kill/systemd stop
+    std::signal(SIGTERM, handleSignal);
 
-    // Start CAN Bridge
     startCanBridge();
-
     startNrf24();
 
-    // Start MCAP Logger with Foxglove WebSocket streaming
+    connect(this, &MainWindow::newFrameReceived,
+            this, &MainWindow::updateCameraDisplay,
+            Qt::QueuedConnection);
 
-    // Generate timestamped filename
+    // ── SPEEDOMETER GAUGE SETUP ───────────────────────────────────────────────
+    ui->speedometerWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    ui->speedometerWidget->setAttribute(Qt::WA_AlwaysStackOnTop);
+    ui->speedometerWidget->setClearColor(Qt::transparent);
+    ui->speedometerWidget->setSource(QUrl(QStringLiteral("qrc:/QML/mainwindow.qml")));
+
+    // --- Speedometer Setup ---
+    if (QQuickItem* speedoRoot = ui->speedometerWidget->rootObject()) {
+        speedoRoot->setProperty("unitText", "KM/H");
+        speedoRoot->setProperty("maxValue", 60);
+
+        // Speedometer gets the "Classic" Nyan look
+        speedoRoot->setProperty("gifSource", "qrc:/Images/original.gif");
+        speedoRoot->setProperty("gifWidth", 120);
+        speedoRoot->setProperty("gifHeight", 74);
+
+        QStringList speedoColors = {"#FF0000", "#FFaa00", "#33FF00", "#00ffee","#9c33ff", "#cc00ff"};
+        speedoRoot->setProperty("rainbowColors", QVariant::fromValue(speedoColors));
+    }
+
+
+
+    // ── TACHOMETER GAUGE SETUP ────────────────────────────────────────────────
+    ui->tachometerWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    ui->tachometerWidget->setAttribute(Qt::WA_AlwaysStackOnTop);
+    ui->tachometerWidget->setClearColor(Qt::transparent);
+    ui->tachometerWidget->setSource(QUrl(QStringLiteral("qrc:/QML/mainwindow.qml")));
+
+    // --- Tachometer Setup ---
+    if (QQuickItem* tachRoot = ui->tachometerWidget->rootObject()) {
+        tachRoot->setProperty("unitText", "RPM");
+        tachRoot->setProperty("maxValue", 4000);
+
+        // Tachometer gets a "Gamer" Neon look
+        tachRoot->setProperty("gifSource", "qrc:/Images/gb.gif");
+        tachRoot->setProperty("gifWidth", 120);
+        tachRoot->setProperty("gifHeight", 74);
+
+        // Different color set for the Tach
+        QStringList tachColors = {"#19353b", "#204b3b", "#4b776f", "#445244", "#4b7644", "#9eb94e"};
+        tachRoot->setProperty("rainbowColors", QVariant::fromValue(tachColors));
+    }
+
+    // 1. Start the camera (Restored)
+    startCamera("/dev/video0", [this](const uint8_t* data, size_t size) {
+        if (is_ui_busy.load()) return;
+        is_ui_busy.store(true);
+        QByteArray arr(reinterpret_cast<const char*>(data), static_cast<int>(size));
+        emit newFrameReceived(arr);
+    });
+
+    // 2. Start Audio on a delayed background thread
+    std::thread([]() {
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        printf("Main: 2 seconds passed. Starting audio now...\n");
+        startAudio("plughw:U0x46d0x825,0");
+    }).detach();
+
+
+    // Nyan Cat
+    QMovie *movie = new QMovie(":/Images/nyanbg.gif", QByteArray(), this);
+    ui->nyanbg->setMovie(movie);
+    movie->start();
+
+    // Timestamped MCAP filename
     auto now = std::chrono::system_clock::now();
     auto t   = std::chrono::system_clock::to_time_t(now);
     char filename[128];
@@ -45,26 +121,23 @@ MainWindow::MainWindow(QWidget *parent)
                   "/home/ubcbaja/firmware/logs/foxglove/%Y%m%d_%H%M%S.mcap",
                   std::localtime(&t));
 
-    // File and Websocket
-    // startMcapLogger(filename, 100, true, "0.0.0.0", 8765);
+    startMcapLogger(filename, 100, true, "0.0.0.0", 8765);
 
-startMcapLogger(filename, 100, false, "", 0);
-
-    // UART Handler for steering wheel
+    // UART Handler
     auto *uart = new UARTHandler(this);
     connect(uart, &UARTHandler::modeChanged, this, [this](QString mode) {
         ui->suspensionModeLabel->setText(mode);
     });
     uart->connectPort("/dev/ttyAMA0");
 
-    // Setup update timer (~30Hz)
     connect(updateTimer, &QTimer::timeout, this, &MainWindow::updateDisplay);
     updateTimer->start(33);
 }
 
 MainWindow::~MainWindow()
 {
-    // Normal shutdown path (window closed via UI)
+    stopAudio();
+    stopCamera();
     stopCanBridge();
     stopMcapLogger();
     stopNrf24();
@@ -72,23 +145,32 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::updateDisplay() {
-    test::Data data = DataManager::getInstance().getLatestData();
+    ubcbaja::Data data = DataManager::getInstance().getLatestData();
 
-    ui->tach_value->setText(QString::number(data.tach()));
+    // Standard Widget update (Optional: Keep this if you still have the old text label)
+    // ui->tach_value->setText(QString::number(data.tach()));
 
-    // ui->speedo_value->setText(QString::number(data.speedo()));
-    // ui->temp_value->setText(QString::number(data.temp()));
-    // ui->fuel_value->setText(QString::number(data.fuel()));
+    // ── QML GAUGE UPDATES ─────────────────────────────────────────────────────
 
-    // ui->fl_travel_value->setText(QString::number(data.ecu_fl().travel()));
-    // ui->fl_strain_l_value->setText(QString::number(data.ecu_fl().strain_l()));
-    // ui->fl_strain_r_value->setText(QString::number(data.ecu_fl().strain_r()));
+    // Update Speedometer
+    if (QQuickItem* speedoRoot = ui->speedometerWidget->rootObject()) {
+        // Assuming your 'Data' class has a speed() method.
+        // If it's called something else in your protobuf, adjust accordingly.
+        speedoRoot->setProperty("value", data.speedo());
+    }
 
-    // if (data.location().has_fix()) {
-    //     ui->gps_lat->setText(QString::number(data.location().latitude(), 'f', 6));
-    //     ui->gps_lon->setText(QString::number(data.location().longitude(), 'f', 6));
-    //     ui->gps_speed->setText(QString::number(data.location().gps_speed()));
-    // }
+    // Update Tachometer
+    if (QQuickItem* tachRoot = ui->tachometerWidget->rootObject()) {
+        tachRoot->setProperty("value", data.tach());
+    }
 }
 
-
+void MainWindow::updateCameraDisplay(const QByteArray& frameData) {
+    QPixmap pixmap;
+    if (pixmap.loadFromData(frameData, "JPG")) {
+        ui->cameraLabel->setPixmap(pixmap.scaled(ui->cameraLabel->size(),
+                                                 Qt::KeepAspectRatio,
+                                                 Qt::FastTransformation));
+    }
+    is_ui_busy.store(false);
+}

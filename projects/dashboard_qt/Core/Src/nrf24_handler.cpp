@@ -50,7 +50,7 @@
 // Config
 #define NRF_PAYLOAD_SIZE  32
 #define NRF_CHANNEL       76
-#define NRF_SPI_DEVICE    "/dev/spidev0.1"
+#define NRF_SPI_DEVICE    "/dev/spidev0.0"
 #define NRF_SPI_SPEED_HZ  8000000
 
 static const uint8_t PIPE_ADDRESS[5] = { 0xE7, 0xE7, 0xE7, 0xE7, 0xE7 };
@@ -348,7 +348,7 @@ static void nrfTransmitThread() {
     while (nrf_running.load()) {
         auto start = std::chrono::steady_clock::now();
 
-        test::Data data = DataManager::getInstance().getLatestData();
+        ubcbaja::Data data = DataManager::getInstance().getLatestData();
 
         NrfPacket pkt;
         memset(pkt.raw, 0, NRF_PAYLOAD_SIZE);
@@ -441,7 +441,7 @@ static void nrfTransmitThread() {
         }
 
         if (status & NRF_STATUS_TX_DS) {
-            printf("NRF24: TX OK (seq %d)\n", sequence);
+            //printf("NRF24: TX OK (seq %d)\n", sequence);
         } else if (status & NRF_STATUS_MAX_RT) {
             printf("NRF24: TX MAX_RT (no ack expected — check EN_AA=0)\n");
         } else {

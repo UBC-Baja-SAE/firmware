@@ -1,5 +1,12 @@
 <RCC>
   <qresource prefix="/">
+    <file>Images/bajalogo.png</file>
+    <file>Images/original.gif</file>
+    <file>Images/gb.gif</file>
+    <file>Images/nyanbg.gif</file>
+    <file>Fonts/FOT-NewRodin Pro EB.otf</file>
+    <file>QML/mainwindow.qml</file>
+    <file>Images/Jordi.gif</file>
     <file>Images/tach.png</file>
     <file>Images/orange.png</file>
     <file>Images/pb.png</file>
