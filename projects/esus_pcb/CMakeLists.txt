@@ -55,9 +55,7 @@ add_definitions(-DDEBUG -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx)
 
 file(GLOB_RECURSE SOURCES "Core/*.*" "Drivers/*.*")
 
-set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/STM32H723ZGTx_FLASH.ld)
-
-
+set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/)
 
 add_link_options(-Wl,-gc-sections,--print-memory-usage,-Map=${PROJECT_BINARY_DIR}/${PROJECT_NAME}.map)
 add_link_options(-mcpu=cortex-m7 -mthumb -mthumb-interwork)
