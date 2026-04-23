@@ -1,26 +1,45 @@
-#ifndef SERIALHANDLER_H
-#define SERIALHANDLER_H
+#pragma once
 
 #include <QObject>
-#include <QSerialPort>
+#include <QString>
 
-class SerialHandler : public QObject
-{
+class QSerialPort;
+
+// ─── SerialHandler ────────────────────────────────────────────────────────────
+//
+// Wraps a QSerialPort.  Every complete line received is:
+//   1. emitted as lineReceived() so the QML UI can display it
+//   2. forwarded to McapLogger::instance().logUartMessage()
+//
+// Typical usage (in main.cpp or wherever you set up serial):
+//
+//   auto* serial = new SerialHandler(this);
+//   serial->open("/dev/ttyS0", 115200);
+//
+
+class SerialHandler : public QObject {
     Q_OBJECT
+    Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged)
+
 public:
-    explicit SerialHandler(QObject *parent = nullptr);
+    explicit SerialHandler(QObject* parent = nullptr);
+    ~SerialHandler() override;
+
+    Q_INVOKABLE bool open(const QString& port_name, int baud_rate = 115200);
+    Q_INVOKABLE void close();
+    bool isConnected() const;
 
 signals:
-    // These signals will be caught by QML
-    void paddle1Pressed();
-    void paddle2Pressed();
+    void lineReceived(const QString& port_name, const QString& line);
+    void connectedChanged(bool connected);
+    void errorOccurred(const QString& message);
 
 private slots:
-    void readData();
+    void onReadyRead();
+    void onErrorOccurred();
 
 private:
-    QSerialPort m_serial;
-    QByteArray m_buffer;
+    QSerialPort* port_  {nullptr};
+    QString      portName_;
+    QByteArray   buffer_;
 };
-
-#endif // SERIALHANDLER_H

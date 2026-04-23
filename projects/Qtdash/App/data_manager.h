@@ -1,50 +1,47 @@
-#include <QObject>
-#include <stdint.h>
+#pragma once
 
-class DataManager : public QObject {
-    Q_OBJECT
-    // Expose these properties to QML
-    Q_PROPERTY(float speed READ speed NOTIFY speedChanged)
-    Q_PROPERTY(float tach READ tach NOTIFY tachChanged)
+#include <mutex>
+#include <cstdint>
 
+// Forward-declare the generated protobuf type so that translation units
+// that only need setters do not have to pull in the heavy generated header.
+namespace ubcbaja { class Data; }
+
+class DataManager {
 public:
     enum EcuPosition { FRONT_LEFT, FRONT_RIGHT, REAR_LEFT, REAR_RIGHT };
 
-    static DataManager& getInstance() {
-        static DataManager instance;
-        return instance;
-    }
+    static DataManager& getInstance();
 
-    float speed() const { return m_speed; }
-    float tach() const { return m_tach; }
+    // Returns a snapshot of the current telemetry frame (thread-safe copy).
+    ubcbaja::Data getLatestData();
 
-    // Called by can_bridge.cpp from the background thread
-    void setSpeed(uint32_t val) {
-        if (m_speed == val) return;
-        m_speed = val;
-        emit speedChanged(); // Notifies QML to update the gauge
-    }
+    // ── Powertrain ────────────────────────────────────────────────────────────
+    void setTach (uint32_t rpm);
+    void setSpeed(uint32_t speed);
+    void setTemp (uint32_t temp);
+    void setFuel (uint32_t fuel);
 
-    void setTach(uint32_t val) {
-        if (m_tach == val) return;
-        m_tach = val;
-        emit tachChanged(); // Notifies QML to update the gauge
-    }
+    // ── Per-corner ECU ────────────────────────────────────────────────────────
+    void setEcuTravel(EcuPosition pos, float travel);
+    void setEcuStrain(EcuPosition pos, float strain_l, float strain_r);
+    void setEcuAccel (EcuPosition pos, float x, float y, float z);
+    void setEcuGyro  (EcuPosition pos, float x, float y, float z);
 
-    // Stubs for the other ECU functions in can_bridge.cpp so it compiles
-    void setTemp(uint32_t) {}
-    void setFuel(uint32_t) {}
-    void setEcuTravel(EcuPosition, float) {}
-    void setEcuStrain(EcuPosition, float, float) {}
-    void setEcuAccel(EcuPosition, float, float, float) {}
-    void setEcuGyro(EcuPosition, float, float, float) {}
-
-signals:
-    void speedChanged();
-    void tachChanged();
+    // ── GPS ───────────────────────────────────────────────────────────────────
+    void setGps(float latitude, float longitude, float speed, bool has_fix);
 
 private:
-    DataManager() = default; // Private constructor for Singleton
-    float m_speed = 0;
-    float m_tach = 0;
+    DataManager();
+    ~DataManager() = default;
+    DataManager(const DataManager&)            = delete;
+    DataManager& operator=(const DataManager&) = delete;
+
+    // The actual protobuf object is held by value here.
+    // We use a forward-declared pointer to avoid including the generated header
+    // in every translation unit — include data_manager_impl.h if you need it.
+    struct Impl;
+    Impl* impl_;
+
+    std::mutex dataMutex_;
 };
