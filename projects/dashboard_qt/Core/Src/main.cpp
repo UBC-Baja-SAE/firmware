@@ -5,6 +5,7 @@
 
 int main(int argc, char *argv[]) {
     // Initialize the application
+
     QApplication a(argc, argv);
 
     // Setup font

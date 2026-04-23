@@ -1,6 +1,7 @@
-#include "../Inc/can_bridge.h"
-#include "../Inc/can_id.h"
-#include "../Inc/data_manager.h"
+#include "can_bridge.h"
+#include "can_id.h"
+#include "data_manager.h"
+#include <stdint.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>

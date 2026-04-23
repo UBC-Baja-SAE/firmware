@@ -15,12 +15,15 @@
 
 #include <QTimer>
 #include <QApplication>
-#include <csignal>
+#include <QPropertyAnimation>
+#include <QParallelAnimationGroup>
 #include <QMovie>
 #include <QLabel>
+#include <csignal>
 #include <chrono>
 #include <ctime>
 #include <thread>
+#include <unistd.h>
 
 // ── Signal handler ────────────────────────────────────────────────────────────
 static void handleSignal(int) {
@@ -55,21 +58,15 @@ MainWindow::MainWindow(QWidget *parent)
     ui->speedometerWidget->setClearColor(Qt::transparent);
     ui->speedometerWidget->setSource(QUrl(QStringLiteral("qrc:/QML/mainwindow.qml")));
 
-    // --- Speedometer Setup ---
     if (QQuickItem* speedoRoot = ui->speedometerWidget->rootObject()) {
         speedoRoot->setProperty("unitText", "KM/H");
         speedoRoot->setProperty("maxValue", 60);
-
-        // Speedometer gets the "Classic" Nyan look
         speedoRoot->setProperty("gifSource", "qrc:/Images/original.gif");
         speedoRoot->setProperty("gifWidth", 120);
         speedoRoot->setProperty("gifHeight", 74);
-
         QStringList speedoColors = {"#FF0000", "#FFaa00", "#33FF00", "#00ffee","#9c33ff", "#cc00ff"};
         speedoRoot->setProperty("rainbowColors", QVariant::fromValue(speedoColors));
     }
-
-
 
     // ── TACHOMETER GAUGE SETUP ────────────────────────────────────────────────
     ui->tachometerWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
@@ -77,22 +74,17 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tachometerWidget->setClearColor(Qt::transparent);
     ui->tachometerWidget->setSource(QUrl(QStringLiteral("qrc:/QML/mainwindow.qml")));
 
-    // --- Tachometer Setup ---
     if (QQuickItem* tachRoot = ui->tachometerWidget->rootObject()) {
         tachRoot->setProperty("unitText", "RPM");
         tachRoot->setProperty("maxValue", 4000);
-
-        // Tachometer gets a "Gamer" Neon look
         tachRoot->setProperty("gifSource", "qrc:/Images/gb.gif");
         tachRoot->setProperty("gifWidth", 120);
         tachRoot->setProperty("gifHeight", 74);
-
-        // Different color set for the Tach
         QStringList tachColors = {"#19353b", "#204b3b", "#4b776f", "#445244", "#4b7644", "#9eb94e"};
         tachRoot->setProperty("rainbowColors", QVariant::fromValue(tachColors));
     }
 
-    // 1. Start the camera (Restored)
+    // ── CAMERA ────────────────────────────────────────────────────────────────
     startCamera("/dev/video0", [this](const uint8_t* data, size_t size) {
         if (is_ui_busy.load()) return;
         is_ui_busy.store(true);
@@ -100,36 +92,39 @@ MainWindow::MainWindow(QWidget *parent)
         emit newFrameReceived(arr);
     });
 
-    // 2. Start Audio on a delayed background thread
+    // ── AUDIO (delayed) ───────────────────────────────────────────────────────
     std::thread([]() {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         printf("Main: 2 seconds passed. Starting audio now...\n");
         startAudio("plughw:U0x46d0x825,0");
     }).detach();
 
-
-    // Nyan Cat
+    // ── NYAN CAT BACKGROUND ───────────────────────────────────────────────────
     QMovie *movie = new QMovie(":/Images/nyanbg.gif", QByteArray(), this);
     ui->nyanbg->setMovie(movie);
     movie->start();
 
-    // Timestamped MCAP filename
+    // ── MCAP LOGGER ───────────────────────────────────────────────────────────
     auto now = std::chrono::system_clock::now();
     auto t   = std::chrono::system_clock::to_time_t(now);
     char filename[128];
     std::strftime(filename, sizeof(filename),
                   "/home/ubcbaja/firmware/logs/foxglove/%Y%m%d_%H%M%S.mcap",
                   std::localtime(&t));
+    startMcapLogger(filename, 100, false, "0.0.0.0", 8765);
 
-    startMcapLogger(filename, 100, true, "0.0.0.0", 8765);
-
-    // UART Handler
+    // ── UART HANDLER ──────────────────────────────────────────────────────────
     auto *uart = new UARTHandler(this);
     connect(uart, &UARTHandler::modeChanged, this, [this](QString mode) {
         ui->suspensionModeLabel->setText(mode);
+        // Page navigation commands
+        int pageCount = ui->stackedWidget->count();
+        if (mode == "PAGE_NEXT" && currentIndex + 1 < pageCount) slideTo(currentIndex + 1, true);
+        if (mode == "PAGE_PREV" && currentIndex - 1 >= 0)        slideTo(currentIndex - 1, false);
     });
-    uart->connectPort("/dev/ttyAMA0");
+    uart->connectPort("/tmp/ttyV0"); //temp for testing
 
+    // ── UPDATE TIMER ──────────────────────────────────────────────────────────
     connect(updateTimer, &QTimer::timeout, this, &MainWindow::updateDisplay);
     updateTimer->start(33);
 }
@@ -144,28 +139,22 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::updateDisplay() {
+void MainWindow::updateDisplay()
+{
     ubcbaja::Data data = DataManager::getInstance().getLatestData();
 
-    // Standard Widget update (Optional: Keep this if you still have the old text label)
-    // ui->tach_value->setText(QString::number(data.tach()));
+    ui->tach_value->setText(QString::number(data.tach()));
+    ui->speedo_value->setText(QString::number(data.speedo()));
 
-    // ── QML GAUGE UPDATES ─────────────────────────────────────────────────────
-
-    // Update Speedometer
-    if (QQuickItem* speedoRoot = ui->speedometerWidget->rootObject()) {
-        // Assuming your 'Data' class has a speed() method.
-        // If it's called something else in your protobuf, adjust accordingly.
+    if (QQuickItem* speedoRoot = ui->speedometerWidget->rootObject())
         speedoRoot->setProperty("value", data.speedo());
-    }
 
-    // Update Tachometer
-    if (QQuickItem* tachRoot = ui->tachometerWidget->rootObject()) {
+    if (QQuickItem* tachRoot = ui->tachometerWidget->rootObject())
         tachRoot->setProperty("value", data.tach());
-    }
 }
 
-void MainWindow::updateCameraDisplay(const QByteArray& frameData) {
+void MainWindow::updateCameraDisplay(const QByteArray& frameData)
+{
     QPixmap pixmap;
     if (pixmap.loadFromData(frameData, "JPG")) {
         ui->cameraLabel->setPixmap(pixmap.scaled(ui->cameraLabel->size(),
@@ -173,4 +162,50 @@ void MainWindow::updateCameraDisplay(const QByteArray& frameData) {
                                                  Qt::FastTransformation));
     }
     is_ui_busy.store(false);
+}
+
+void MainWindow::slideTo(int newIndex, bool slideLeft)
+{
+    if (m_animating) return;
+
+    QStackedWidget* stack = ui->stackedWidget;
+
+    int oldIndex = stack->currentIndex();
+    if (oldIndex == newIndex) return;
+
+    m_animating = true;
+
+    QWidget* oldPage = stack->currentWidget();
+    stack->setCurrentIndex(newIndex);
+    QWidget* newPage = stack->currentWidget();
+
+    int dx = slideLeft ? stack->width() : -stack->width();
+
+    newPage->move(dx, 0);
+    newPage->show();
+
+    auto* oldAnim = new QPropertyAnimation(oldPage, "pos", this);
+    oldAnim->setDuration(350);
+    oldAnim->setStartValue(oldPage->pos());
+    oldAnim->setEndValue(QPoint(-dx, 0));
+    oldAnim->setEasingCurve(QEasingCurve::InOutCubic);
+
+    auto* newAnim = new QPropertyAnimation(newPage, "pos", this);
+    newAnim->setDuration(350);
+    newAnim->setStartValue(QPoint(dx, 0));
+    newAnim->setEndValue(QPoint(0, 0));
+    newAnim->setEasingCurve(QEasingCurve::InOutCubic);
+
+    auto* group = new QParallelAnimationGroup(this);
+    group->addAnimation(oldAnim);
+    group->addAnimation(newAnim);
+
+    connect(group, &QParallelAnimationGroup::finished, this, [this, oldPage, newIndex, group]() {
+        oldPage->move(0, 0);
+        currentIndex = newIndex;
+        m_animating = false;
+        group->deleteLater();
+    });
+
+    group->start();
 }

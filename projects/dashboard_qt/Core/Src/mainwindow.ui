@@ -71,18 +71,14 @@ QLabel {
      <bool>false</bool>
     </property>
     <property name="styleSheet">
-     <string notr="true">QPushButton {
-	
-	background-color: rgb(255, 255, 255);
-}
-QLabel {
+     <string notr="true">QLabel {
 	background-color: rgba(0, 0, 0, 0);
 }
 
     font-family: &quot;FOT-NewRodin Pro M&quot;;</string>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="A_main">
      <widget class="QQuickWidget" name="speedometerWidget">
@@ -113,6 +109,15 @@ QLabel {
      </widget>
     </widget>
     <widget class="QWidget" name="B_gps">
+     <property name="styleSheet">
+      <string notr="true">QWidget {
+background-color: rgb(32, 53, 97);
+}
+
+QLabel {
+background-color: none;
+}</string>
+     </property>
      <widget class="QLabel" name="label_4">
       <property name="geometry">
        <rect>
@@ -131,21 +136,36 @@ QLabel {
        <string>GPS Page</string>
       </property>
      </widget>
-    </widget>
-    <widget class="QWidget" name="C_cam">
-     <widget class="QLabel" name="label">
+     <widget class="QLabel" name="toofpick">
       <property name="geometry">
        <rect>
-        <x>450</x>
-        <y>200</y>
-        <width>151</width>
-        <height>81</height>
+        <x>860</x>
+        <y>130</y>
+        <width>221</width>
+        <height>211</height>
        </rect>
       </property>
       <property name="text">
-       <string>future camera</string>
+       <string/>
+      </property>
+      <property name="pixmap">
+       <pixmap resource="../../Resources/resources.qrc">:/Images/lakers-after-the-deadline-trades-v0-4l5jxrz4ohqa1.png</pixmap>
+      </property>
+      <property name="scaledContents">
+       <bool>true</bool>
       </property>
      </widget>
+    </widget>
+    <widget class="QWidget" name="C_cam">
+     <property name="styleSheet">
+      <string notr="true">QWidget {
+background-color: rgb(32, 53, 97);
+}
+
+QLabel {
+background-color: none;
+}</string>
+     </property>
      <widget class="QLabel" name="JordiGif">
       <property name="geometry">
        <rect>
@@ -155,8 +175,14 @@ QLabel {
         <height>311</height>
        </rect>
       </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>12</pointsize>
+       </font>
+      </property>
       <property name="text">
-       <string>TextLabel</string>
+       <string/>
       </property>
      </widget>
      <widget class="QLabel" name="cameraLabel">
@@ -170,84 +196,35 @@ QLabel {
       </property>
       <property name="font">
        <font>
+        <family>FOT-NewRodin Pro</family>
         <pointsize>40</pointsize>
        </font>
       </property>
       <property name="text">
-       <string>Main Page!</string>
+       <string>Loading Camera...</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignmentFlag::AlignCenter</set>
       </property>
      </widget>
     </widget>
     <widget class="QWidget" name="D_stats">
-     <widget class="QLabel" name="label_2">
+     <property name="styleSheet">
+      <string notr="true">QWidget {
+background-color: rgb(32, 53, 97);
+}
+
+QLabel {
+background-color: none;
+}</string>
+     </property>
+     <widget class="QLabel" name="speedo_value">
       <property name="geometry">
        <rect>
-        <x>310</x>
-        <y>120</y>
-        <width>351</width>
-        <height>241</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>40</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Stats/Debug</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="tach_value_2">
-      <property name="geometry">
-       <rect>
-        <x>960</x>
-        <y>200</y>
-        <width>240</width>
+        <x>230</x>
+        <y>90</y>
+        <width>180</width>
         <height>60</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>FOT-NewRodin Pro</family>
-        <pointsize>36</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>2000</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="tach_value">
-      <property name="geometry">
-       <rect>
-        <x>950</x>
-        <y>250</y>
-        <width>240</width>
-        <height>60</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>FOT-NewRodin Pro</family>
-        <pointsize>36</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>2000</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="suspensionModeLabel">
-      <property name="geometry">
-       <rect>
-        <x>1090</x>
-        <y>310</y>
-        <width>171</width>
-        <height>61</height>
        </rect>
       </property>
       <property name="font">
@@ -257,7 +234,108 @@ QLabel {
        </font>
       </property>
       <property name="text">
-       <string>sus mode</string>
+       <string>0</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+      </property>
+     </widget>
+     <widget class="QLabel" name="suspensionModeLabel">
+      <property name="geometry">
+       <rect>
+        <x>290</x>
+        <y>20</y>
+        <width>180</width>
+        <height>60</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>24</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Loading</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="suspension">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>20</y>
+        <width>260</width>
+        <height>60</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>24</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Suspension Mode:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="speedometer">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>90</y>
+        <width>211</width>
+        <height>60</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>24</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Speedometer:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="tachometer">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>160</y>
+        <width>260</width>
+        <height>60</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>24</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Tachometer:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="tach_value">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>160</y>
+        <width>180</width>
+        <height>60</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>FOT-NewRodin Pro</family>
+        <pointsize>24</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>0</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
       </property>
      </widget>
     </widget>

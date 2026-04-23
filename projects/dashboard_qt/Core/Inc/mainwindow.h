@@ -5,8 +5,8 @@
 #include <QTimer>
 #include <QByteArray>
 #include <QPixmap>
+#include <QStackedWidget>
 #include <atomic>
-
 
 // Forward declaration for the auto-generated UI class
 QT_BEGIN_NAMESPACE
@@ -24,13 +24,17 @@ public:
         void newFrameReceived(const QByteArray& frameData);
 
 private slots:
-    void updateDisplay(); // Called by timer to update UI with latest data
+    void updateDisplay();
     void updateCameraDisplay(const QByteArray& frameData);
 
 private:
-    Ui::MainWindow *ui; // Pointer to the graphical elements
-    QTimer *updateTimer; // Timer for periodic UI updates
-    std::atomic<bool> is_ui_busy{false}; // Add this!
+    Ui::MainWindow *ui;
+    QTimer *updateTimer;
+    std::atomic<bool> is_ui_busy{false};
+
+    void slideTo(int newIndex, bool slideLeft = true);
+    bool m_animating = false;
+    int currentIndex = 0;
 };
 
 #endif // MAINWINDOW_H

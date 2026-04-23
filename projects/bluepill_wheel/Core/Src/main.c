@@ -55,7 +55,6 @@ UART_HandleTypeDef huart1;
 extern int Suspension_Mode;
 
 // Push buttons (1-4)
-
 uint32_t last_press_button1 = 0;
 volatile uint8_t flag_button1 = 0;
 
@@ -82,6 +81,18 @@ volatile uint8_t flag_paddle1 = 0;
 uint32_t last_press_paddle2 = 0;
 volatile uint8_t flag_paddle2 = 0;
 
+// Damping settings: Front Left, Front Right, Rear Left, Rear Right
+int damping_FL = 0;
+int damping_FR = 0;
+int damping_RL = 0;
+int damping_RR = 0;
+
+// UART RX Variables for receiving damping settings
+uint8_t rx_data;
+char rx_buffer[32];
+uint8_t rx_index = 0;
+volatile uint8_t rx_flag = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,21 +107,15 @@ static void MX_SPI1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-
-
 void UART_send_byte(unsigned char data) {
-  // Transmit 1 byte over huart1 with a maximum timeout
   HAL_UART_Transmit(&huart1, &data, 1, HAL_MAX_DELAY);
 }
 
 void UART_send_message(const char* message) {
-  // Loop through each character until \0
   for (size_t i = 0; i < strlen(message); ++i) {
     UART_send_byte((unsigned char)message[i]);
   }
 }
-
-
 
 /* USER CODE END 0 */
 
@@ -144,10 +149,17 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   ssd1306_Init();
-	ssd1306_Fill(Black);
+  ssd1306_Fill(Black);
 
   ssd1306_UpdateScreen();
 
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, RESET);
+
+  drawBars();
+
+  // Start UART Interrupt Reception for incoming damping settings
+  HAL_UART_Receive_IT(&huart1, &rx_data, 1);
 
   /* USER CODE END 2 */
 
@@ -159,56 +171,77 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
+    // Check if UART data has arrived
+    if (rx_flag) {
+      UART_send_message("Received: [");
+      UART_send_message(rx_buffer);
+      UART_send_message("]\n");
 
-      if (flag_button1) {
-        UART_send_message("B1\n");
-        flag_button1 = 0; // Clear the flag
-        Suspension_Mode = 1;
-        displaySuspensionMode(Suspension_Mode);
+      if (sscanf(rx_buffer, "%d,%d,%d,%d", &damping_FL, &damping_FR, &damping_RL, &damping_RR) == 4) {
+        UART_send_message("Parse: SUCCESS\n");
+        updateDampingDisplay(damping_FL, damping_FR, damping_RL, damping_RR);
+        ssd1306_UpdateScreen();
+      } else {
+        UART_send_message("Parse: FAILED\n");
       }
 
-      if (flag_button2) {
-        UART_send_message("B2\n");
-        flag_button2 = 0; // Clear the flag
-        Suspension_Mode = 2;
-        displaySuspensionMode(Suspension_Mode);
-      }
+      memset(rx_buffer, 0, sizeof(rx_buffer));
+      rx_index = 0;
+      rx_flag = 0;
+    }
+
+    if (flag_button1) {
+      UART_send_message("B1\n");
+      flag_button1 = 0;
+      Suspension_Mode = 1;
+      displaySuspensionMode(Suspension_Mode);
+      updateDampingDisplay(damping_FL, damping_FR, damping_RL, damping_RR);
+    }
+
+    if (flag_button2) {
+      UART_send_message("B2\n");
+      flag_button2 = 0;
+      Suspension_Mode = 2;
+      displaySuspensionMode(Suspension_Mode);
+      updateDampingDisplay(damping_FL, damping_FR, damping_RL, damping_RR);
+    }
 
     if (flag_button3) {
       UART_send_message("B3\n");
-      flag_button3 = 0; // Clear the flag
+      flag_button3 = 0;
       Suspension_Mode = 3;
       displaySuspensionMode(Suspension_Mode);
+      updateDampingDisplay(damping_FL, damping_FR, damping_RL, damping_RR);
     }
 
-      if (flag_button4) {
-        UART_send_message("B4\n");
-        flag_button4 = 0; // Clear the flag
-        Suspension_Mode = 4;
-        displaySuspensionMode(Suspension_Mode);
-      }
+    if (flag_button4) {
+      UART_send_message("B4\n");
+      flag_button4 = 0;
+      Suspension_Mode = 4;
+      displaySuspensionMode(Suspension_Mode);
+      updateDampingDisplay(damping_FL, damping_FR, damping_RL, damping_RR);
+    }
 
     if (flag_paddle1) {
       UART_send_message("P1\n");
-      flag_paddle1 = 0; // Clear the flag
-
+      flag_paddle1 = 0;
     }
 
     if (flag_paddle2) {
       UART_send_message("P2\n");
-      flag_paddle2 = 0; // Clear the flag
-
+      flag_paddle2 = 0;
     }
 
-      if (flag_toggle1) {
-        UART_send_message("T1\n");
-        flag_toggle1 = 0; // Clear the flag
-      }
+    if (flag_toggle1) {
+      UART_send_message("T1\n");
+      flag_toggle1 = 0;
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_15);
+    }
 
     if (flag_toggle2) {
       UART_send_message("T2\n");
-      flag_toggle2 = 0; // Clear the flag
-
+      flag_toggle2 = 0;
+      HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_10);
     }
 
   }
@@ -263,11 +296,9 @@ static void MX_SPI1_Init(void)
 {
 
   /* USER CODE BEGIN SPI1_Init 0 */
-
   /* USER CODE END SPI1_Init 0 */
 
   /* USER CODE BEGIN SPI1_Init 1 */
-
   /* USER CODE END SPI1_Init 1 */
   /* SPI1 parameter configuration*/
   hspi1.Instance = SPI1;
@@ -287,7 +318,6 @@ static void MX_SPI1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN SPI1_Init 2 */
-
   /* USER CODE END SPI1_Init 2 */
 
 }
@@ -301,11 +331,9 @@ static void MX_USART1_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART1_Init 0 */
-
   /* USER CODE END USART1_Init 0 */
 
   /* USER CODE BEGIN USART1_Init 1 */
-
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
   huart1.Init.BaudRate = 115200;
@@ -320,7 +348,6 @@ static void MX_USART1_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART1_Init 2 */
-
   /* USER CODE END USART1_Init 2 */
 
 }
@@ -334,7 +361,6 @@ static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
-
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
@@ -347,41 +373,45 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|OLED_CS_Pin|OLED_DC_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OLED_Reset_GPIO_Port, OLED_Reset_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, OLED_CS_Pin|OLED_DC_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin : PC13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  /*Configure GPIO pins : PC13 PC15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PC14 PC15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PA0 PA1 PA2 PA3
-                           PA4 PA5 */
+                           PA4 PA5 PA6 PA7 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-                          |GPIO_PIN_4|GPIO_PIN_5;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB10 PB11 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
+  /*Configure GPIO pin : PB10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA11 */
+  GPIO_InitStruct.Pin = GPIO_PIN_11;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : OLED_Reset_Pin */
   GPIO_InitStruct.Pin = OLED_Reset_Pin;
@@ -398,6 +428,12 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
   HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
@@ -411,79 +447,101 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
-
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 
-
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  if (huart->Instance == USART1) {
+    if (rx_data == '\n' || rx_data == '\r') {
+      // ONLY trigger if we actually have characters in the buffer
+      if (rx_index > 0) {
+        rx_buffer[rx_index] = '\0';
+        rx_flag = 1;
+      }
+    }
+    else if (rx_index < sizeof(rx_buffer) - 1) {
+      rx_buffer[rx_index++] = rx_data;
+    }
+    HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+  }
+}
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   uint32_t current_time = HAL_GetTick();
-  const uint32_t debounce_delay = 400;
+  const uint32_t debounce_delay = 220;
 
   switch (GPIO_Pin) {
 
-  case GPIO_PIN_5: // Push button 1
+  case GPIO_PIN_1: // Push button 1
     if ((current_time - last_press_button1) > debounce_delay) {
       flag_button1 = 1;
       last_press_button1 = current_time;
     }
     break;
 
-  case GPIO_PIN_4: // Push button 3
+  case GPIO_PIN_2: // Push button 2
     if ((current_time - last_press_button2) > debounce_delay) {
       flag_button2 = 1;
       last_press_button2 = current_time;
     }
     break;
 
-  case GPIO_PIN_3: // Push button 3
+  case GPIO_PIN_6: // Push button 3
     if ((current_time - last_press_button3) > debounce_delay) {
       flag_button3 = 1;
       last_press_button3 = current_time;
     }
     break;
 
-  case GPIO_PIN_2: // Push button 4
+  case GPIO_PIN_5: // Push button 4
     if ((current_time - last_press_button4) > debounce_delay) {
       flag_button4 = 1;
       last_press_button4 = current_time;
     }
     break;
 
-  case GPIO_PIN_1: // Toggle 1
-    if ((current_time - last_press_toggle1) > debounce_delay)
-    {
+  case GPIO_PIN_0: // Toggle 1
+    if ((current_time - last_press_toggle1) > debounce_delay) {
       flag_toggle1 = 1;
       last_press_toggle1 = current_time;
     }
     break;
 
-  case GPIO_PIN_0: // Toggle 2
-    if ((current_time - last_press_toggle2) > debounce_delay)
-    {
+  case GPIO_PIN_7: // Toggle 2
+    if ((current_time - last_press_toggle2) > debounce_delay) {
       flag_toggle2 = 1;
       last_press_toggle2 = current_time;
     }
     break;
 
-  case GPIO_PIN_15: // Paddle 1
-    if ((current_time - last_press_paddle1) > debounce_delay)
-    {
-      flag_toggle1 = 1;
+  case GPIO_PIN_3: // Paddle 1
+    if ((current_time - last_press_paddle1) > debounce_delay) {
+      flag_paddle1 = 1;
       last_press_paddle1 = current_time;
-    }
+  }
     break;
 
-  case GPIO_PIN_14: // Paddle 2
-    if ((current_time - last_press_paddle2) > debounce_delay)
-    {
-      flag_toggle2 = 1;
+  case GPIO_PIN_4: // Paddle 2
+    if ((current_time - last_press_paddle2) > debounce_delay) {
+      flag_paddle2 = 1;
       last_press_paddle2 = current_time;
     }
     break;
+  }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+  if (huart->Instance == USART1) {
+    // 1. Forcefully clear the Overrun (ORE) flag
+    __HAL_UART_CLEAR_OREFLAG(huart);
+
+    // 2. Force the HAL state machine back to READY
+    huart->RxState = HAL_UART_STATE_READY;
+
+    // 3. Restart the interrupt receiver
+    HAL_UART_Receive_IT(&huart1, &rx_data, 1);
   }
 }
 
@@ -496,7 +554,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
   {
@@ -514,8 +571,6 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
