@@ -19,11 +19,12 @@
 /* USER CODE BEGIN PD */
 #define TIM3_CLOCK_FREQ  32000   // (64MHz Clock / (1999 + 1))
 #define TIM8_CLOCK_FREQ  32000   // (64MHz Clock / (1999 + 1))
-#define MAGNET_DEBOUNCE_TIME_MS 5
-#define SPARK_DEBOUNCE_TIME_MS 10
+#define MAGNET_DEBOUNCE_TIME_MS 10
+#define SPARK_DEBOUNCE_TIME_MS 5
 #define SMOOTHING_FACTOR 0.7f
-#define PULSES_PER_REV   2.0f
-#define MAX_RPM_LIMIT    20000
+#define PULSES_PER_REV   1.0f
+#define MAX_RPM_LIMIT    8000
+#define MIN_KMH_LIMIT    100
 #define RADIUS_MM 266.7
 #define PI 3.14159265358979323846
 #define TIRE_CIRCUMFERENCE_KM  ((2.0f * PI * RADIUS_MM) / 1000000.0f)
@@ -174,10 +175,12 @@ int main(void)
 	  smoothed_tach_freq = 0;
 	 }
 
+    __disable_irq();
     SendSpeedOnCan(CAN_ID_REAR_SPEED);
     // TODO: For testing on the Dyno the tachometer is sending RPM, for the actual car we
     //       may want to send freq on CAN and give the calculation to the PI
     SendTachometerOnCan(CAN_ID_REAR_RPM);
+    __enable_irq();
 
     // Send message every 100 ms
     HAL_Delay(100);
@@ -570,13 +573,12 @@ static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
-
-
-
-
-
-
-
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF3_TIM8;    // AF3 is the routing for TIM8
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */

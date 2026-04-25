@@ -97,9 +97,10 @@ def plot_car_telemetry(csv_filename):
 
 if __name__ == "__main__":
     # Change this to the exact name of your car's log file
-    plot_car_telemetry('baja_log_20260207_0836.csv')
+    plot_car_telemetry('baja_log_20260207_1305.csv')
 
     # helpful logs:
     # baja_log_20260207_0836.csv
     # baja_log_20260207_0940.csv
     # baja_log_20260207_0945.csv
+    # baja_log_20260207_1006.csv
