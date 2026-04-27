@@ -38,7 +38,6 @@ SPI_HandleTypeDef hspi1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
-void ESUS_Reboot(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_FDCAN1_Init(void);
@@ -59,59 +58,59 @@ static void MX_SPI1_Init(void);
   */
 int main(void)
 {
-	  /* USER CODE BEGIN 1 */
-	  /* USER CODE END 1 */
 
-	  /* MPU Configuration--------------------------------------------------------*/
-	  MPU_Config();
+  /* USER CODE BEGIN 1 */
+  /* USER CODE END 1 */
 
-	  /* MCU Configuration--------------------------------------------------------*/
+  /* MPU Configuration--------------------------------------------------------*/
+  MPU_Config();
 
-	  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	  HAL_Init();
+  /* MCU Configuration--------------------------------------------------------*/
 
-	  /* USER CODE BEGIN Init */
-	  /* USER CODE END Init */
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-	  /* Configure the system clock */
-	  SystemClock_Config();
+  /* USER CODE BEGIN Init */
+  /* USER CODE END Init */
 
-	  /* Configure the peripherals common clocks */
-	  PeriphCommonClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-	  /* USER CODE BEGIN SysInit */
-	  /* USER CODE END SysInit */
+  /* Configure the peripherals common clocks */
+  PeriphCommonClock_Config();
 
-	  /* Initialize all configured peripherals */
-	  MX_GPIO_Init();
-	  MX_FDCAN1_Init();
-	  MX_ADC1_Init();
-	  MX_ADC2_Init();
-	  MX_I2C1_Init();
-	  MX_SPI1_Init();
-	  /* USER CODE BEGIN 2 */
+  /* USER CODE BEGIN SysInit */
+  /* USER CODE END SysInit */
 
-	  // 1. Configure a "Wide Open" Standard Filter (Accepts all 11-bit IDs)
-	  FDCAN_FilterTypeDef sFilterConfig;
-	  sFilterConfig.IdType = FDCAN_STANDARD_ID;
-	  sFilterConfig.FilterIndex = 0;
-	  sFilterConfig.FilterType = FDCAN_FILTER_RANGE;
-	  sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-	  sFilterConfig.FilterID1 = 0x000;
-	  sFilterConfig.FilterID2 = 0x7FF; // Max 11-bit ID
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_FDCAN1_Init();
+  MX_ADC1_Init();
+  MX_ADC2_Init();
+  MX_I2C1_Init();
+  MX_SPI1_Init();
+  /* USER CODE BEGIN 2 */
 
-	  if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK) {
-	    Error_Handler();
-	  }
+    // 1. Filter: Accept ALL Sensor Data (0x100 - 0x1FF) and Control (0x300)
+    FDCAN_FilterTypeDef sFilterConfig;
+    sFilterConfig.IdType = FDCAN_STANDARD_ID;
+    sFilterConfig.FilterIndex = 0;
+    sFilterConfig.FilterType = FDCAN_FILTER_RANGE;
+    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+    sFilterConfig.FilterID1 = 0x100;                  // Start of range
+    sFilterConfig.FilterID2 = 0x30F;                  // End of range (covers sensors and control)
 
-	  // 2. Set Global Filter to "Accept" for everything else
-	  // This ensures that even if a filter doesn't match, it goes to FIFO 0
-	  if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan1,
-	                                   FDCAN_ACCEPT_IN_RX_FIFO0, // Non-matching Std IDs
-	                                   FDCAN_ACCEPT_IN_RX_FIFO0, // Non-matching Ext IDs
-	                                   FDCAN_REJECT,             // Reject Remote Std
-	                                   FDCAN_REJECT) != HAL_OK) {
-	    Error_Handler();
+    if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK) {
+        Error_Handler();
+    }
+
+    // 2. Reject everything else to keep CPU load low
+    if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan1,
+                                     FDCAN_REJECT,    // Reject non-matching Std IDs
+                                     FDCAN_REJECT,    // Reject non-matching Ext IDs
+                                     FDCAN_REJECT,    // Reject remote frames
+                                     FDCAN_REJECT) != HAL_OK) {
+        Error_Handler();
 	  }
 
 	  // 3. Start the peripheral
@@ -137,6 +136,30 @@ int main(void)
 	  (void)imu_status; // Suppress unused warning
 
 	  Motors_Init();
+
+
+  // Replace your diagnostic block with this:
+  volatile uint16_t dbg_ctrl1  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_CTRL1, 0x00);
+  volatile uint16_t dbg_ctrl2  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_CTRL2, 0x00);
+  volatile uint16_t dbg_ctrl3  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_CTRL3, 0x00);
+  volatile uint16_t dbg_ctrl4  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_CTRL4, 0x00);
+  volatile uint16_t dbg_fault  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_FAULT,  0x00);
+
+  __asm volatile("nop"); // Breakpoint HERE - all volatile vars guaranteed in memory
+
+  // Breakpoint here and inspect these variables
+  volatile uint8_t spi_check_done = 1;
+  (void)spi_check_done;
+
+    // FAST TEMP TEST
+    HAL_Delay(100);
+    Motor_Step(MOTOR_NEMA17, 1, 200);  // forward 200 steps
+    HAL_Delay(500);
+    Motor_Step(MOTOR_NEMA17, 0, 200);  // back 200 steps
+    HAL_Delay(500);
+    Motor_Step(MOTOR_NEMA23, 1, 200);
+    HAL_Delay(500);
+    Motor_Step(MOTOR_NEMA23, 0, 200);
 
   /* USER CODE END 2 */
 
@@ -179,46 +202,45 @@ int main(void)
     SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
     SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
     SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
-    // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_L, ADC_CHANNEL_16);
-    // SendStrainOnCan(CAN_ID_ESUS_RL_STRAIN_R, ADC_CHANNEL_17);
     SendEsusStatusOnCan(CAN_ID_ESUS_RL_STEPPER_STATUS);
 
-	  // Check for new CAN messages (Polling Method)
-	  if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0) {
-	    FDCAN_RxHeaderTypeDef rx_header;
-	    uint8_t rx_data[8];
+      // Check for new CAN messages (Drain the entire FIFO to prevent overflow)
+      while (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0) {
+          FDCAN_RxHeaderTypeDef rx_header;
+          uint8_t rx_data[8];
 
-	    if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
-	      // Check if it's our ESUS control ID
-	      if (rx_header.Identifier == 0x300) {
-	        uint8_t cmd = rx_data[0];
-	        uint8_t setting_id = rx_data[1];
+          if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
 
-	        ESUS_Reboot();
-	        Motor_CheckAndRecover();
+              // Check if it's our ESUS control ID
+              if (rx_header.Identifier == 0x300) {
+                  uint8_t cmd = rx_data[0];
+                  uint8_t setting_id = rx_data[1];
 
-	        if (cmd == 0x11) {
-	          Motor_Calibrate_All();
-	        } 
-          else if (cmd == 0x01) {
-            Motor_GoTo_Setting(setting_id);
-	        }
-	      }
-	    }
-	  }
+                  // It's safe to check for faults here, but do NOT reboot the whole board
+                  Motor_CheckAndRecover();
+
+                  if (cmd == 0x11) {
+                      Motor_Calibrate_All();
+                  }
+                  else if (cmd == 0x01) {
+                      Motor_GoTo_Setting(setting_id);
+                  }
+              }
+          }
+      }
+
+      // --- CAN BUS-OFF RECOVERY ---
+      // If motor EMI corrupts the bus, the hardware will enter "Bus-Off" (PSR_BO bit).
+      // This forces the peripheral to restart and reconnect to the network.
+      if (hfdcan1.Instance->PSR & FDCAN_PSR_BO) {
+          HAL_FDCAN_Stop(&hfdcan1);
+          HAL_Delay(1); // Give the transceiver a millisecond to breathe
+          HAL_FDCAN_Start(&hfdcan1);
+      }
 
 	  HAL_Delay(10);
   }
   /* USER CODE END 3 */
-}
-
-/**
-  * @brief Performs a full peripheral and motor driver re-initialization
-  */
-void ESUS_Reboot(void) {
-	  MX_GPIO_Init();
-	  MX_SPI1_Init();
-	  Motors_Init();
 }
 
 /**

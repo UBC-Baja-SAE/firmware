@@ -15,7 +15,7 @@
 // Register Map
 #define PWR_MGMT0 0x1F
 #define GYRO_CONFIG0 0x20
-#define ACCEL_CONFIG0 0x20
+#define ACCEL_CONFIG0 0x21
 #define WHO_AM_I 0x75
 #define WHO_AM_I_VAL 0x67
 
@@ -55,9 +55,22 @@
 
 // SPI Registers (DRV8461)
 #define DRV_REG_FAULT     0x00
+#define DRV_REG_DIAG1     0x01
 #define DRV_REG_DIAG2     0x02
+#define DRV_REG_DIAG3     0x03
 #define DRV_REG_CTRL1     0x04
 #define DRV_REG_CTRL2     0x05
+#define DRV_REG_CTRL3     0x06
+#define DRV_REG_CTRL4     0x07
+#define DRV_REG_CTRL5     0x08  // ← Slew rate control
+#define DRV_REG_CTRL6     0x09  // ← Spread spectrum / dither
+#define DRV_REG_CTRL7     0x0A  // ← StallGuard config
+#define DRV_REG_CTRL8     0x0B  // ← ATD control
+#define DRV_REG_CTRL9     0x0C
+#define DRV_REG_CTRL10    0x0D
+#define DRV_REG_CTRL11    0x0E
+#define DRV_REG_CTRL12    0x0F
+#define DRV_REG_CTRL13    0x10
 
 // Motor Identifiers
 typedef enum {
@@ -82,6 +95,7 @@ void SendStrainOnCan(uint32_t can_id, uint32_t channel);
 void SendEsusStatusOnCan(uint32_t can_id);
 
 void Motors_Init(void);
+void Delay_us(uint32_t us);
 void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps);
 void Motors_Step_Simultaneous(int32_t move17, int32_t move23);
 void Motor_GoTo_Setting(uint8_t setting_id);
