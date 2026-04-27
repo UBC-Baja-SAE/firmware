@@ -21,6 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "can_messages.h"
+#include "control.h"
 
 /* USER CODE END Includes */
 
@@ -112,6 +114,7 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
+  HAL_FDCAN_Start(&hfdcan1);
 
   /* USER CODE END 2 */
 
@@ -122,6 +125,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+    SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
+
   }
   /* USER CODE END 3 */
 }
