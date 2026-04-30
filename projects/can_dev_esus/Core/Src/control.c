@@ -22,8 +22,21 @@ static void CAN_Transmit(uint32_t id, uint8_t *data, uint32_t len) {
         .MessageMarker      = 0
     };
 
-    if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &tx_header, data) != HAL_OK) {
-        Error_Handler();
+    // 1. Check if there is physical space in the Tx FIFO
+    if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0)
+    {
+        // 2. Only add the message if there is room
+        if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &tx_header, data) != HAL_OK)
+        {
+            // If it fails HERE, it's a configuration/RAM error, not a full FIFO.
+            Error_Handler();
+        }
+    }
+    else
+    {
+        // 3. FIFO is full! (Bus is likely disconnected, missing ACK, or congested).
+        // We gracefully DROP the message rather than crashing the whole ECU.
+        // Optional: You could turn on a red "CAN ERROR" LED on your dashboard here.
     }
 }
 
