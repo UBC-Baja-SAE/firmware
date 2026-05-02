@@ -30,8 +30,6 @@ FDCAN_HandleTypeDef hfdcan1;
 
 I2C_HandleTypeDef hi2c1;
 
-SPI_HandleTypeDef hspi1;
-
 /* USER CODE BEGIN PV */
 /* USER CODE END PV */
 
@@ -44,7 +42,6 @@ static void MX_FDCAN1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -88,8 +85,11 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_I2C1_Init();
-  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+
+  // Calibrate ADCs before using them
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
+  HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
     // 1. Filter: Accept ALL Sensor Data (0x100 - 0x1FF) and Control (0x300)
     FDCAN_FilterTypeDef sFilterConfig;
@@ -134,33 +134,6 @@ int main(void)
 	  // Optional: Signal IMU status via LED or debug pin
 	  // If IMU failed, system will still run - gyro data just won't be sent
 	  (void)imu_status; // Suppress unused warning
-
-	  Motors_Init();
-
-
-  // Replace your diagnostic block with this:
-  volatile uint16_t dbg_ctrl1  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_CTRL1, 0x00);
-  volatile uint16_t dbg_ctrl2  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_CTRL2, 0x00);
-  volatile uint16_t dbg_ctrl3  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_CTRL3, 0x00);
-  volatile uint16_t dbg_ctrl4  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_CTRL4, 0x00);
-  volatile uint16_t dbg_fault  = DRV8461_Transfer(MOTOR_NEMA17, 0x80 | DRV_REG_FAULT,  0x00);
-
-  __asm volatile("nop"); // Breakpoint HERE - all volatile vars guaranteed in memory
-
-  // Breakpoint here and inspect these variables
-  volatile uint8_t spi_check_done = 1;
-  (void)spi_check_done;
-
-    // FAST TEMP TEST
-    HAL_Delay(100);
-    Motor_Step(MOTOR_NEMA17, 1, 200);  // forward 200 steps
-    HAL_Delay(500);
-    Motor_Step(MOTOR_NEMA17, 0, 200);  // back 200 steps
-    HAL_Delay(500);
-    Motor_Step(MOTOR_NEMA23, 1, 200);
-    HAL_Delay(500);
-    Motor_Step(MOTOR_NEMA23, 0, 200);
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -181,9 +154,9 @@ int main(void)
     // SendEsusStatusOnCan(CAN_ID_ESUS_FL_STEPPER_STATUS);
 
     // FR
-    // SendPotOnCan(CAN_ID_ESUS_FR_SUSPENSION);
-    // SendAccelOnCan(CAN_ID_ESUS_FR_IMU_ACCEL);
-    // SendGyroOnCan(CAN_ID_ESUS_FR_IMU_GYRO);
+    SendPotOnCan(CAN_ID_ESUS_FR_SUSPENSION);
+    SendAccelOnCan(CAN_ID_ESUS_FR_IMU_ACCEL);
+    SendGyroOnCan(CAN_ID_ESUS_FR_IMU_GYRO);
     // SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_L, ADC_CHANNEL_16);
     // SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_R, ADC_CHANNEL_17);
     // SendEsusStatusOnCan(CAN_ID_ESUS_FR_STEPPER_STATUS);
@@ -199,44 +172,9 @@ int main(void)
 
 
     // RL
-    SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
-    SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
-    SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
-    SendEsusStatusOnCan(CAN_ID_ESUS_RL_STEPPER_STATUS);
-
-      // Check for new CAN messages (Drain the entire FIFO to prevent overflow)
-      while (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0) {
-          FDCAN_RxHeaderTypeDef rx_header;
-          uint8_t rx_data[8];
-
-          if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
-
-              // Check if it's our ESUS control ID
-              if (rx_header.Identifier == 0x300) {
-                  uint8_t cmd = rx_data[0];
-                  uint8_t setting_id = rx_data[1];
-
-                  // It's safe to check for faults here, but do NOT reboot the whole board
-                  Motor_CheckAndRecover();
-
-                  if (cmd == 0x11) {
-                      Motor_Calibrate_All();
-                  }
-                  else if (cmd == 0x01) {
-                      Motor_GoTo_Setting(setting_id);
-                  }
-              }
-          }
-      }
-
-      // --- CAN BUS-OFF RECOVERY ---
-      // If motor EMI corrupts the bus, the hardware will enter "Bus-Off" (PSR_BO bit).
-      // This forces the peripheral to restart and reconnect to the network.
-      if (hfdcan1.Instance->PSR & FDCAN_PSR_BO) {
-          HAL_FDCAN_Stop(&hfdcan1);
-          HAL_Delay(1); // Give the transceiver a millisecond to breathe
-          HAL_FDCAN_Start(&hfdcan1);
-      }
+    // SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
+    // SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
+    // SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
 
 	  HAL_Delay(10);
   }
@@ -378,9 +316,9 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_64CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -546,54 +484,6 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 0x0;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-  hspi1.Init.NSSPolarity = SPI_NSS_POLARITY_LOW;
-  hspi1.Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
-  hspi1.Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
-  hspi1.Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
-  hspi1.Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
-  hspi1.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
-  hspi1.Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
-  hspi1.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
-  hspi1.Init.IOSwap = SPI_IO_SWAP_DISABLE;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
 
 }
 
@@ -789,6 +679,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PD7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PG9 PG11 */
+  GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_11;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PG10 PG12 */
   GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_12;

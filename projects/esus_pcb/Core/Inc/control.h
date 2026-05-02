@@ -3,10 +3,10 @@
 
 #include "main.h"
 
-#define X_EXTEND_CM 59.5f
-#define X_COMP_CM 34.5f
-#define V_EXTEND 0.0f
-#define V_COMP 1.8f
+#define X_EXTEND_CM 62.0f
+#define X_COMP_CM   37.0f
+#define V_COMP      0.0f    // 0V = fully compressed
+#define V_EXTEND    1.8f    // 1.8V = fully extended
 
 // ICM-42670-P Definitions
 #define ICM_ADDR (0x68 << 1)
@@ -72,17 +72,6 @@
 #define DRV_REG_CTRL12    0x0F
 #define DRV_REG_CTRL13    0x10
 
-// Motor Identifiers
-typedef enum {
-    MOTOR_NEMA17 = 0,
-    MOTOR_NEMA23 = 1
-} MotorID_t;
-
-typedef struct {
-    int32_t nema17_target;
-    int32_t nema23_target;
-} StepperSetting_t;
-
 // Function Declarations
 HAL_StatusTypeDef I2C_BusRecovery(void);
 HAL_StatusTypeDef IMU_Init(void);
@@ -93,15 +82,5 @@ void SendGyroOnCan(uint32_t can_id);
 void SendAccelOnCan(uint32_t can_id);
 void SendStrainOnCan(uint32_t can_id, uint32_t channel);
 void SendEsusStatusOnCan(uint32_t can_id);
-
-void Motors_Init(void);
-void Delay_us(uint32_t us);
-void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps);
-void Motors_Step_Simultaneous(int32_t move17, int32_t move23);
-void Motor_GoTo_Setting(uint8_t setting_id);
-void Motor_Calibrate_All(void);
-void Motor_Calibrate(MotorID_t motor);
-uint16_t DRV8461_Transfer(MotorID_t motor, uint8_t addr, uint8_t data);
-uint8_t Motor_CheckAndRecover(void);
 
 #endif // __CONTROL_H

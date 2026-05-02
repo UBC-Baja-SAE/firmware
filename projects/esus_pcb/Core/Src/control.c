@@ -6,7 +6,6 @@ extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern FDCAN_HandleTypeDef hfdcan1;
 extern I2C_HandleTypeDef hi2c1;
-extern SPI_HandleTypeDef hspi1;
 
 // Global variables for CLion Live Watches
 volatile float live_gyro_x = 0.0f;
@@ -16,6 +15,7 @@ volatile float live_accel_x = 0.0f;
 volatile float live_accel_y = 0.0f;
 volatile float live_accel_z = 0.0f;
 volatile float live_pot = 0.0f;
+volatile uint32_t debug_raw_adc = 0;
 
 #define GYRO_SENSITIVITY_2000DPS 16.4f
 #define ACCEL_SENSITIVITY_16G 2048.0f
@@ -35,12 +35,6 @@ volatile HAL_StatusTypeDef a_debug_i2c_status = HAL_OK;
 volatile uint32_t a_debug_can_tx_errors = 0;
 volatile uint32_t a_debug_i2c_recoveries = 0;
 
-const StepperSetting_t suspension_profiles[4] = {
-    {0,    0},     // Setting 0: Full Soft / Home
-    {450,  600},   // Setting 1: Profile 1 (N17 moves 450, N23 moves 600)
-    {1200, 300},   // Setting 2: Profile 2
-    {2000, 1800}   // Setting 3: Full Hard / Max Extension
-};
 
 volatile int32_t nema17_current_pos = 0;
 volatile int32_t nema23_current_pos = 0;
@@ -253,41 +247,48 @@ HAL_StatusTypeDef IMU_Init(void) {
   return HAL_ERROR;
 }
 
+float GetMedian(float* array, int size) {
+  for (int i = 1; i < size; i++) {
+    float key = array[i];
+    int j = i - 1;
+    while (j >= 0 && array[j] > key) {
+      array[j + 1] = array[j];
+      j = j - 1;
+    }
+    array[j + 1] = key;
+  }
+  return array[size / 2];
+}
+
 float VoltageToPosition(float voltage) {
-  return X_EXTEND_CM +
-         (voltage * (X_EXTEND_CM - X_COMP_CM) / (V_EXTEND - V_COMP));
+  // Clamp input to valid voltage range
+  if (voltage < V_COMP)   voltage = V_COMP;
+  if (voltage > V_EXTEND) voltage = V_EXTEND;
+
+  return X_COMP_CM + (voltage - V_COMP) * (X_EXTEND_CM - X_COMP_CM) / (V_EXTEND - V_COMP);
 }
 
 void SendPotOnCan(uint32_t can_id) {
-  const int samples = 10;
-  float posSum = 0;
-  ADC_ChannelConfTypeDef sConfig = {0};
+  const int NUM_SAMPLES = 7;
+  float samples[NUM_SAMPLES];
 
-  // Configure ADC1 to the Potentiometer channel
-  sConfig.Channel = ADC_CHANNEL_5;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_64CYCLES_5;
-  sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
-  sConfig.Offset = 0;
-  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-
-  for (int i = 0; i < samples; i++) {
+  for (int i = 0; i < NUM_SAMPLES; i++) {
     HAL_ADC_Start(&hadc1);
     if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
-      uint32_t adcRaw = HAL_ADC_GetValue(&hadc1);
-      float voltage = ((float)adcRaw * 1.8f) / 65535.0f;
-      float position = VoltageToPosition(voltage);
-      posSum += position;
+      debug_raw_adc = HAL_ADC_GetValue(&hadc1);
+      float voltage = ((float)debug_raw_adc * 1.8f) / 65535.0f;
+      samples[i] = VoltageToPosition(voltage);
+    } else {
+      samples[i] = live_pot;
     }
     HAL_ADC_Stop(&hadc1);
   }
 
-  float posAvg = posSum / samples;
-  live_pot = posAvg;
-  uint16_t posCan = (uint16_t)(posAvg * 100.0f);
-  pot_tx_data[0] = (posCan >> 8) & 0xFF;
-  pot_tx_data[1] = posCan & 0xFF;
+  live_pot = GetMedian(samples, NUM_SAMPLES);
+
+  uint16_t pos_can = (uint16_t)(live_pot * 100.0f);
+  pot_tx_data[0] = (pos_can >> 8) & 0xFF;
+  pot_tx_data[1] =  pos_can       & 0xFF;
 
   CAN_Transmit(can_id, pot_tx_data, FDCAN_DLC_BYTES_2);
 }
@@ -360,295 +361,6 @@ void SendAccelOnCan(uint32_t can_id) {
   }
 }
 
-/**
- * @brief SPI Transfer for a specific motor
- */
-uint16_t DRV8461_Transfer(MotorID_t motor, uint8_t addr, uint8_t data) {
-  uint16_t tx_frame = ((uint16_t)addr << 8) | data;
-  uint16_t rx_frame = 0;
-
-  GPIO_TypeDef* ncs_port;
-  uint16_t ncs_pin;
-
-  // Select the correct Chip Select pin
-  if (motor == MOTOR_NEMA17) {
-    ncs_port = N17_NCS_PORT; ncs_pin = N17_NCS_PIN;
-  } else {
-    ncs_port = N23_NCS_PORT; ncs_pin = N23_NCS_PIN;
-  }
-
-  HAL_GPIO_WritePin(ncs_port, ncs_pin, GPIO_PIN_RESET); // Select
-  HAL_SPI_TransmitReceive(&hspi1, (uint8_t*)&tx_frame, (uint8_t*)&rx_frame, 1, 10);
-  HAL_GPIO_WritePin(ncs_port, ncs_pin, GPIO_PIN_SET);   // Deselect
-
-  return rx_frame;
-}
-
-/**
- * @brief Microsecond delay using DWT cycle counter
- */
-void Delay_us(uint32_t us) {
-    uint32_t startTick = DWT->CYCCNT;
-    uint32_t delayTicks = us * (SystemCoreClock / 1000000);
-
-    while (DWT->CYCCNT - startTick < delayTicks);
-}
-
-void Motors_Init(void) {
-  // Enable DWT Cycle Counter for microsecond delays
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-  DWT->LAR = 0xC5ACCE55;
-  DWT->CYCCNT = 0;
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-  // 1. Wake up the DRV8461 Logic ONLY (Keep power outputs DISABLED)
-  HAL_GPIO_WritePin(N17_SLEEP_PORT, N17_SLEEP_PIN, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(N23_SLEEP_PORT, N23_SLEEP_PIN, GPIO_PIN_SET);
-
-  HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_RESET);
-
-  HAL_Delay(10); // Wait for driver logic to boot
-
-  // 2. Configure SPI Parameters while outputs are safely off
-  
-  // In Motors_Init():
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x9F);  // Max TOFF
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x9F);
-
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL2, 0x05);  // 1/32 microstepping
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL2, 0x05);
-
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL3, 0x09);  // 60% torque N17
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL3, 0x0F);  // 100% torque N23
-
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL4, 0x00);  // Auto SmartTune
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL4, 0x00);
-
-  // CTRL6 (0x09): Enable spread spectrum dithering
-  // Bits 5:4 = SSC_EN, Bits 3:2 = dither amplitude
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL6, 0x30); // Enable SSC, moderate dither
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL6, 0x30);
-
-  // CTRL9 (0x0C): 0x10 -> Enable Stall Detection
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL9, 0x10);
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL9, 0x10);
-
-  // CTRL10 (0x0D): 0x0F -> Full current scale
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL10, 0x0F);
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL10, 0x0F);
-
-  // 3. Staggered Power Enable (Prevent Brown-Out)
-  HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_SET); // Energize N17
-  HAL_Delay(150); // Let power supply voltage stabilize
-
-  HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET); // Energize N23
-  HAL_Delay(150); // Let power supply voltage stabilize
-}
-
-
-void Motor_Step(MotorID_t motor, uint8_t direction, uint32_t steps) {
-  GPIO_TypeDef* step_port; uint16_t step_pin;
-  GPIO_TypeDef* dir_port;  uint16_t dir_pin;
-
-  if (motor == MOTOR_NEMA17) {
-    step_port = N17_STEP_PORT; step_pin = N17_STEP_PIN;
-    dir_port = N17_DIR_PORT;   dir_pin = N17_DIR_PIN;
-  } else {
-    step_port = N23_STEP_PORT; step_pin = N23_STEP_PIN;
-    dir_port = N23_DIR_PORT;   dir_pin = N23_DIR_PIN;
-  }
-
-  HAL_GPIO_WritePin(dir_port, dir_pin, direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
-  Delay_us(50); // Setup time
-
-  uint32_t min_delay = 500;  // 1kHz max speed
-  uint32_t max_delay = 2000; // 250Hz start speed
-  uint32_t accel_steps = (steps > 100) ? 50 : steps / 2;
-
-  for(uint32_t i = 0; i < steps; i++) {
-    uint32_t current_delay = max_delay;
-
-    if (i < accel_steps) {
-        // Accelerate
-        current_delay = max_delay - ((max_delay - min_delay) * i / accel_steps);
-    } else if (i > steps - accel_steps) {
-        // Decelerate
-        current_delay = min_delay + ((max_delay - min_delay) * (i - (steps - accel_steps)) / accel_steps);
-    } else {
-        current_delay = min_delay;
-    }
-
-    HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_SET);
-    Delay_us(10); // Pulse width
-    HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_RESET);
-    Delay_us(current_delay);
-  }
-}
-
-void Motors_Step_Simultaneous(int32_t move17, int32_t move23) {
-  uint8_t dir17 = (move17 > 0);
-  uint8_t dir23 = (move23 > 0);
-  uint32_t steps17 = (move17 > 0) ? move17 : -move17;
-  uint32_t steps23 = (move23 > 0) ? move23 : -move23;
-
-  HAL_GPIO_WritePin(N17_DIR_PORT, N17_DIR_PIN, dir17 ? GPIO_PIN_SET : GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(N23_DIR_PORT, N23_DIR_PIN, dir23 ? GPIO_PIN_SET : GPIO_PIN_RESET);
-
-  Delay_us(50);
-
-  uint32_t max_steps = (steps17 > steps23) ? steps17 : steps23;
-
-  uint32_t min_delay = 500;
-  uint32_t max_delay = 2000;
-  uint32_t accel_steps = (max_steps > 100) ? 50 : max_steps / 2;
-
-  for (uint32_t i = 0; i < max_steps; i++) {
-    uint32_t current_delay = max_delay;
-
-    if (i < accel_steps) {
-        current_delay = max_delay - ((max_delay - min_delay) * i / accel_steps);
-    } else if (i > max_steps - accel_steps) {
-        current_delay = min_delay + ((max_delay - min_delay) * (i - (max_steps - accel_steps)) / accel_steps);
-    } else {
-        current_delay = min_delay;
-    }
-
-    // Pulse N17
-    if (i < steps17) {
-      HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_SET);
-    }
-
-    // Pulse N23
-    if (i < steps23) {
-      HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_SET);
-    }
-
-    Delay_us(10);
-    HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_RESET);
-
-    Delay_us(current_delay);
-  }
-}
-
-void Motor_GoTo_Setting(uint8_t setting_id) {
-    if (setting_id > 3) return;
-
-    StepperSetting_t target = suspension_profiles[setting_id];
-
-    // Calculate displacement for both
-    int32_t diff17 = target.nema17_target - nema17_current_pos;
-    int32_t diff23 = target.nema23_target - nema23_current_pos;
-
-    // If either needs to move, move them together
-    if (diff17 != 0 || diff23 != 0) {
-        Motors_Step_Simultaneous(diff17, diff23);
-
-        // Update trackers to the final profile targets
-        nema17_current_pos = target.nema17_target;
-        nema23_current_pos = target.nema23_target;
-    }
-}
-
-void Motor_Calibrate_All(void) {
-  // Reset Indexers via SPI to clear any lingering faults from the whine
-  DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0xA7);
-  DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0xA7);
-  HAL_Delay(5);
-
-  // Force directions to backward (0)
-  HAL_GPIO_WritePin(N17_DIR_PORT, N17_DIR_PIN, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(N23_DIR_PORT, N23_DIR_PIN, GPIO_PIN_RESET);
-  HAL_Delay(5);
-
-  // Dedicated SLOW home for NEMA 17 to overcome mechanical inertia
-  for (uint32_t i = 0; i < 3000; i++) {
-    HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_SET);
-    Delay_us(10);
-    HAL_GPIO_WritePin(N17_STEP_PORT, N17_STEP_PIN, GPIO_PIN_RESET);
-    Delay_us(3000); // 3ms delay (~333 Hz)
-  }
-
-  // Dedicated SLOW home for NEMA 23
-  for (uint32_t i = 0; i < 3000; i++) {
-    HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_SET);
-    Delay_us(10);
-    HAL_GPIO_WritePin(N23_STEP_PORT, N23_STEP_PIN, GPIO_PIN_RESET);
-    Delay_us(3000);
-  }
-
-  // Reset trackers
-  nema17_current_pos = 0;
-  nema23_current_pos = 0;
-}
-
-/**
- * @brief Checks for motor faults and attempts a recovery if needed
- * @return 1 if a recovery was performed, 0 if everything is OK
- */
-uint8_t Motor_CheckAndRecover(void) {
-    uint8_t faulted = 0;
-
-    // Check N17 Fault (Active Low)
-    if (HAL_GPIO_ReadPin(N17_FAULT_PORT, N17_FAULT_PIN) == GPIO_PIN_RESET) {
-        faulted = 1;
-        // Toggle SLEEP or ENABLE to clear latching faults
-        HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_RESET);
-        HAL_Delay(10);
-        HAL_GPIO_WritePin(N17_ENABLE_PORT, N17_ENABLE_PIN, GPIO_PIN_SET);
-
-        // Re-send SPI Config (Some faults wipe volatile registers)
-        DRV8461_Transfer(MOTOR_NEMA17, DRV_REG_CTRL1, 0x87);
-    }
-
-    // Check N23 Fault
-    if (HAL_GPIO_ReadPin(N23_FAULT_PORT, N23_FAULT_PIN) == GPIO_PIN_RESET) {
-        faulted = 1;
-        HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_RESET);
-        HAL_Delay(10);
-        HAL_GPIO_WritePin(N23_ENABLE_PORT, N23_ENABLE_PIN, GPIO_PIN_SET);
-
-        DRV8461_Transfer(MOTOR_NEMA23, DRV_REG_CTRL1, 0x87);
-    }
-
-    if (faulted) {
-        // Wait 1 second before allowing the motor to spin again
-        // This prevents a "vicious cycle" of instant re-faulting
-        HAL_Delay(1000);
-    }
-
-    return faulted;
-}
-
-/**
- * @brief Reads motor driver status and broadcasts over CAN
- * Payload Structure (8 Bytes):
- * Byte 0: NEMA17 Hardware Status (0=OK, 1=Fault/Short)
- * Byte 1: NEMA17 SPI Status (Bit 0: Stall, Bit 1: Over-temp)
- * Byte 2: NEMA23 Hardware Status (0=OK, 1=Fault/Short)
- * Byte 3: NEMA23 SPI Status (Bit 0: Stall, Bit 1: Over-temp)
- */
-void SendEsusStatusOnCan(uint32_t can_id) {
-    uint8_t status_msg[8] = {0};
-
-    // Check Hardware Pins (Active Low)
-    status_msg[0] = (HAL_GPIO_ReadPin(N17_FAULT_PORT, N17_FAULT_PIN) == GPIO_PIN_RESET) ? 1 : 0;
-    status_msg[2] = (HAL_GPIO_ReadPin(N23_FAULT_PORT, N23_FAULT_PIN) == GPIO_PIN_RESET) ? 1 : 0;
-
-    // Query SPI Registers for detailed diagnostics
-    // We read DIAG2 (0x02) which contains Stall and Temp info
-    uint16_t n17_diag = DRV8461_Transfer(MOTOR_NEMA17, (0x80 | DRV_REG_DIAG2), 0x00); // 0x80 is READ bit
-    uint16_t n23_diag = DRV8461_Transfer(MOTOR_NEMA23, (0x80 | DRV_REG_DIAG2), 0x00);
-
-    // Byte 1 & 3: Map SPI bits to our CAN payload
-    // Bit 3 of DIAG2 is STALL, Bit 6 is OTW (Over-temp warning)
-    status_msg[1] = (uint8_t)(n17_diag & 0xFF);
-    status_msg[3] = (uint8_t)(n23_diag & 0xFF);
-
-    // Broadcast
-    CAN_Transmit(can_id, status_msg, FDCAN_DLC_BYTES_8);
-}
 
 // void SendStrainOnCan(uint32_t can_id, uint32_t channel) {
 //   ADC_ChannelConfTypeDef sConfig = {0};
