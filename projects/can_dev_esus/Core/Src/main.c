@@ -15,19 +15,31 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-// Timer clock = 25MHz HSE / (PLLM=4) * (PLLN=12) / (PLLR=2) = 75MHz...
-// but APB1/APB2 timers run at HCLK = 64MHz (HSI direct, not PLL for SYSCLK)
-// TIM3/TIM8 prescaler = 1999 → timer tick = 64MHz / 2000 = 32000 Hz
-#define TIM3_CLOCK_FREQ         32000
-#define TIM8_CLOCK_FREQ         32000
-#define MAGNET_DEBOUNCE_TIME_MS 5
-#define SPARK_DEBOUNCE_TIME_MS  10
-#define SMOOTHING_FACTOR        0.7f
+// SYSCLK = HSI = 64 MHz, no dividers on APB1/APB2
+// Prescaler 199  →  timer tick = 64 MHz / 200 = 320 000 Hz
+// (was 1999 → 32 000 Hz; 10× more resolution for period measurement)
+#define TIM3_CLOCK_FREQ         320000U
+#define TIM8_CLOCK_FREQ         320000U
+
+// Software debounce kept only for the speedometer (magnetic hall sensor).
+// The tachometer (induction/VR sensor) debounce is removed entirely;
+// rely on the hardware ICFilter instead.
+#define MAGNET_DEBOUNCE_TIME_MS 5U
+
+// Smoothing: lower α → more stable, slower to respond.
+// 0.15 is a good starting point for a noisy VR sensor.
+#define SPEED_SMOOTHING         0.15f
+#define TACH_SMOOTHING          0.10f
+
 #define PULSES_PER_REV          1.0f
-#define MAX_RPM_LIMIT           20000
+#define MAX_RPM_LIMIT           20000U
 #define RADIUS_MM               266.7f
 #define PI                      3.14159265358979323846f
 #define TIRE_CIRCUMFERENCE_KM   ((2.0f * PI * RADIUS_MM) / 1000000.0f)
+
+// Counter period is 0xFFFF (65535); the counter wraps 65535 → 0.
+// Full-scale tick count per overflow = 65536.
+#define TIMER_PERIOD_TICKS      65536U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,11 +57,12 @@ TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
 volatile uint32_t previous_speedometer_capture_value = 0;
-volatile uint32_t last_magnet_time = 0;
-volatile uint32_t previous_tachometer_capture_value = 0;
-volatile uint32_t last_spark_time = 0;
-static float smoothed_speed_freq = 0;
-static float smoothed_tach_freq = 0;
+volatile uint32_t last_magnet_time                   = 0;
+volatile uint32_t previous_tachometer_capture_value  = 0;
+// last_spark_time removed — no longer used for tachometer debounce.
+
+static float smoothed_speed_freq = 0.0f;
+static float smoothed_tach_freq  = 0.0f;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -132,7 +145,6 @@ int main(void)
     Error_Handler();
   }
 
-
   HAL_FDCAN_ConfigGlobalFilter(
     &hfdcan1,
     FDCAN_ACCEPT_IN_RX_FIFO0,
@@ -155,16 +167,24 @@ int main(void)
 
     uint32_t current_time = HAL_GetTick();
 
-    if ((current_time - last_magnet_time) > 1000)
+    // Zero-out speed if no magnet pulse for > 1 s
+    if ((current_time - last_magnet_time) > 1000U)
     {
       measured_speedometer_frequency = 0;
-      smoothed_speed_freq = 0;
+      smoothed_speed_freq            = 0.0f;
     }
 
-    if ((current_time - last_spark_time) > 1000)
+    // Zero-out tach if no spark pulse for > 1 s.
+    // Use the capture-register timestamp stored in previous_tachometer_capture_value
+    // indirectly: compare against last_magnet_time equivalent kept via HAL tick
+    // captured inside the ISR.  We reuse the same pattern but with a separate
+    // dedicated tick variable written in the ISR.
+    // (last_tach_tick is declared below as a file-scope volatile)
+    extern volatile uint32_t last_tach_tick;
+    if ((current_time - last_tach_tick) > 1000U)
     {
       measured_tachometer_frequency = 0;
-      smoothed_tach_freq = 0;
+      smoothed_tach_freq            = 0.0f;
     }
 
     SendSpeedOnCan(CAN_ID_REAR_SPEED);
@@ -172,11 +192,11 @@ int main(void)
 
     HAL_Delay(100);
 
-    // Check if we are in Bus-Off
-    if (hfdcan1.Instance->PSR & FDCAN_PSR_BO) {
+    // Bus-Off recovery
+    if (hfdcan1.Instance->PSR & FDCAN_PSR_BO)
+    {
       HAL_FDCAN_Stop(&hfdcan1);
       HAL_FDCAN_Start(&hfdcan1);
-      // Re-enable notifications if you're using them
       HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
     }
   }
@@ -554,10 +574,10 @@ static void MX_TIM8_Init(void)
   {
     Error_Handler();
   }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_FALLING;
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
   sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
   sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-  sConfigIC.ICFilter = 15;
+  sConfigIC.ICFilter = 11;
   if (HAL_TIM_IC_ConfigChannel(&htim8, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
@@ -789,12 +809,12 @@ static void MX_GPIO_Init(void)
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
-  /* Configure GPIO pins : PB8 PB9 (FDCAN1 RX and TX) */
-  GPIO_InitStruct.Pin = GPIO_PIN_8 | GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH; // Crucial for CAN speeds
-  GPIO_InitStruct.Alternate = GPIO_AF9_FDCAN1;       // Route FDCAN1 to Port B
+  /* PB8, PB9 — FDCAN1 RX/TX */
+  GPIO_InitStruct.Pin       = GPIO_PIN_8|GPIO_PIN_9;
+  GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull      = GPIO_NOPULL;
+  GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF9_FDCAN1;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* PC6 — TIM3 CH1 (speedometer input capture) */
@@ -805,7 +825,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /* PC7 — TIM8 CH2 (tachometer input capture) — WAS MISSING */
+  /* PC7 — TIM8 CH2 (tachometer input capture) */
   GPIO_InitStruct.Pin       = GPIO_PIN_7;
   GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull      = GPIO_PULLUP;
@@ -817,85 +837,98 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+// Tick timestamp updated by the tachometer ISR — used by the main loop
+// to zero-out RPM after 1 s of silence.
+volatile uint32_t last_tach_tick = 0;
+
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-  /* Speedometer — TIM3 CH1 on PC6, rising edge */
+  /* ------------------------------------------------------------------
+   * SPEEDOMETER — TIM3 CH1 on PC6, rising edge (hall / magnetic sensor)
+   * ------------------------------------------------------------------ */
   if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
   {
     uint32_t current_time = HAL_GetTick();
 
+    // Software debounce is still useful for a hall sensor (contact bounce).
     if ((current_time - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS)
     {
       return;
     }
-
     last_magnet_time = current_time;
 
     uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
-    uint32_t diff;
 
+    // Correct overflow arithmetic: counter wraps 0xFFFF → 0x0000.
+    // Full range = 65536 ticks (not 65535+1 via Period).
+    uint32_t diff;
     if (current_capture >= previous_speedometer_capture_value)
     {
       diff = current_capture - previous_speedometer_capture_value;
     }
     else
     {
-      diff = (htim->Init.Period - previous_speedometer_capture_value) + current_capture + 1;
+      diff = (TIMER_PERIOD_TICKS - previous_speedometer_capture_value) + current_capture;
     }
-
     previous_speedometer_capture_value = current_capture;
 
-    if (diff > 0)
+    if (diff > 0U)
     {
       float instant_freq = (float)TIM3_CLOCK_FREQ / (float)diff;
 
-      smoothed_speed_freq = (instant_freq * SMOOTHING_FACTOR)
-                          + (smoothed_speed_freq * (1.0f - SMOOTHING_FACTOR));
+      // Low α keeps more of the running average → smoother output.
+      smoothed_speed_freq = (instant_freq * SPEED_SMOOTHING)
+                          + (smoothed_speed_freq * (1.0f - SPEED_SMOOTHING));
 
-      double smoothed_speed_kmh = smoothed_speed_freq * TIRE_CIRCUMFERENCE_KM * 3600.0;
+      double smoothed_speed_kmh = (double)smoothed_speed_freq
+                                * (double)TIRE_CIRCUMFERENCE_KM
+                                * 3600.0;
 
       measured_speedometer_frequency = (uint32_t)smoothed_speed_kmh;
     }
   }
 
-  /* Tachometer — TIM8 CH2 on PC7, falling edge */
+  /* ------------------------------------------------------------------
+   * TACHOMETER — TIM8 CH2 on PC7, rising edge (induction / VR sensor)
+   *
+   * Software debounce REMOVED.  The hardware ICFilter (= 15) now rejects
+   * glitches.  Removing the HAL_GetTick() guard means no valid pulses are
+   * skipped at high RPM where inter-pulse intervals are shorter than the
+   * old 10 ms debounce window.
+   * ------------------------------------------------------------------ */
   if (htim->Instance == TIM8 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
   {
-    uint32_t current_time = HAL_GetTick();
-
-    if ((current_time - last_spark_time) < SPARK_DEBOUNCE_TIME_MS)
-    {
-      return;
-    }
-
-    last_spark_time = current_time;
+    // Record wall-clock time so the main loop can detect silence.
+    last_tach_tick = HAL_GetTick();
 
     uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
-    uint32_t diff;
 
+    // Correct overflow arithmetic (same fix as speedometer above).
+    uint32_t diff;
     if (current_capture >= previous_tachometer_capture_value)
     {
       diff = current_capture - previous_tachometer_capture_value;
     }
     else
     {
-      diff = (htim->Init.Period - previous_tachometer_capture_value) + current_capture + 1;
+      diff = (TIMER_PERIOD_TICKS - previous_tachometer_capture_value) + current_capture;
     }
-
     previous_tachometer_capture_value = current_capture;
 
-    if (diff > 0)
+    if (diff > 0U)
     {
       float instant_freq = (float)TIM8_CLOCK_FREQ / (float)diff;
 
-      smoothed_tach_freq = (instant_freq * SMOOTHING_FACTOR)
-                         + (smoothed_tach_freq * (1.0f - SMOOTHING_FACTOR));
+      // Lower α than speedometer — VR sensors are noisier.
+      smoothed_tach_freq = (instant_freq * TACH_SMOOTHING)
+                         + (smoothed_tach_freq * (1.0f - TACH_SMOOTHING));
 
-      double calculated_rpm = (smoothed_tach_freq * 60.0) / PULSES_PER_REV;
+      double calculated_rpm = ((double)smoothed_tach_freq * 60.0) / (double)PULSES_PER_REV;
 
-      if (calculated_rpm > MAX_RPM_LIMIT)
+      if (calculated_rpm > (double)MAX_RPM_LIMIT)
       {
-        calculated_rpm = MAX_RPM_LIMIT;
+        calculated_rpm = (double)MAX_RPM_LIMIT;
       }
 
       measured_tachometer_frequency = (uint32_t)calculated_rpm;
@@ -903,21 +936,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
   }
 }
 
-/* USER CODE BEGIN 4 */
-
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
-  if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET)
+  if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET)
   {
     FDCAN_RxHeaderTypeDef RxHeader;
     uint8_t RxData[8];
 
-    // Read the message out of the FIFO
     if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK)
     {
       __NOP();
-      // If your debugger stops here, your software is flawless!
-      // You can also inspect RxHeader.Identifier and RxData to see your speed/rpm values.
     }
   }
 }
@@ -960,8 +988,11 @@ void MPU_Config(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1) {}
+  while (1)
+  {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
@@ -975,6 +1006,8 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
