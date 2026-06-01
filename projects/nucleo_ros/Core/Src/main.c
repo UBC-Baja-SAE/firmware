@@ -237,8 +237,8 @@ static uint8_t ICM42670_WriteReg(uint8_t reg, uint8_t val)
 static uint8_t ICM42670_ReadReg(uint8_t reg)
 {
   uint8_t val = 0;
-  HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, &reg, 1, 10);
-  HAL_I2C_Master_Receive(&hi2c1, ICM42670_ADDR, &val, 1, 10);
+  HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, &reg, 1, 100);
+  HAL_I2C_Master_Receive(&hi2c1, ICM42670_ADDR, &val, 1, 100);
   return val;
 }
 

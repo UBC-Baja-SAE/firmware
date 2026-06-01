@@ -229,6 +229,7 @@ void StartDefaultTask(void *argument)
 
   for (;;)
   {
+
     ICM42670_ReadData();
 
     linpot_msg.data = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
@@ -268,6 +269,7 @@ void StartDefaultTask(void *argument)
   }
   /* USER CODE END StartDefaultTask */
 }
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
