@@ -3,7 +3,6 @@
 #include "can_bridge.h"
 
 #include <QThread>
-#include <QDateTime>
 #include <QDebug>
 
 #include <atomic>
@@ -13,18 +12,17 @@
 #include <unordered_set>
 #include <optional>
 #include <string>
+#include <vector>
+#include <cstring>
 
 #include <google/protobuf/descriptor.pb.h>
-
-// Generated protobuf headers
 #include "baja.pb.h"
-#include "foxglove/CompressedImage.pb.h"   // from foxglove-sdk/include or vendored
-#include "foxglove/RawAudio.pb.h"
 
 #ifdef USE_FOXGLOVE_SDK
 #  include <foxglove/server.hpp>
 #  include <foxglove/mcap.hpp>
 #  include <foxglove/channel.hpp>
+#  include <foxglove/messages.hpp>
 #endif
 
 // ─── Wall-clock helper ────────────────────────────────────────────────────────
@@ -35,12 +33,10 @@ static uint64_t nowNs() {
         duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count());
 }
 
-// ─── Schema serialisation helpers ────────────────────────────────────────────
-// Collect a descriptor and all its transitive dependencies into a
-// FileDescriptorSet, then serialise to a binary string for the MCAP schema.
+// ─── Protobuf schema builder ──────────────────────────────────────────────────
 
 template<typename ProtoT>
-static std::string buildSchema() {
+static std::string buildProtobufSchema() {
     const google::protobuf::Descriptor* desc = ProtoT::descriptor();
     if (!desc) return {};
 
@@ -52,9 +48,10 @@ static std::string buildSchema() {
     while (!to_visit.empty()) {
         const auto* fd = to_visit.front();
         to_visit.pop();
-        if (visited.count(fd->name())) continue;
+        std::string fdname(fd->name());
+        if (visited.count(fdname)) continue;
         fd->CopyTo(fd_set.add_file());
-        visited.insert(fd->name());
+        visited.insert(fdname);
         for (int i = 0; i < fd->dependency_count(); ++i)
             to_visit.push(fd->dependency(i));
     }
@@ -63,6 +60,28 @@ static std::string buildSchema() {
     fd_set.SerializeToString(&out);
     return out;
 }
+
+// ─── encode() helper for foxglove::messages types ────────────────────────────
+
+#ifdef USE_FOXGLOVE_SDK
+template<typename MsgT>
+static std::vector<uint8_t> encodeMessage(MsgT& msg) {
+    std::vector<uint8_t> buf(256);
+    while (true) {
+        size_t written = 0;
+        auto err = msg.encode(buf.data(), buf.size(), &written);
+        if (err == foxglove::FoxgloveError::Ok) {
+            buf.resize(written);
+            return buf;
+        }
+        if (err == foxglove::FoxgloveError::BufferTooShort) {
+            buf.resize(written);
+            continue;
+        }
+        return {};
+    }
+}
+#endif
 
 // ─── Private implementation ───────────────────────────────────────────────────
 
@@ -76,12 +95,11 @@ struct McapLoggerConfig {
 
 class McapLoggerPrivate {
 public:
-    std::atomic<bool> running {false};
+    std::atomic<bool> running             {false};
+    std::atomic<bool> cameraChannelReady  {false};  // set true once channel is open
     McapLoggerConfig  cfg;
 
 #ifdef USE_FOXGLOVE_SDK
-    // Channels are created on the logger thread and used from multiple threads,
-    // so they are wrapped in optional and reset under running==false ordering.
     std::optional<foxglove::RawChannel> telemetryChannel;
     std::optional<foxglove::RawChannel> cameraChannel;
     std::optional<foxglove::RawChannel> audioChannel;
@@ -104,9 +122,10 @@ McapLogger::~McapLogger() {
     delete d_;
 }
 
-bool McapLogger::isRunning() const { return d_->running.load(); }
+bool McapLogger::isRunning() const          { return d_->running.load(); }
+bool McapLogger::isCameraChannelReady() const { return d_->cameraChannelReady.load(); }
 
-// ─── start / stop ─────────────────────────────────────────────────────────────
+// ─── start ────────────────────────────────────────────────────────────────────
 
 void McapLogger::start(const QString& output_path,
                        int            sample_rate_hz,
@@ -122,30 +141,25 @@ void McapLogger::start(const QString& output_path,
     d_->cfg.ws_port        = ws_port;
 
 #ifdef USE_FOXGLOVE_SDK
-    // Run the blocking logger loop on a dedicated QThread so the Qt event loop
-    // (and therefore QML / UI) stays responsive.
     auto* thread = new QThread(this);
 
     connect(thread, &QThread::started, this, [this, thread]() {
+
         // ── WebSocket server ──────────────────────────────────────────────────
         std::optional<foxglove::WebSocketServer> server;
         if (d_->cfg.enable_ws) {
             foxglove::WebSocketServerOptions ws_opts;
             ws_opts.host = d_->cfg.ws_host;
             ws_opts.port = static_cast<uint16_t>(d_->cfg.ws_port);
-            ws_opts.capabilities = {foxglove::WebSocketServerCapabilities::ClientPublish};
+            ws_opts.capabilities       = {foxglove::WebSocketServerCapabilities::ClientPublish};
             ws_opts.supported_encodings = {"json"};
 
-            // Handle Foxglove "Publish" panel commands (same logic as your original)
             ws_opts.callbacks.onMessageData = [](
-                                                  uint32_t /*client_id*/,
-                                                  uint32_t /*client_channel_id*/,
-                                                  const std::byte* data,
-                                                  size_t           data_len)
+                                                  uint32_t, uint32_t,
+                                                  const std::byte* data, size_t data_len)
             {
                 std::string payload(reinterpret_cast<const char*>(data), data_len);
                 qDebug() << "MCAP: Foxglove publish:" << payload.c_str();
-
                 if      (payload.find("SET_MODE_PROFILE0") != std::string::npos) sendCanCommand("SET_MODE_PROFILE0");
                 else if (payload.find("SET_MODE_PROFILE1") != std::string::npos) sendCanCommand("SET_MODE_PROFILE1");
                 else if (payload.find("SET_MODE_PROFILE2") != std::string::npos) sendCanCommand("SET_MODE_PROFILE2");
@@ -157,10 +171,10 @@ void McapLogger::start(const QString& output_path,
             auto res = foxglove::WebSocketServer::create(std::move(ws_opts));
             if (res.has_value()) {
                 server = std::move(res.value());
-                qDebug() << "MCAP: WebSocket server on"
+                qDebug() << "MCAP: WebSocket on"
                          << d_->cfg.ws_host.c_str() << ":" << d_->cfg.ws_port;
             } else {
-                qWarning("MCAP: Failed to create WebSocket server");
+                qWarning("MCAP: WebSocket server failed to start");
                 emit errorOccurred("WebSocket server failed to start");
             }
         }
@@ -180,8 +194,8 @@ void McapLogger::start(const QString& output_path,
                 qDebug() << "MCAP: Writing to" << d_->cfg.output_path.c_str();
             } else {
                 qWarning("MCAP: Failed to open file: %s", d_->cfg.output_path.c_str());
-                emit errorOccurred(QString("Cannot open MCAP file: %1")
-                                       .arg(d_->cfg.output_path.c_str()));
+                emit errorOccurred(
+                    QString("Cannot open MCAP file: %1").arg(d_->cfg.output_path.c_str()));
             }
         }
 
@@ -191,62 +205,51 @@ void McapLogger::start(const QString& output_path,
             return;
         }
 
-        // ── Telemetry channel (ubcbaja::Data) ─────────────────────────────────
+        // ── Telemetry channel ─────────────────────────────────────────────────
         {
-            auto schema_data = buildSchema<ubcbaja::Data>();
+            auto schema_data = buildProtobufSchema<ubcbaja::Data>();
             foxglove::Schema schema;
             schema.name     = "ubcbaja.Data";
             schema.encoding = "protobuf";
             schema.data     = reinterpret_cast<const std::byte*>(schema_data.data());
             schema.data_len = schema_data.size();
-
             auto res = foxglove::RawChannel::create("/vehicle/telemetry", "protobuf", std::move(schema));
             if (res.has_value()) d_->telemetryChannel = std::move(res.value());
         }
 
-        // ── Camera channel (foxglove::CompressedImage) ─────────────────────────
+        // ── UART channel ──────────────────────────────────────────────────────
         {
-            auto schema_data = buildSchema<foxglove::CompressedImage>();
-            foxglove::Schema schema;
-            schema.name     = "foxglove.CompressedImage";
-            schema.encoding = "protobuf";
-            schema.data     = reinterpret_cast<const std::byte*>(schema_data.data());
-            schema.data_len = schema_data.size();
-
-            auto res = foxglove::RawChannel::create("/camera/front", "protobuf", std::move(schema));
-            if (res.has_value()) d_->cameraChannel = std::move(res.value());
-        }
-
-        // ── Audio channel (foxglove::RawAudio) ────────────────────────────────
-        {
-            auto schema_data = buildSchema<foxglove::RawAudio>();
-            foxglove::Schema schema;
-            schema.name     = "foxglove.RawAudio";
-            schema.encoding = "protobuf";
-            schema.data     = reinterpret_cast<const std::byte*>(schema_data.data());
-            schema.data_len = schema_data.size();
-
-            auto res = foxglove::RawChannel::create("/sensors/audio", "protobuf", std::move(schema));
-            if (res.has_value()) d_->audioChannel = std::move(res.value());
-        }
-
-        // ── UART channel (ubcbaja::UartMessage) ───────────────────────────────
-        {
-            auto schema_data = buildSchema<ubcbaja::UartMessage>();
+            auto schema_data = buildProtobufSchema<ubcbaja::UartMessage>();
             foxglove::Schema schema;
             schema.name     = "ubcbaja.UartMessage";
             schema.encoding = "protobuf";
             schema.data     = reinterpret_cast<const std::byte*>(schema_data.data());
             schema.data_len = schema_data.size();
-
             auto res = foxglove::RawChannel::create("/sensors/uart", "protobuf", std::move(schema));
             if (res.has_value()) d_->uartChannel = std::move(res.value());
+        }
+
+        // ── Camera channel ────────────────────────────────────────────────────
+        {
+            foxglove::Schema schema = foxglove::messages::CompressedImage::schema();
+            auto res = foxglove::RawChannel::create("/camera/front", "protobuf", std::move(schema));
+            if (res.has_value()) {
+                d_->cameraChannel = std::move(res.value());
+                d_->cameraChannelReady.store(true);   // ← unblocks CameraLogger
+            }
+        }
+
+        // ── Audio channel ─────────────────────────────────────────────────────
+        {
+            foxglove::Schema schema = foxglove::messages::RawAudio::schema();
+            auto res = foxglove::RawChannel::create("/sensors/audio", "protobuf", std::move(schema));
+            if (res.has_value()) d_->audioChannel = std::move(res.value());
         }
 
         d_->running.store(true);
         emit loggerStarted();
 
-        // ── Main telemetry loop ───────────────────────────────────────────────
+        // ── Main telemetry snapshot loop ──────────────────────────────────────
         const auto interval = std::chrono::milliseconds(1000 / d_->cfg.sample_rate_hz);
         while (d_->running.load()) {
             auto tick_start = std::chrono::steady_clock::now();
@@ -269,6 +272,7 @@ void McapLogger::start(const QString& output_path,
         }
 
         // ── Teardown ──────────────────────────────────────────────────────────
+        d_->cameraChannelReady.store(false);  // block any in-flight logCameraFrame calls
         d_->telemetryChannel.reset();
         d_->cameraChannel.reset();
         d_->audioChannel.reset();
@@ -279,6 +283,7 @@ void McapLogger::start(const QString& output_path,
 
         emit loggerStopped();
         thread->quit();
+
     }, Qt::DirectConnection);
 
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
@@ -286,75 +291,70 @@ void McapLogger::start(const QString& output_path,
 
 #else
     qWarning("MCAP: Built without USE_FOXGLOVE_SDK — logger is a no-op");
-    emit errorOccurred("Foxglove SDK not compiled in (missing USE_FOXGLOVE_SDK)");
+    emit errorOccurred("Foxglove SDK not compiled in");
 #endif
 }
 
+// ─── stop ─────────────────────────────────────────────────────────────────────
+
 void McapLogger::stop() {
-    if (d_->running.exchange(false)) {
-        // The loop checks running each iteration; it will exit and quit() the thread.
+    if (d_->running.exchange(false))
         qDebug() << "MCAP: Stop requested";
-    }
 }
 
 // ─── Camera frame ─────────────────────────────────────────────────────────────
 
 void McapLogger::logCameraFrame(const uint8_t* jpeg_data, size_t jpeg_size,
-                                uint64_t timestamp_ns,
-                                int /*width*/, int /*height*/) {
+                                uint64_t timestamp_ns, int, int) {
 #ifdef USE_FOXGLOVE_SDK
+    if (!d_->cameraChannelReady.load()) return;
     if (!d_->cameraChannel.has_value()) return;
 
-    foxglove::CompressedImage img;
-    auto* ts = img.mutable_timestamp();
-    ts->set_seconds(static_cast<int64_t>(timestamp_ns / 1'000'000'000ULL));
-    ts->set_nanos  (static_cast<int32_t>(timestamp_ns % 1'000'000'000ULL));
-    img.set_frame_id("camera_front");
-    img.set_format("jpeg");
-    img.set_data(jpeg_data, jpeg_size);
+    foxglove::messages::CompressedImage img;
+    foxglove::messages::Timestamp ts;
+    ts.sec    = static_cast<uint32_t>(timestamp_ns / 1'000'000'000ULL);
+    ts.nsec   = static_cast<uint32_t>(timestamp_ns % 1'000'000'000ULL);
+    img.timestamp = ts;
+    img.frame_id  = "camera_front";
+    img.format    = "jpeg";
+    img.data.resize(jpeg_size);
+    std::memcpy(img.data.data(), jpeg_data, jpeg_size);
 
-    std::string serialized;
-    if (img.SerializeToString(&serialized)) {
+    auto encoded = encodeMessage(img);
+    if (!encoded.empty())
         d_->cameraChannel->log(
-            reinterpret_cast<const std::byte*>(serialized.data()),
-            serialized.size());
-    }
+            reinterpret_cast<const std::byte*>(encoded.data()),
+            encoded.size(), timestamp_ns);
 #else
-    Q_UNUSED(jpeg_data); Q_UNUSED(jpeg_size);
-    Q_UNUSED(timestamp_ns);
+    Q_UNUSED(jpeg_data); Q_UNUSED(jpeg_size); Q_UNUSED(timestamp_ns);
 #endif
 }
 
 // ─── Audio frame ──────────────────────────────────────────────────────────────
 
 void McapLogger::logAudioFrame(const uint8_t* pcm_data, size_t pcm_size,
-                               uint32_t sample_rate,
-                               uint32_t num_channels,
+                               uint32_t sample_rate, uint32_t num_channels,
                                uint32_t bits_per_sample) {
 #ifdef USE_FOXGLOVE_SDK
-    if (!d_->audioChannel.has_value()) {
-        qWarning("MCAP: Audio channel not ready");
-        return;
-    }
+    if (!d_->audioChannel.has_value()) { qWarning("MCAP: Audio channel not ready"); return; }
 
-    foxglove::RawAudio audio;
-    audio.set_sample_rate(sample_rate);
-    audio.set_num_channels(num_channels);
-    audio.set_sample_size(bits_per_sample);
-    audio.set_data(pcm_data, pcm_size);
-
-    // Timestamp this frame with current wall clock
-    auto* ts = audio.mutable_timestamp();
     uint64_t now = nowNs();
-    ts->set_seconds(static_cast<int64_t>(now / 1'000'000'000ULL));
-    ts->set_nanos  (static_cast<int32_t>(now % 1'000'000'000ULL));
+    foxglove::messages::RawAudio audio;
+    foxglove::messages::Timestamp ats;
+    ats.sec  = static_cast<uint32_t>(now / 1'000'000'000ULL);
+    ats.nsec = static_cast<uint32_t>(now % 1'000'000'000ULL);
+    audio.timestamp          = ats;
+    audio.sample_rate        = sample_rate;
+    audio.number_of_channels = num_channels;
+    audio.format             = "pcm-s16";
+    audio.data.resize(pcm_size);
+    std::memcpy(audio.data.data(), pcm_data, pcm_size);
 
-    std::string serialized;
-    if (audio.SerializeToString(&serialized)) {
+    auto encoded = encodeMessage(audio);
+    if (!encoded.empty())
         d_->audioChannel->log(
-            reinterpret_cast<const std::byte*>(serialized.data()),
-            serialized.size());
-    }
+            reinterpret_cast<const std::byte*>(encoded.data()),
+            encoded.size(), now);
 #else
     Q_UNUSED(pcm_data); Q_UNUSED(pcm_size);
     Q_UNUSED(sample_rate); Q_UNUSED(num_channels); Q_UNUSED(bits_per_sample);
@@ -368,7 +368,6 @@ void McapLogger::logUartMessage(const QString& port_name,
                                 uint64_t       timestamp_ns) {
 #ifdef USE_FOXGLOVE_SDK
     if (!d_->uartChannel.has_value()) return;
-
     if (timestamp_ns == 0) timestamp_ns = nowNs();
 
     ubcbaja::UartMessage msg;
@@ -377,11 +376,10 @@ void McapLogger::logUartMessage(const QString& port_name,
     msg.set_raw_line(raw_line.toStdString());
 
     std::string serialized;
-    if (msg.SerializeToString(&serialized)) {
+    if (msg.SerializeToString(&serialized))
         d_->uartChannel->log(
             reinterpret_cast<const std::byte*>(serialized.data()),
-            serialized.size());
-    }
+            serialized.size(), timestamp_ns);
 #else
     Q_UNUSED(port_name); Q_UNUSED(raw_line); Q_UNUSED(timestamp_ns);
 #endif

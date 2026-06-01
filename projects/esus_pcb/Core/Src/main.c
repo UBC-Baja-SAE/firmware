@@ -7,6 +7,7 @@
 /* USER CODE BEGIN Includes */
 #include "can_messages.h"
 #include "control.h"
+#include "stepper.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -30,7 +31,10 @@ FDCAN_HandleTypeDef hfdcan1;
 
 I2C_HandleTypeDef hi2c1;
 
+SPI_HandleTypeDef hspi1;
+
 /* USER CODE BEGIN PV */
+uint32_t last_step_tick = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -42,6 +46,7 @@ static void MX_FDCAN1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -85,7 +90,31 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_I2C1_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+
+  Stepper_Init();
+  Stepper_Wake(MOTOR_NEMA17);
+  Stepper_Wake(MOTOR_NEMA23);
+  Stepper_Enable(MOTOR_NEMA17);
+  Stepper_Enable(MOTOR_NEMA23);
+
+  HAL_Delay(10);
+
+  // If nFAULT is low, the driver is in fault — check power and wiring
+  if (Stepper_IsFault(MOTOR_NEMA23)) {
+    Stepper_ClearFault(MOTOR_NEMA23);
+    HAL_Delay(10);
+  }
+
+  for (int i = 0; i < 400; i++) {
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_SET);
+    GPIO_PinState step_high = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2); // should be SET here
+    HAL_Delay(5);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_RESET);
+    GPIO_PinState step_low = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2);  // should be RESET here
+    HAL_Delay(5);
+  }
 
   // Calibrate ADCs before using them
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
@@ -142,6 +171,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    // Add temporarily at top of while(1)
+    GPIO_PinState nsleep = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5); // should be SET
+    GPIO_PinState enable = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_4); // should be SET
 
     // Purposefully not sending strain gauges over CAN for EDN 2026
 
@@ -154,9 +186,9 @@ int main(void)
     // SendEsusStatusOnCan(CAN_ID_ESUS_FL_STEPPER_STATUS);
 
     // FR
-    SendPotOnCan(CAN_ID_ESUS_FR_SUSPENSION);
-    SendAccelOnCan(CAN_ID_ESUS_FR_IMU_ACCEL);
-    SendGyroOnCan(CAN_ID_ESUS_FR_IMU_GYRO);
+    // SendPotOnCan(CAN_ID_ESUS_FR_SUSPENSION);
+    // SendAccelOnCan(CAN_ID_ESUS_FR_IMU_ACCEL);
+    // SendGyroOnCan(CAN_ID_ESUS_FR_IMU_GYRO);
     // SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_L, ADC_CHANNEL_16);
     // SendStrainOnCan(CAN_ID_ESUS_FR_STRAIN_R, ADC_CHANNEL_17);
     // SendEsusStatusOnCan(CAN_ID_ESUS_FR_STEPPER_STATUS);
@@ -172,9 +204,20 @@ int main(void)
 
 
     // RL
-    // SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
-    // SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
-    // SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
+    SendPotOnCan(CAN_ID_ESUS_RL_SUSPENSION);
+    SendAccelOnCan(CAN_ID_ESUS_RL_IMU_ACCEL);
+    SendGyroOnCan(CAN_ID_ESUS_RL_IMU_GYRO);
+
+    if (HAL_GetTick() - last_step_tick >= 3000) {
+      last_step_tick = HAL_GetTick();
+
+      Stepper_SetDir(MOTOR_NEMA23, 1);
+      Stepper_Step(MOTOR_NEMA23, 200, 1000);
+
+      if (Stepper_IsFault(MOTOR_NEMA23)) {
+        Stepper_ClearFault(MOTOR_NEMA23);
+      }
+    }
 
 	  HAL_Delay(10);
   }
@@ -488,6 +531,54 @@ static void MX_I2C1_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 0x0;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi1.Init.NSSPolarity = SPI_NSS_POLARITY_LOW;
+  hspi1.Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
+  hspi1.Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
+  hspi1.Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
+  hspi1.Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
+  hspi1.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
+  hspi1.Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
+  hspi1.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
+  hspi1.Init.IOSwap = SPI_IO_SWAP_DISABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -680,22 +771,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PD7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PG9 PG11 */
-  GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_11;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PG10 PG12 */
   GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -704,6 +779,22 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  // SPI1: SCK=PG11, MISO=PG9
+  GPIO_InitStruct.Pin = GPIO_PIN_9 | GPIO_PIN_11;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
+  // SPI1: MOSI=PD7
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
   /* USER CODE END MX_GPIO_Init_2 */
 }
 

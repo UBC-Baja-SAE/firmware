@@ -28,6 +28,7 @@
 #include <stdbool.h>
 
 #include <std_msgs/msg/int32.h>
+#include <std_msgs/msg/float32.h>
 
 #include <rcl/rcl.h>
 #include <rcl/error_handling.h>
@@ -57,6 +58,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+
+extern volatile uint32_t speedometer_kmh;
+extern volatile uint32_t last_magnet_time;
+extern volatile uint32_t linpot_raw_value;
 
 
 /* USER CODE END Variables */
@@ -147,14 +152,16 @@ void StartDefaultTask(void *argument)
   freeRTOS_allocator.allocate = microros_allocate;
   freeRTOS_allocator.deallocate = microros_deallocate;
   freeRTOS_allocator.reallocate = microros_reallocate;
-  freeRTOS_allocator.zero_allocate =  microros_zero_allocate;
+  freeRTOS_allocator.zero_allocate = microros_zero_allocate;
 
   if (!rcutils_set_default_allocator(&freeRTOS_allocator)) {
     printf("Error on default allocators (line %d)\n", __LINE__);
   }
 
-  rcl_publisher_t publisher;
-  std_msgs__msg__Int32 msg;
+  rcl_publisher_t speed_publisher;
+  rcl_publisher_t linpot_publisher;
+  std_msgs__msg__Int32 speed_msg;
+  std_msgs__msg__Float32 linpot_msg;
   rclc_support_t support;
   rcl_allocator_t allocator;
   rcl_node_t node;
@@ -165,7 +172,7 @@ void StartDefaultTask(void *argument)
   const uint8_t attempts = 5;
 
   while (rmw_uros_ping_agent(timeout_ms, attempts) != RMW_RET_OK) {
-
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
     osDelay(500);
   }
 
@@ -174,27 +181,40 @@ void StartDefaultTask(void *argument)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 
   rclc_support_init(&support, 0, NULL, &allocator);
-
-  rclc_node_init_default(&node, "cubemx_node", "", &support);
+  rclc_node_init_default(&node, "rear_ecu", "", &support);
 
   rclc_publisher_init_default(
-    &publisher,
+    &speed_publisher,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-    "rear_ecu");
+    "speedometer");
 
-  msg.data = 0;
+  rclc_publisher_init_default(
+    &linpot_publisher,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+    "potentiometer");
 
-  for(;;)
+  speed_msg.data = 0;
+  linpot_msg.data = 0;
+
+  for (;;)
   {
-    rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
-    if (ret != RCL_RET_OK)
+    if ((HAL_GetTick() - last_magnet_time) > 1000U)  // <-- remove the extern line above this
     {
-      printf("Error publishing (line %d)\n", __LINE__);
+      speedometer_kmh = 0;
     }
 
-    msg.data++;
-    osDelay(10);
+    speed_msg.data = (int32_t)speedometer_kmh;
+    linpot_msg.data   = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
+
+    if (rcl_publish(&speed_publisher, &speed_msg, NULL) != RCL_RET_OK)
+      printf("Error publishing speed (line %d)\n", __LINE__);
+
+    if (rcl_publish(&linpot_publisher, &linpot_msg, NULL) != RCL_RET_OK)
+      printf("Error publishing linpot (line %d)\n", __LINE__);
+
+    osDelay(50);
   }
   /* USER CODE END StartDefaultTask */
 }

@@ -111,7 +111,7 @@ static void canReaderThread(std::string interface_name) {
             uint32_t val;
             memcpy(&val, frame.data, 4);
 
-            if      (id == tachometer_id)  dm.setTach(val * 4);
+            if      (id == tachometer_id)  dm.setTach(val * 2); //Changed since tach seemed to be 2x what we were expecting May 4th 2026 (used to be 4x)
             else if (id == speedometer_id) dm.setSpeed(val);
             else if (id == thermometer_id) dm.setTemp(val);
             else if (id == fuel_sensor_id) dm.setFuel(val);

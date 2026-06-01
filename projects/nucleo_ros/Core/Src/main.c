@@ -19,7 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "adc.h"
 #include "dma.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -95,9 +97,15 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_UART4_Init();
+  MX_TIM2_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
 
+  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
+
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
+  HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -148,6 +156,10 @@ void SystemClock_Config(void)
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
+  /** Macro to configure the PLL clock source
+  */
+  __HAL_RCC_PLL_PLLSOURCE_CONFIG(RCC_PLLSOURCE_HSI);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -167,19 +179,100 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
 }
 
 /* USER CODE BEGIN 4 */
+
+/* ── tuneable constants ────────────────────────────────────────────── */
+#define TIM2_CLOCK_FREQ         64000000UL   // HSI @ 64 MHz, prescaler = 0
+#define TIMER_PERIOD_TICKS      4294967296ULL // 2^32 for 32-bit TIM2
+#define MAGNET_DEBOUNCE_TIME_MS 5U
+#define SPEED_SMOOTHING         0.2f
+#define TIRE_CIRCUMFERENCE_KM   0.001963f
+#define MAX_SPEED_KMH           150U
+
+/* ── state (ISR-owned) ─────────────────────────────────────────────── */
+static volatile uint32_t previous_capture     = 0;
+static volatile uint8_t  speed_first_pulse    = 1;
+static volatile uint64_t tim2_overflow_count  = 0;  // exposed for PeriodElapsed
+static volatile float    smoothed_speed_freq  = 0.0f;
+
+volatile uint32_t last_magnet_time     = 0;
+
+/* ── speedometer output ────────────────────────────────── */
+volatile uint32_t speedometer_kmh = 0;
+
+/* ── lin pot output ────────────────────────────────── */
+volatile uint32_t linpot_raw_value = 0;
+
+/* Called from HAL_TIM_PeriodElapsedCallback in main.c */
+void Speedometer_OverflowISR(void)
+{
+  tim2_overflow_count++;
+}
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+  {
+    uint32_t now = HAL_GetTick();
+
+    if ((now - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS)
+      return;
+    last_magnet_time = now;
+
+    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+
+    if (speed_first_pulse)
+    {
+      previous_capture    = cap;
+      tim2_overflow_count = 0;
+      speed_first_pulse   = 0;
+      return;
+    }
+
+    // TIM2 is 32-bit so overflow is rare, but handled correctly
+    uint64_t diff = (tim2_overflow_count * TIMER_PERIOD_TICKS)
+                  + (uint64_t)cap
+                  - (uint64_t)previous_capture;
+
+    previous_capture    = cap;
+    tim2_overflow_count = 0;
+
+    if (diff > 0ULL)
+    {
+      float instant_freq = (float)TIM2_CLOCK_FREQ / (float)diff;
+
+      smoothed_speed_freq = (instant_freq * SPEED_SMOOTHING)
+                          + (smoothed_speed_freq * (1.0f - SPEED_SMOOTHING));
+
+      uint32_t kmh = (uint32_t)(smoothed_speed_freq
+                               * TIRE_CIRCUMFERENCE_KM
+                               * 3600.0f);
+
+      speedometer_kmh = (kmh > MAX_SPEED_KMH) ? MAX_SPEED_KMH : kmh;
+    }
+  }
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+  if (hadc->Instance == ADC1)
+  {
+    linpot_raw_value = HAL_ADC_GetValue(hadc);
+    HAL_ADC_Start_IT(hadc);  // re-arm for next conversion
+  }
+}
 
 /* USER CODE END 4 */
 
@@ -223,14 +316,16 @@ void MPU_Config(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
-
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM1)
   {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  if (htim->Instance == TIM2)
+  {
+    Speedometer_OverflowISR();
+  }
   /* USER CODE END Callback 1 */
 }
 
