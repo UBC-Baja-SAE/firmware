@@ -317,11 +317,30 @@ void ICM42670_Init(void)
 
 void ICM42670_ReadData(void)
 {
-  uint8_t buf[12];
+  uint8_t buf[12] = {0};
   uint8_t reg = ICM42670_REG_ACCEL_DATA_X1;
-  HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, &reg, 1, 10);
-  HAL_I2C_Master_Receive(&hi2c1, ICM42670_ADDR, buf, 12, 10);
 
+  HAL_StatusTypeDef status;
+
+  status = HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, &reg, 1, 10);
+  if (status != HAL_OK)
+  {
+    HAL_I2C_DeInit(&hi2c1);
+    HAL_Delay(5);
+    HAL_I2C_Init(&hi2c1);
+    return;  // skip this cycle, don't update imu_accel/gyro globals
+  }
+
+  status = HAL_I2C_Master_Receive(&hi2c1, ICM42670_ADDR, buf, 12, 10);
+  if (status != HAL_OK)
+  {
+    HAL_I2C_DeInit(&hi2c1);
+    HAL_Delay(5);
+    HAL_I2C_Init(&hi2c1);
+    return;
+  }
+
+  // Only update globals if read succeeded
   imu_accel_x = (int16_t)(buf[0]  << 8 | buf[1]);
   imu_accel_y = (int16_t)(buf[2]  << 8 | buf[3]);
   imu_accel_z = (int16_t)(buf[4]  << 8 | buf[5]);
