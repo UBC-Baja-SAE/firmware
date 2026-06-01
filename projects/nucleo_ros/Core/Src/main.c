@@ -271,7 +271,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       return;
     }
 
-    // TIM2 is 32-bit so overflow is rare, but handled correctly
     uint64_t diff = (tim2_overflow_count * TIMER_PERIOD_TICKS)
                   + (uint64_t)cap
                   - (uint64_t)previous_capture;
