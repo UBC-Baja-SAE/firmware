@@ -230,6 +230,10 @@ void StartDefaultTask(void *argument)
   for (;;)
   {
 
+    if (rmw_uros_ping_agent(100, 3) != RMW_RET_OK) {
+      NVIC_SystemReset();
+    }
+
     ICM42670_ReadData();
 
     linpot_msg.data = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
