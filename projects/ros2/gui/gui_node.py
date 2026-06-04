@@ -1,11 +1,14 @@
 import sys
+import signal
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtProperty, QTimer, QUrl, pyqtSlot
+from std_msgs.msg import Float32, Float64, Int32
+from sensor_msgs.msg import Imu
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtProperty, QTimer, QUrl
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtQml import QQmlApplicationEngine
 from gpiozero import RotaryEncoder, Button
+import threading
 
 
 class TelemetryBackend(QObject):
@@ -16,6 +19,7 @@ class TelemetryBackend(QObject):
     menuVisibleChanged = pyqtSignal()
     scrolled = pyqtSignal(int)
     clicked = pyqtSignal()
+    shutdownRequested = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -72,6 +76,22 @@ class TelemetryBackend(QObject):
         self.clicked.emit()
 
 
+SUPPORTED_TYPES = {
+    'std_msgs/msg/Float32': (Float32, lambda msg: float(msg.data)),
+    'std_msgs/msg/Float64': (Float64, lambda msg: float(msg.data)),
+    'std_msgs/msg/Int32':   (Int32,   lambda msg: float(msg.data)),
+}
+
+IMU_FIELDS = {
+    '/imu/data_raw [accel.x]': lambda msg: msg.linear_acceleration.x,
+    '/imu/data_raw [accel.y]': lambda msg: msg.linear_acceleration.y,
+    '/imu/data_raw [accel.z]': lambda msg: msg.linear_acceleration.z,
+    '/imu/data_raw [gyro.x]':  lambda msg: msg.angular_velocity.x,
+    '/imu/data_raw [gyro.y]':  lambda msg: msg.angular_velocity.y,
+    '/imu/data_raw [gyro.z]':  lambda msg: msg.angular_velocity.z,
+}
+
+
 class TelemetryNode(Node):
     def __init__(self, backend):
         super().__init__('telemetry_display_node')
@@ -80,51 +100,107 @@ class TelemetryNode(Node):
         self.filtered_speed = 0.0
         self.filtered_tach = 0.0
 
-        # Active left gauge subscription
         self._left_sub = None
         self._left_topic = None
+        self._topic_entries = []
 
-        # Static right gauge on linpot
         self.create_subscription(Float32, 'linpot', self._tach_cb, 10)
-
-        # Topic discovery timer - refresh every 2 seconds
         self.create_timer(2.0, self._refresh_topics)
 
     def _tach_cb(self, msg):
         self.filtered_tach = (self.speed_alpha * msg.data) + ((1 - self.speed_alpha) * self.filtered_tach)
         self.backend.tach = self.filtered_tach
 
-    def _left_cb(self, msg):
-        self.filtered_speed = (self.speed_alpha * msg.data) + ((1 - self.speed_alpha) * self.filtered_speed)
-        self.backend.speed = self.filtered_speed
+    def _make_left_cb(self, extractor):
+        def cb(msg):
+            raw = extractor(msg)
+            self.filtered_speed = (self.speed_alpha * raw) + ((1 - self.speed_alpha) * self.filtered_speed)
+            self.backend.speed = self.filtered_speed
+        return cb
 
     def _refresh_topics(self):
-        # Get all active Float32 topics
         topic_names_and_types = self.get_topic_names_and_types()
-        float_topics = [
-            name for name, types in topic_names_and_types
-            if 'std_msgs/msg/Float32' in types
-        ]
-        self.backend.topicList = float_topics
+        entries = []
+        imu_active = False
 
-    def subscribe_left(self, topic):
-        if topic == self._left_topic:
+        for name, types in topic_names_and_types:
+            for t in types:
+                if t in SUPPORTED_TYPES:
+                    msg_class, extractor = SUPPORTED_TYPES[t]
+                    entries.append((name, msg_class, extractor))
+                    break
+            if name == '/imu/data_raw':
+                imu_active = True
+
+        if imu_active:
+            for label, extractor in IMU_FIELDS.items():
+                entries.append((label, Imu, extractor))
+
+        self._topic_entries = entries
+        self.backend.topicList = [e[0] for e in entries]
+
+    def subscribe_left(self, label):
+        if label == self._left_topic:
             return
         if self._left_sub is not None:
             self.destroy_subscription(self._left_sub)
-        self._left_topic = topic
-        self._left_sub = self.create_subscription(Float32, topic, self._left_cb, 10)
+            self._left_sub = None
+
+        entry = next((e for e in self._topic_entries if e[0] == label), None)
+        if entry is None:
+            self.get_logger().warn(f'Topic entry not found: {label}')
+            return
+
+        label, msg_class, extractor = entry
+        ros_topic = '/imu/data_raw' if label.startswith('/imu/data_raw [') else label
+
+        self._left_topic = label
         self.filtered_speed = 0.0
+        self._left_sub = self.create_subscription(
+            msg_class,
+            ros_topic,
+            self._make_left_cb(extractor),
+            10
+        )
 
 
 class HardwareInterface:
+    LONG_PRESS_SECONDS = 10
+
     def __init__(self, backend):
         self.backend = backend
         self.encoder = RotaryEncoder(17, 27, wrap=False, max_steps=0)
         self.button = Button(22, pull_up=True, bounce_time=0.05)
+
+        self._long_press_timer = None
+        self._long_press_fired = False
+
         self.encoder.when_rotated_clockwise = lambda: self.backend.trigger_scroll(1)
         self.encoder.when_rotated_counter_clockwise = lambda: self.backend.trigger_scroll(-1)
-        self.button.when_pressed = self.backend.trigger_click
+
+        self.button.when_pressed = self._on_press
+        self.button.when_released = self._on_release
+
+    def _on_press(self):
+        self._long_press_fired = False
+        self._long_press_timer = threading.Timer(
+            self.LONG_PRESS_SECONDS,
+            self._on_long_press
+        )
+        self._long_press_timer.start()
+
+    def _on_release(self):
+        if self._long_press_timer is not None:
+            self._long_press_timer.cancel()
+            self._long_press_timer = None
+
+        # Only fire click if long press didn't trigger
+        if not self._long_press_fired:
+            self.backend.trigger_click()
+
+    def _on_long_press(self):
+        self._long_press_fired = True
+        self.backend.shutdownRequested.emit()
 
 
 def main():
@@ -135,32 +211,36 @@ def main():
     ros_node = TelemetryNode(backend)
     hw_interface = HardwareInterface(backend)
 
-    # Wire encoder scroll to index movement
     def on_scroll(direction):
         if not backend.menuVisible:
             return
         topics = backend.topicList
         if not topics:
             return
-        new_idx = (backend.selectedIndex + direction) % len(topics)
-        backend.selectedIndex = new_idx
+        backend.selectedIndex = (backend.selectedIndex + direction) % len(topics)
 
-    # Wire button click to open/confirm menu
     def on_click():
         if not backend.menuVisible:
-            # Open menu, refresh topics first
             ros_node._refresh_topics()
+            QTimer.singleShot(500, ros_node._refresh_topics)
             backend.menuVisible = True
         else:
-            # Confirm selection
             topics = backend.topicList
             if topics:
-                selected = topics[backend.selectedIndex]
-                ros_node.subscribe_left(selected)
+                ros_node.subscribe_left(topics[backend.selectedIndex])
             backend.menuVisible = False
+
+    def on_shutdown_requested():
+        print("Long press detected — shutting down container...")
+        ros_node.destroy_node()
+        rclpy.shutdown()
+        app.quit()
+        # Send SIGTERM to shutdown docker
+        signal.raise_signal(signal.SIGTERM)
 
     backend.scrolled.connect(on_scroll)
     backend.clicked.connect(on_click)
+    backend.shutdownRequested.connect(on_shutdown_requested)
 
     timer = QTimer()
     timer.timeout.connect(lambda: rclpy.spin_once(ros_node, timeout_sec=0))
