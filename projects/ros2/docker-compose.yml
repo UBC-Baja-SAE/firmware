@@ -20,8 +20,7 @@ services:
       # Mount gui files
       - ./gui:/uros_ws/gui
     devices:
-      # Updated to AMA1 for micro-ROS
-      - "/dev/ttyAMA1:/dev/ttyAMA1"
+      - "/dev/ttyAMA0:/dev/ttyAMA0"
       - "/dev/dri:/dev/dri"
       - "/dev/input:/dev/input"
     command: >
@@ -48,36 +47,10 @@ services:
 
         # Launch background jobs
         python3 /uros_ws/gui/gui_node.py &
-        
-        # micro-ROS now runs on AMA1
-        ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyAMA1 -b 115200 -v4 &
+        ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyAMA0 -b 115200 -v4 &
         ros2 launch foxglove_bridge foxglove_bridge_launch.xml &
 
         # Launch logging
         sleep 3 ;
         ros2 bag record -s mcap -o /logs/$$(date +%a_%b_%d_%I:%M%p) -a
-      "
-
-  rc:
-    # Build from the RC Dockerfile
-    build: 
-      context: .
-      dockerfile: Dockerfile.rc
-    stop_grace_period: 10s
-    network_mode: "host"
-    privileged: true
-    restart: unless-stopped
-    environment:
-      - TZ=America/Vancouver
-    volumes:
-      # Mount ROS 2 Python node for CRSF parser
-      - ./rc:/rc_ws/src/rc
-    devices:
-      # ELRS Receiver uses AMA0
-      - "/dev/ttyAMA0:/dev/ttyAMA0" 
-    command: >
-      bash -c "
-        source /opt/ros/jazzy/setup.bash ;
-        # Start the Python bridge script handling CRSF on AMA0
-        python3 /rc_ws/src/rc/crsf_bridge.py --port /dev/ttyAMA0 --baud 420000
       "
