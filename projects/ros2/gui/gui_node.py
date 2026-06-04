@@ -1,5 +1,6 @@
 import sys
 import signal
+import subprocess
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32, Float64, Int32
@@ -19,7 +20,7 @@ class TelemetryBackend(QObject):
     menuVisibleChanged = pyqtSignal()
     scrolled = pyqtSignal(int)
     clicked = pyqtSignal()
-    shutdownRequested = pyqtSignal()
+    shutdownRequested = pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
@@ -165,14 +166,16 @@ class TelemetryNode(Node):
 
 
 class HardwareInterface:
-    LONG_PRESS_SECONDS = 10
+    SIGTERM_PRESS_SECONDS = 5
+    STOP_PRESS_SECONDS = 10
 
     def __init__(self, backend):
         self.backend = backend
         self.encoder = RotaryEncoder(17, 27, wrap=False, max_steps=0)
         self.button = Button(22, pull_up=True, bounce_time=0.05)
 
-        self._long_press_timer = None
+        self._sigterm_timer = None
+        self._stop_timer = None
         self._long_press_fired = False
 
         self.encoder.when_rotated_clockwise = lambda: self.backend.trigger_scroll(1)
@@ -183,24 +186,41 @@ class HardwareInterface:
 
     def _on_press(self):
         self._long_press_fired = False
-        self._long_press_timer = threading.Timer(
-            self.LONG_PRESS_SECONDS,
-            self._on_long_press
+
+        self._sigterm_timer = threading.Timer(
+            self.SIGTERM_PRESS_SECONDS,
+            self._on_sigterm_press
         )
-        self._long_press_timer.start()
+        self._sigterm_timer.start()
+
+        self._stop_timer = threading.Timer(
+            self.STOP_PRESS_SECONDS,
+            self._on_stop_press
+        )
+        self._stop_timer.start()
 
     def _on_release(self):
-        if self._long_press_timer is not None:
-            self._long_press_timer.cancel()
-            self._long_press_timer = None
+        if self._sigterm_timer is not None:
+            self._sigterm_timer.cancel()
+            self._sigterm_timer = None
+        if self._stop_timer is not None:
+            self._stop_timer.cancel()
+            self._stop_timer = None
 
-        # Only fire click if long press didn't trigger
         if not self._long_press_fired:
             self.backend.trigger_click()
 
-    def _on_long_press(self):
+    def _on_sigterm_press(self):
+        if not self._long_press_fired:
+            self._long_press_fired = True
+            self.backend.shutdownRequested.emit('sigterm')
+
+    def _on_stop_press(self):
         self._long_press_fired = True
-        self.backend.shutdownRequested.emit()
+        if self._sigterm_timer is not None:
+            self._sigterm_timer.cancel()
+            self._sigterm_timer = None
+        self.backend.shutdownRequested.emit('stop')
 
 
 def main():
@@ -230,13 +250,19 @@ def main():
                 ros_node.subscribe_left(topics[backend.selectedIndex])
             backend.menuVisible = False
 
-    def on_shutdown_requested():
-        print("Long press detected — shutting down container...")
-        ros_node.destroy_node()
-        rclpy.shutdown()
-        app.quit()
-        # Send SIGTERM to shutdown docker
-        signal.raise_signal(signal.SIGTERM)
+    def on_shutdown_requested(action):
+        if action == 'sigterm':
+            print("5s press — saving and restarting...")
+            ros_node.destroy_node()
+            rclpy.shutdown()
+            app.quit()
+            signal.raise_signal(signal.SIGTERM)
+        elif action == 'stop':
+            print("10s press — stopping container...")
+            ros_node.destroy_node()
+            rclpy.shutdown()
+            app.quit()
+            subprocess.run(['docker', 'stop', 'ros2-ros2-1'])
 
     backend.scrolled.connect(on_scroll)
     backend.clicked.connect(on_click)
