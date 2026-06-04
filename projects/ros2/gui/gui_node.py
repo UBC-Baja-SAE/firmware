@@ -1,5 +1,6 @@
 import sys
 import signal
+import subprocess
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32, Float64, Int32
@@ -236,7 +237,7 @@ def main():
         rclpy.shutdown()
         app.quit()
         # Stop Docker for a clean exit
-        subprocess.run(['docker', 'stop', 'ros2-ros2-1'])
+        os.kill(1, signal.SIGTERM)
 
     backend.scrolled.connect(on_scroll)
     backend.clicked.connect(on_click)

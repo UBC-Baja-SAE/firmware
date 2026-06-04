@@ -39,7 +39,7 @@ services:
           done ;
         } ;
 
-        trap cleanup EXIT ;
+        trap cleanup EXIT SIGTERM SIGINT ;
 
         # Source environment in the main shell
         source /opt/ros/jazzy/setup.bash ;
