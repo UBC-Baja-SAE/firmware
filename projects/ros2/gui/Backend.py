@@ -250,7 +250,7 @@ def main():
 
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("backend", backend)
-    engine.load(QUrl.fromLocalFile('/uros_ws/gui/speedometer.qml'))
+    engine.load(QUrl.fromLocalFile('/uros_ws/gui/Main.qml'))
 
     if not engine.rootObjects():
         sys.exit(-1)

@@ -26,7 +26,7 @@ Window {
             anchors.verticalCenterOffset: 20
             spacing: 100
 
-            gauge {
+            Gauge {
                 width: 450
                 height: 450
                 value: backend.speed
@@ -37,7 +37,7 @@ Window {
                 noSignal: backend.topicList.length === 0
             }
 
-            gauge {
+            Gauge {
                 width: 450
                 height: 450
                 value: backend.tach
