@@ -11,7 +11,7 @@ from PyQt5.QtQml import QQmlApplicationEngine
 from gpiozero import RotaryEncoder, Button
 
 
-class backend(QObject):
+class Backend(QObject):
     speedChanged = pyqtSignal()
     tachChanged = pyqtSignal()
     topicListChanged = pyqtSignal()
@@ -84,7 +84,7 @@ supportedTypes = {
 }
 
 
-class backendNode(Node):
+class BackendNode(Node):
     def __init__(self, backend):
         super().__init__('backend_display_node')
         self.backend = backend
@@ -192,8 +192,8 @@ def main():
     rclpy.init()
     app = QGuiApplication(sys.argv)
 
-    backend = backend()
-    rosNode = backendNode(backend)
+    backend = Backend()
+    rosNode = BackendNode(backend)
     hwInterface = HardwareInterface(backend)
 
     def onScroll(direction):
