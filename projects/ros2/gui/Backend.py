@@ -217,9 +217,9 @@ def main():
 
     def onShutdownRequested():
         print("Long press detected — shutting down container...")
-        rosNode.destroy_node()
-        rclpy.shutdown()
+        # Tell the Qt event loop to exit
         app.quit()
+        # Trigger the container shutdown trap
         os.kill(1, signal.SIGTERM)
 
     backend.scrolled.connect(onScroll)
@@ -238,8 +238,11 @@ def main():
         sys.exit(-1)
 
     exitCode = app.exec_()
-    rosNode.destroy_node()
-    rclpy.shutdown()
+    # Safely clean up ROS only if it's still running
+    if rclpy.ok():
+        rosNode.destroy_node()
+        rclpy.shutdown()
+
     sys.exit(exitCode)
 
 
