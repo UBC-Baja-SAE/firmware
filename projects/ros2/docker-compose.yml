@@ -26,10 +26,13 @@ services:
     command: >
       bash -c "
         printf 'auth_type: 2\nbase_url: https://api.foxglove.dev\nbearer_token: %s\n' $$FOXGLOVE_API_KEY > /root/.foxgloverc ;
-
+      
         cleanup() {
+          # Disables the trap so this function can never recursively loop!
+          trap - EXIT SIGTERM SIGINT ;
+      
           echo 'Shutting down, closing bag...';
-          pkill -SIGINT -f 'ros2 bag' ;
+          pkill -SIGINT -f 'ros2 bag' || true ;
           sleep 5 ;
           echo 'Uploading logs...';
           for f in /logs/*/*.mcap; do
@@ -38,19 +41,16 @@ services:
             fi ;
           done ;
         } ;
-
+      
         trap cleanup EXIT SIGTERM SIGINT ;
-
-        # Source environment in the main shell
+      
         source /opt/ros/jazzy/setup.bash ;
         source /uros_ws/install/setup.bash ;
-
-        # Launch background jobs
+      
         python3 /uros_ws/gui/Backend.py &
         ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyAMA0 -b 115200 -v4 &
         ros2 launch foxglove_bridge foxglove_bridge_launch.xml &
-
-        # Launch logging
+      
         sleep 3 ;
         ros2 bag record -s mcap -o /logs/$$(date +%a_%b_%d_%I:%M%p) -a
       "
