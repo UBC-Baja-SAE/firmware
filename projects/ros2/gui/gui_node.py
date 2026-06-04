@@ -253,15 +253,21 @@ def main():
     def on_shutdown_requested(action):
         if action == 'sigterm':
             print("5s press — saving and restarting...")
-            ros_node.destroy_node()
-            rclpy.shutdown()
-            app.quit()
+            try:
+                app.quit()
+                ros_node.destroy_node()
+                rclpy.shutdown()
+            except Exception:
+                pass
             signal.raise_signal(signal.SIGTERM)
         elif action == 'stop':
             print("10s press — stopping container...")
-            ros_node.destroy_node()
-            rclpy.shutdown()
-            app.quit()
+            try:
+                app.quit()
+                ros_node.destroy_node()
+                rclpy.shutdown()
+            except Exception:
+                pass
             subprocess.run(['docker', 'stop', 'ros2-ros2-1'])
 
     backend.scrolled.connect(on_scroll)
