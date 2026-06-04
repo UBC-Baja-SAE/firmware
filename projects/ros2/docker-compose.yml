@@ -5,7 +5,7 @@ services:
     stop_grace_period: 300s
     network_mode: "host"
     privileged: true
-    restart: unless-stopped
+    restart: on-failure
     environment:
       - TZ=America/Vancouver
       # Pls don't steal this!
