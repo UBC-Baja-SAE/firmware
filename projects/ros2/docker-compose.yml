@@ -46,7 +46,7 @@ services:
         source /uros_ws/install/setup.bash ;
 
         # Launch background jobs
-        python3 /uros_ws/gui/gui_node.py &
+        python3 /uros_ws/gui/backend.py &
         ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyAMA0 -b 115200 -v4 &
         ros2 launch foxglove_bridge foxglove_bridge_launch.xml &
 

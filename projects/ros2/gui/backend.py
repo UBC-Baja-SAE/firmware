@@ -2,6 +2,7 @@ import sys
 import signal
 import subprocess
 import rclpy
+import os
 from rclpy.node import Node
 from std_msgs.msg import Float32, Float64, Int32
 from sensor_msgs.msg import Imu
