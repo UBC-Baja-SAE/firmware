@@ -216,11 +216,11 @@ def main():
             backend.menuVisible = False
 
     def onShutdownRequested():
-        print("Long press detected — shutting down container...")
-        # Tell the Qt event loop to exit
+        print("Long press detected — stopping rosbag to unblock container shutdown...")
         app.quit()
-        # Trigger the container shutdown trap
-        os.kill(1, signal.SIGTERM)
+
+        # Kill the ros2 bag process directly instead of signalling Bash
+        os.system("pkill -SIGINT -f 'ros2 bag'")
 
     backend.scrolled.connect(onScroll)
     backend.clicked.connect(onClick)
