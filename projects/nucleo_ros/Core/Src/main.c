@@ -21,7 +21,7 @@
 #include "cmsis_os.h"
 #include "adc.h"
 #include "dma.h"
-#include "tim.h"
+#include "i2c.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -57,6 +57,8 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
+void ICM42670_Init(void);
+void ICM42670_ReadData(void);
 
 /* USER CODE END PFP */
 
@@ -97,28 +99,22 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_UART4_Init();
-  MX_TIM2_Init();
   MX_ADC1_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
 
-  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
+  // HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
 
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
   HAL_ADC_Start_IT(&hadc1);
+
+  ICM42670_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
-
-  /* Initialize leds */
-  BSP_LED_Init(LED_GREEN);
-  BSP_LED_Init(LED_YELLOW);
-  BSP_LED_Init(LED_RED);
-
-  /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
-  BSP_PB_Init(BUTTON_USER, BUTTON_MODE_EXTI);
 
   /* Start scheduler */
   osKernelStart();
@@ -193,13 +189,25 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-/* ── tuneable constants ────────────────────────────────────────────── */
+/* ── speedo constants ────────────────────────────────────────────── */
 #define TIM2_CLOCK_FREQ         64000000UL   // HSI @ 64 MHz, prescaler = 0
 #define TIMER_PERIOD_TICKS      4294967296ULL // 2^32 for 32-bit TIM2
 #define MAGNET_DEBOUNCE_TIME_MS 5U
 #define SPEED_SMOOTHING         0.2f
 #define TIRE_CIRCUMFERENCE_KM   0.001963f
 #define MAX_SPEED_KMH           150U
+
+/* ── imu constants ────────────────────────────────────────────── */
+#define ICM42670_ADDR           (0x68 << 1)
+#define ICM42670_REG_WHO_AM_I   0x75
+#define ICM42670_REG_PWR_MGMT0  0x1F
+#define ICM42670_REG_GYRO_CONFIG0  0x20
+#define ICM42670_REG_ACCEL_CONFIG0 0x21
+
+/* Raw output registers */
+#define ICM42670_REG_TEMP_DATA1    0x09
+#define ICM42670_REG_ACCEL_DATA_X1 0x0B
+#define ICM42670_REG_GYRO_DATA_X1  0x11
 
 /* ── state (ISR-owned) ─────────────────────────────────────────────── */
 static volatile uint32_t previous_capture     = 0;
@@ -209,11 +217,33 @@ static volatile float    smoothed_speed_freq  = 0.0f;
 
 volatile uint32_t last_magnet_time     = 0;
 
+volatile int16_t imu_accel_x = 0, imu_accel_y = 0, imu_accel_z = 0;
+volatile int16_t imu_gyro_x  = 0, imu_gyro_y  = 0, imu_gyro_z  = 0;
+
+
 /* ── speedometer output ────────────────────────────────── */
 volatile uint32_t speedometer_kmh = 0;
 
 /* ── lin pot output ────────────────────────────────── */
 volatile uint32_t linpot_raw_value = 0;
+
+
+static uint8_t ICM42670_WriteReg(uint8_t reg, uint8_t val)
+{
+  uint8_t buf[2] = { reg, val };
+  return HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, buf, 2, 10);
+}
+
+static uint8_t ICM42670_ReadReg(uint8_t reg)
+{
+  uint8_t val = 0;
+  HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, &reg, 1, 100);
+  HAL_I2C_Master_Receive(&hi2c1, ICM42670_ADDR, &val, 1, 100);
+  return val;
+}
+
+
+
 
 /* Called from HAL_TIM_PeriodElapsedCallback in main.c */
 void Speedometer_OverflowISR(void)
@@ -241,7 +271,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       return;
     }
 
-    // TIM2 is 32-bit so overflow is rare, but handled correctly
     uint64_t diff = (tim2_overflow_count * TIMER_PERIOD_TICKS)
                   + (uint64_t)cap
                   - (uint64_t)previous_capture;
@@ -272,6 +301,52 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
     linpot_raw_value = HAL_ADC_GetValue(hadc);
     HAL_ADC_Start_IT(hadc);  // re-arm for next conversion
   }
+}
+
+void ICM42670_Init(void)
+{
+  uint8_t who = ICM42670_ReadReg(ICM42670_REG_WHO_AM_I);
+  if (who != 0x67) { return; }
+
+  ICM42670_WriteReg(ICM42670_REG_PWR_MGMT0, 0x0F);
+  HAL_Delay(10);
+
+  ICM42670_WriteReg(ICM42670_REG_GYRO_CONFIG0, 0x04);
+  ICM42670_WriteReg(ICM42670_REG_ACCEL_CONFIG0, 0x24);
+}
+
+void ICM42670_ReadData(void)
+{
+  uint8_t buf[12] = {0};
+  uint8_t reg = ICM42670_REG_ACCEL_DATA_X1;
+
+  HAL_StatusTypeDef status;
+
+  status = HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, &reg, 1, 10);
+  if (status != HAL_OK)
+  {
+    HAL_I2C_DeInit(&hi2c1);
+    HAL_Delay(5);
+    HAL_I2C_Init(&hi2c1);
+    return;  // skip this cycle, don't update imu_accel/gyro globals
+  }
+
+  status = HAL_I2C_Master_Receive(&hi2c1, ICM42670_ADDR, buf, 12, 10);
+  if (status != HAL_OK)
+  {
+    HAL_I2C_DeInit(&hi2c1);
+    HAL_Delay(5);
+    HAL_I2C_Init(&hi2c1);
+    return;
+  }
+
+  // Only update globals if read succeeded
+  imu_accel_x = (int16_t)(buf[0]  << 8 | buf[1]);
+  imu_accel_y = (int16_t)(buf[2]  << 8 | buf[3]);
+  imu_accel_z = (int16_t)(buf[4]  << 8 | buf[5]);
+  imu_gyro_x  = (int16_t)(buf[6]  << 8 | buf[7]);
+  imu_gyro_y  = (int16_t)(buf[8]  << 8 | buf[9]);
+  imu_gyro_z  = (int16_t)(buf[10] << 8 | buf[11]);
 }
 
 /* USER CODE END 4 */

@@ -1,0 +1,60 @@
+services:
+  ros2:
+    # Point to GUI image
+    image: bfrzn/ros2-gui:jazzy
+    stop_grace_period: 300s
+    network_mode: "host"
+    privileged: true
+    restart: on-failure
+    environment:
+      - TZ=America/Vancouver
+      # Pls don't steal this!
+      - FOXGLOVE_API_KEY=fox_sk_3va2wRx9YT4btXPJxwgCeofNLNHEXJJf
+      - FOXGLOVE_DEVICE_ID=dev_0eHNnHWW6p4clvbd
+      # EGLFS Hardware Acceleration Flags
+      - QT_QPA_PLATFORM=eglfs
+      - QT_QPA_EGLFS_ALWAYS_SET_MODE=1
+      - QT_QPA_EGLFS_HIDECURSOR=1
+    volumes:
+      - ./mcap_logs:/logs
+      # Mount gui files
+      - ./gui:/uros_ws/gui
+    devices:
+      - "/dev/ttyAMA0:/dev/ttyAMA0"
+      - "/dev/dri:/dev/dri"
+      - "/dev/input:/dev/input"
+    command: >
+      bash -c "
+        printf 'auth_type: 2\nbase_url: https://api.foxglove.dev\nbearer_token: %s\n' $$FOXGLOVE_API_KEY > /root/.foxgloverc ;
+      
+        cleanup() {
+                  trap - EXIT SIGTERM SIGINT ;
+                  echo 'Shutting down, closing bag...';
+                  pkill -SIGINT -f 'ros2 bag' || true ;
+                  sleep 5 ;
+
+                  # Check for internet access with a 3-second timeout
+                  if curl -s --connect-timeout 3 https://api.foxglove.dev > /dev/null; then
+                    echo 'WiFi connected! Uploading logs...';
+                    for f in /logs/*/*.mcap; do
+                      if [ -f "$$f" ] && [ ! -f "$${f}.uploaded" ] && [ $$(stat -c%s "$$f") -gt 10240 ]; then
+                        foxglove data import "$$f" --device-name Mochi && touch "$${f}.uploaded" ;
+                      fi ;
+                    done ;
+                  else
+                    echo 'No WiFi detected. Skipping upload for now.';
+                  fi ;
+                } ;
+      
+        trap cleanup EXIT SIGTERM SIGINT ;
+      
+        source /opt/ros/jazzy/setup.bash ;
+        source /uros_ws/install/setup.bash ;
+      
+        python3 /uros_ws/gui/Backend.py &
+        ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyAMA0 -b 115200 -v4 &
+        ros2 launch foxglove_bridge foxglove_bridge_launch.xml &
+      
+        sleep 3 ;
+        ros2 bag record -s mcap -o /logs/$$(date +%a_%b_%d_%I:%M%p) -a
+      "

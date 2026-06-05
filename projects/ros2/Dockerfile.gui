@@ -1,0 +1,18 @@
+# Dockerfile.gui
+FROM bfrzn/ros2-base:jazzy
+
+# Install PyQt5, QML modules, and Pi DRI/EGLFS graphics drivers
+RUN apt-get update && apt-get install -y \
+    python3-pyqt5 \
+    python3-pyqt5.qtquick \
+    qml-module-qtquick-controls \
+    qml-module-qtquick-controls2 \
+    qml-module-qtquick-extras \
+    qml-module-qtquick-templates2 \
+    libegl1 \
+    libgles2 \
+    libdrm2 \
+    libgbm1 \
+    udev \
+    python3-gpiozero \
+    && rm -rf /var/lib/apt/lists/*
