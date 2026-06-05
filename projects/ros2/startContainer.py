@@ -1,32 +1,35 @@
 import subprocess
-import signal
+import time
 from gpiozero import Button
 
-# The directory where your docker-compose.yml lives
 COMPOSE_DIR = "/home/ubcbaja/firmware/projects/ros2"
-# The name of your container (usually foldername-servicename-1)
 CONTAINER_NAME = "ros2-ros2-1"
 
-def is_container_running():
-    # Asks Docker if the specific container is currently active
-    cmd = ["docker", "ps", "-q", "-f", f"name={CONTAINER_NAME}"]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    # If stdout has text, the container is running
-    return len(result.stdout.strip()) > 0
+print("Starting Baja Button Watcher...")
 
-def on_button_press():
-    if not is_container_running():
-        print("Container is OFF. Starting ROS 2...")
-        # Start the container from the correct directory
-        subprocess.run(["docker", "compose", "up", "-d"], cwd=COMPOSE_DIR)
-    else:
-        # Container is already ON.
-        # Do nothing. Let the GUI handle the menu clicks and long-press shutdown!
-        pass
+while True:
+    # 1. Claim the pin
+    start_btn = Button(22, pull_up=True, bounce_time=0.1)
+    print("Watching for start button on GPIO 22...")
 
-# Bind to the same pin as the GUI (Pin 22)
-start_btn = Button(22, pull_up=True, bounce_time=0.1)
-start_btn.when_pressed = on_button_press
+    # 2. Pause the script here until the button is physically pressed
+    start_btn.wait_for_press()
 
-print("Watching for start button on GPIO 22...")
-signal.pause()
+    # 3. THE MAGIC TRICK: Close the button to release the hardware lock!
+    start_btn.close()
+    print("Button pressed! Pin 22 lock released.")
+
+    # 4. Start the container
+    print("Starting ROS 2 Container...")
+    subprocess.run(["docker", "compose", "up", "-d"], cwd=COMPOSE_DIR)
+
+    # Give Docker a few seconds to spin up and claim the pin
+    time.sleep(3)
+
+    # 5. Suspend this host script until the container completely shuts down
+    print("Container is running. Host script going to sleep...")
+    subprocess.run(["docker", "wait", CONTAINER_NAME])
+
+    # 6. The container has died. Loop back and claim the pin again!
+    print("Container shut down detected. Reclaiming Pin 22...")
+    time.sleep(1) # Give the OS a second to fully clear the hardware lock
