@@ -1,0 +1,19 @@
+FROM bfrzn/ros2-base:jazzy
+
+RUN apt-get update && apt-get install -y \
+    ros-jazzy-usb-cam \
+    ros-jazzy-compressed-image-transport \
+    ros-jazzy-diagnostic-updater \
+    alsa-utils \
+    gstreamer1.0-alsa \
+    gstreamer1.0-plugins-good \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    rsync \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /audio_ws
+RUN mkdir src && git clone -b ros2 https://github.com/ros-drivers/audio_common.git src/audio_common
+RUN apt-get update && rosdep install --from-paths src --ignore-src -r -y \
+    && rm -rf /var/lib/apt/lists/*
+RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build"
