@@ -29,7 +29,6 @@
 
 #include <std_msgs/msg/int32.h>
 #include <std_msgs/msg/float32.h>
-#include <sensor_msgs/msg/imu.h>
 
 #include <rcl/rcl.h>
 #include <rcl/error_handling.h>
@@ -63,8 +62,6 @@
 extern volatile uint32_t speedometer_kmh;
 extern volatile uint32_t last_magnet_time;
 extern volatile uint32_t linpot_raw_value;
-extern volatile int16_t  imu_accel_x, imu_accel_y, imu_accel_z;
-extern volatile int16_t  imu_gyro_x,  imu_gyro_y,  imu_gyro_z;
 
 
 /* USER CODE END Variables */
@@ -87,9 +84,6 @@ void * microros_allocate(size_t size, void * state);
 void microros_deallocate(void * pointer, void * state);
 void * microros_reallocate(void * pointer, size_t size, void * state);
 void * microros_zero_allocate(size_t number_of_elements, size_t size_of_element, void * state);
-
-void ICM42670_Init(void);
-void ICM42670_ReadData(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -164,12 +158,10 @@ void StartDefaultTask(void *argument)
     printf("Error on default allocators (line %d)\n", __LINE__);
   }
 
+  rcl_publisher_t speed_publisher;
   rcl_publisher_t linpot_publisher;
-  rcl_publisher_t imu_publisher;
-
+  std_msgs__msg__Int32 speed_msg;
   std_msgs__msg__Float32 linpot_msg;
-  sensor_msgs__msg__Imu  imu_msg;
-
   rclc_support_t support;
   rcl_allocator_t allocator;
   rcl_node_t node;
@@ -180,94 +172,47 @@ void StartDefaultTask(void *argument)
   const uint8_t attempts = 5;
 
   while (rmw_uros_ping_agent(timeout_ms, attempts) != RMW_RET_OK) {
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
     osDelay(500);
   }
 
-  rmw_uros_sync_session(1000);
-
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
   osDelay(1000);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 
   rclc_support_init(&support, 0, NULL, &allocator);
-  rclc_node_init_default(&node, "esus", "", &support);
+  rclc_node_init_default(&node, "rear_ecu", "", &support);
 
-  // Linear potentiometer message
-  rclc_publisher_init_default(&linpot_publisher,  &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32), "linpot");
+  rclc_publisher_init_default(
+    &speed_publisher,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+    "speedometer");
 
+  rclc_publisher_init_default(
+    &linpot_publisher,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+    "potentiometer");
 
-  // Imu message
-  rclc_publisher_init_default(&imu_publisher, &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu), "imu/data_raw");
-
-  memset(&imu_msg, 0, sizeof(sensor_msgs__msg__Imu));
-
-  imu_msg.header.frame_id.data = (char*)"imu_link";
-  imu_msg.header.frame_id.size = strlen(imu_msg.header.frame_id.data);
-  imu_msg.header.frame_id.capacity = imu_msg.header.frame_id.size + 1;
-
-  imu_msg.header.stamp.sec = 0;
-  imu_msg.header.stamp.nanosec = 0;
-
-  imu_msg.orientation.x = 0.0;
-  imu_msg.orientation.y = 0.0;
-  imu_msg.orientation.z = 0.0;
-  imu_msg.orientation.w = 1.0;
-
-  // No covariance data
-  imu_msg.orientation_covariance[0] = -1.0;
-  imu_msg.linear_acceleration_covariance[0] = -1.0;
-  imu_msg.angular_velocity_covariance[0] = -1.0;
-
-  const float GRAVITY_MSS = 9.80665f;
-  const float DEG_TO_RAD  = 0.0174533f;
-
-  const float ACCEL_SCALE = (1.0f / 4096.0f) * GRAVITY_MSS;
-  const float GYRO_SCALE  = (1.0f / 16.4f)   * DEG_TO_RAD;
+  speed_msg.data = 0;
+  linpot_msg.data = 0;
 
   for (;;)
   {
-
-    if (rmw_uros_ping_agent(100, 3) != RMW_RET_OK) {
-      NVIC_SystemReset();
+    if ((HAL_GetTick() - last_magnet_time) > 1000U)  // <-- remove the extern line above this
+    {
+      speedometer_kmh = 0;
     }
 
-    ICM42670_ReadData();
+    speed_msg.data = (int32_t)speedometer_kmh;
+    linpot_msg.data   = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
 
-    linpot_msg.data = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
+    if (rcl_publish(&speed_publisher, &speed_msg, NULL) != RCL_RET_OK)
+      printf("Error publishing speed (line %d)\n", __LINE__);
 
-    imu_msg.linear_acceleration.x = (float)imu_accel_x * ACCEL_SCALE;
-    imu_msg.linear_acceleration.y = (float)imu_accel_y * ACCEL_SCALE;
-    imu_msg.linear_acceleration.z = (float)imu_accel_z * ACCEL_SCALE;
-
-    imu_msg.angular_velocity.x = (float)imu_gyro_x * GYRO_SCALE;
-    imu_msg.angular_velocity.y = (float)imu_gyro_y * GYRO_SCALE;
-    imu_msg.angular_velocity.z = (float)imu_gyro_z * GYRO_SCALE;
-
-
-    //Timestamp sync every minute
-    static uint32_t last_sync_time = 0;
-    if (HAL_GetTick() - last_sync_time > 60000) {
-      rmw_uros_sync_session(10);
-      last_sync_time = HAL_GetTick();
-    }
-
-    int64_t time_ns = rmw_uros_epoch_nanos();
-
-    imu_msg.header.stamp.sec = (int32_t)(time_ns / 1000000000);
-    imu_msg.header.stamp.nanosec = (uint32_t)(time_ns % 1000000000);
-
-
-
-    if (rcl_publish(&linpot_publisher, &linpot_msg, NULL) != RCL_RET_OK) {
+    if (rcl_publish(&linpot_publisher, &linpot_msg, NULL) != RCL_RET_OK)
       printf("Error publishing linpot (line %d)\n", __LINE__);
-    }
-
-    if (rcl_publish(&imu_publisher, &imu_msg, NULL) != RCL_RET_OK) {
-      printf("Error publishing imu (line %d)\n", __LINE__);
-    }
 
     osDelay(50);
   }
