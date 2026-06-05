@@ -15,6 +15,7 @@ volatile float live_accel_x = 0.0f;
 volatile float live_accel_y = 0.0f;
 volatile float live_accel_z = 0.0f;
 volatile float live_pot = 0.0f;
+volatile uint32_t debug_raw_adc = 0;
 
 #define GYRO_SENSITIVITY_2000DPS 16.4f
 #define ACCEL_SENSITIVITY_16G 2048.0f
@@ -33,6 +34,10 @@ volatile uint32_t g_debug_i2c_recoveries = 0;
 volatile HAL_StatusTypeDef a_debug_i2c_status = HAL_OK;
 volatile uint32_t a_debug_can_tx_errors = 0;
 volatile uint32_t a_debug_i2c_recoveries = 0;
+
+
+volatile int32_t nema17_current_pos = 0;
+volatile int32_t nema23_current_pos = 0;
 
 /**
  * @brief Non-fatal CAN transmit - logs error but continues operation
@@ -53,6 +58,12 @@ static HAL_StatusTypeDef CAN_Transmit(uint32_t id, uint8_t *data,
                                      .TxEventFifoControl = FDCAN_NO_TX_EVENTS,
                                      .MessageMarker = 0};
 
+
+  // Wait for space in TX FIFO if necessary
+  while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0) {
+    // Optional: add a timeout here if you don't want to block forever
+    // For now, we block to ensure message delivery
+  }
 
   if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &tx_header, data) != HAL_OK) {
     // Non-fatal: increment error counter and continue
@@ -236,41 +247,48 @@ HAL_StatusTypeDef IMU_Init(void) {
   return HAL_ERROR;
 }
 
+float GetMedian(float* array, int size) {
+  for (int i = 1; i < size; i++) {
+    float key = array[i];
+    int j = i - 1;
+    while (j >= 0 && array[j] > key) {
+      array[j + 1] = array[j];
+      j = j - 1;
+    }
+    array[j + 1] = key;
+  }
+  return array[size / 2];
+}
+
 float VoltageToPosition(float voltage) {
-  return X_EXTEND_CM +
-         (voltage * (X_EXTEND_CM - X_COMP_CM) / (V_EXTEND - V_COMP));
+  // Clamp input to valid voltage range
+  if (voltage < V_COMP)   voltage = V_COMP;
+  if (voltage > V_EXTEND) voltage = V_EXTEND;
+
+  return X_COMP_CM + (voltage - V_COMP) * (X_EXTEND_CM - X_COMP_CM) / (V_EXTEND - V_COMP);
 }
 
 void SendPotOnCan(uint32_t can_id) {
-  const int samples = 10;
-  float posSum = 0;
-  ADC_ChannelConfTypeDef sConfig = {0};
+  const int NUM_SAMPLES = 7;
+  float samples[NUM_SAMPLES];
 
-  // Configure ADC1 to the Potentiometer channel
-  sConfig.Channel = ADC_CHANNEL_5;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_64CYCLES_5;
-  sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
-  sConfig.Offset = 0;
-  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-
-  for (int i = 0; i < samples; i++) {
+  for (int i = 0; i < NUM_SAMPLES; i++) {
     HAL_ADC_Start(&hadc1);
     if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
-      uint32_t adcRaw = HAL_ADC_GetValue(&hadc1);
-      float voltage = ((float)adcRaw * 1.8f) / 65535.0f;
-      float position = VoltageToPosition(voltage);
-      posSum += position;
+      debug_raw_adc = HAL_ADC_GetValue(&hadc1);
+      float voltage = ((float)debug_raw_adc * 1.8f) / 65535.0f;
+      samples[i] = VoltageToPosition(voltage);
+    } else {
+      samples[i] = live_pot;
     }
     HAL_ADC_Stop(&hadc1);
   }
 
-  float posAvg = posSum / samples;
-  live_pot = posAvg;
-  uint16_t posCan = (uint16_t)(posAvg * 100.0f);
-  pot_tx_data[0] = (posCan >> 8) & 0xFF;
-  pot_tx_data[1] = posCan & 0xFF;
+  live_pot = GetMedian(samples, NUM_SAMPLES);
+
+  uint16_t pos_can = (uint16_t)(live_pot * 100.0f);
+  pot_tx_data[0] = (pos_can >> 8) & 0xFF;
+  pot_tx_data[1] =  pos_can       & 0xFF;
 
   CAN_Transmit(can_id, pot_tx_data, FDCAN_DLC_BYTES_2);
 }
@@ -342,7 +360,6 @@ void SendAccelOnCan(uint32_t can_id) {
     if (I2C_BusRecovery() == HAL_OK) IMU_Init();
   }
 }
-
 
 
 // void SendStrainOnCan(uint32_t can_id, uint32_t channel) {

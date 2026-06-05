@@ -29,13 +29,13 @@
 //#define SSD1306_I2C_ADDR        (0x3C << 1)
 
 // SPI Configuration
-//#define SSD1306_SPI_PORT        hspi1
-//#define SSD1306_CS_Port         OLED_CS_GPIO_Port
-//#define SSD1306_CS_Pin          OLED_CS_Pin
-//#define SSD1306_DC_Port         OLED_DC_GPIO_Port
-//#define SSD1306_DC_Pin          OLED_DC_Pin
-//#define SSD1306_Reset_Port      OLED_Res_GPIO_Port
-//#define SSD1306_Reset_Pin       OLED_Res_Pin
+#define SSD1306_SPI_PORT        hspi1
+// #define SSD1306_CS_Port         OLED_CS_GPIO_Port
+// #define SSD1306_CS_Pin          OLED_CS_Pin
+// #define SSD1306_DC_Port         OLED_DC_GPIO_Port
+// #define SSD1306_DC_Pin          OLED_DC_Pin
+// #define SSD1306_Reset_Port      OLED_Res_GPIO_Port
+// #define SSD1306_Reset_Pin       OLED_Res_Pin
 
 // Mirror the screen if needed
 // #define SSD1306_MIRROR_VERT
@@ -45,6 +45,7 @@
 // # define SSD1306_INVERSE_COLOR
 
 // Include only needed fonts
+#define SSD1306_INCLUDE_FONT_3x5
 #define SSD1306_INCLUDE_FONT_6x8
 #define SSD1306_INCLUDE_FONT_7x10
 #define SSD1306_INCLUDE_FONT_11x18

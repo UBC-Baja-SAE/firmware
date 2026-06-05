@@ -32,10 +32,14 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 enable_language(C ASM)
 
 # Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
+add_executable(${CMAKE_PROJECT_NAME}
+        Core/Src/main.c
+)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
+
+set(MY_DRIVER_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/OLED")
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
@@ -43,13 +47,20 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
+target_sources(
+        ${CMAKE_PROJECT_NAME}
+        PRIVATE
+        Core/Src/oled.c
+        ${MY_DRIVER_PATH}/ssd1306_fonts.c
+        ${MY_DRIVER_PATH}/ssd1306.c
 )
 
 # Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+target_include_directories(
+        ${CMAKE_PROJECT_NAME}
+        PRIVATE
+        Core/Inc
+        ${MY_DRIVER_PATH}
 )
 
 # Add project symbols (macros)

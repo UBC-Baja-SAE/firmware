@@ -1,0 +1,17 @@
+[Unit]
+Description=UBC Baja Pit Telemetry Service
+After=network.target
+StartLimitIntervalSec=30
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=ubcbaja
+ExecStart=/home/ubcbaja/pit_telemetry/build/pit_telemetry
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

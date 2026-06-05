@@ -76,28 +76,28 @@ _BEGIN_STD_C
 /* vvv SPI config vvv */
 
 #ifndef SSD1306_SPI_PORT
-#define SSD1306_SPI_PORT        hspi2
+#define SSD1306_SPI_PORT        hspi1
 #endif
 
 #ifndef SSD1306_CS_Port
 #define SSD1306_CS_Port         GPIOB
 #endif
 #ifndef SSD1306_CS_Pin
-#define SSD1306_CS_Pin          GPIO_PIN_12
+#define SSD1306_CS_Pin          GPIO_PIN_4
 #endif
 
 #ifndef SSD1306_DC_Port
 #define SSD1306_DC_Port         GPIOB
 #endif
 #ifndef SSD1306_DC_Pin
-#define SSD1306_DC_Pin          GPIO_PIN_14
+#define SSD1306_DC_Pin          GPIO_PIN_6
 #endif
 
 #ifndef SSD1306_Reset_Port
 #define SSD1306_Reset_Port      GPIOA
 #endif
 #ifndef SSD1306_Reset_Pin
-#define SSD1306_Reset_Pin       GPIO_PIN_8
+#define SSD1306_Reset_Pin       GPIO_PIN_15
 #endif
 
 /* ^^^ SPI config ^^^ */
