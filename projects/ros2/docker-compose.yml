@@ -51,9 +51,9 @@ services:
         ros2 launch foxglove_bridge foxglove_bridge_launch.xml &
 
         sleep 3 ;
-        ros2 bag record -s mcap -o /logs/$$(date +%a_%b_%d_%I:%M%p) \
-          --all \
-          --exclude-regex '/image_raw$$|/image_raw/compressedDepth|/image_raw/theora|/image_raw/zstd'
+      
+        # FIX: Single continuous line so bash doesn't misinterpret YAML spacing
+        ros2 bag record -s mcap -o /logs/$$(date +%a_%b_%d_%I:%M%p) --all --exclude-regex '/image_raw$$|/image_raw/compressedDepth|/image_raw/theora|/image_raw/zstd'
       "
 
   cam:
@@ -76,13 +76,10 @@ services:
       bash -c "
         source /opt/ros/jazzy/setup.bash &&
         source /audio_ws/install/setup.bash &&
-        ros2 run usb_cam usb_cam_node_exe --ros-args \
-          -p framerate:=10.0 \
-          -p image_width:=640 \
-          -p image_height:=480 \
-          -p pixel_format:=raw_mjpeg &
-        ros2 run audio_capture audio_capture_node --ros-args \
-          -p device:=hw:U0x46d0x825,0 \
-          -p format:=wave &
+      
+        ros2 run usb_cam usb_cam_node_exe --ros-args -p framerate:=15.0 -p image_width:=640 -p image_height:=480 -p pixel_format:=mjpeg2rgb -p auto_focus:=false -p auto_white_balance:=false -p auto_exposure:=false &
+      
+        ros2 run audio_capture audio_capture_node --ros-args -p device:=hw:U0x46d0x825,0 -p format:=wave &
+      
         wait
       "

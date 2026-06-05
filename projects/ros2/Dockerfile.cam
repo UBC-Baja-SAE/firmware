@@ -16,4 +16,6 @@ WORKDIR /audio_ws
 RUN mkdir src && git clone -b ros2 https://github.com/ros-drivers/audio_common.git src/audio_common
 RUN apt-get update && rosdep install --from-paths src --ignore-src -r -y \
     && rm -rf /var/lib/apt/lists/*
-RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build"
+
+# FIX: Added Release flag for Pi 4 performance
+RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release"
