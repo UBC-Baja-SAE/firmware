@@ -21,12 +21,14 @@
 #include "cmsis_os.h"
 #include "adc.h"
 #include "dma.h"
+#include "fdcan.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "fdcan_transport.h"
 
 
 /* USER CODE END Includes */
@@ -99,6 +101,7 @@ int main(void)
   MX_UART4_Init();
   MX_TIM2_Init();
   MX_ADC1_Init();
+  MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
 
@@ -156,17 +159,22 @@ void SystemClock_Config(void)
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
-  /** Macro to configure the PLL clock source
-  */
-  __HAL_RCC_PLL_PLLSOURCE_CONFIG(RCC_PLLSOURCE_HSI);
-
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
   RCC_OscInitStruct.HSICalibrationValue = 64;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 12;
+  RCC_OscInitStruct.PLL.PLLP = 1;
+  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
+  RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+  RCC_OscInitStruct.PLL.PLLFRACN = 0;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -213,7 +221,7 @@ volatile uint32_t last_magnet_time     = 0;
 volatile uint32_t speedometer_kmh = 0;
 
 /* ── lin pot output ────────────────────────────────── */
-volatile uint32_t linpot_raw_value = 0;
+volatile uint32_t tach_raw_value = 0;
 
 /* Called from HAL_TIM_PeriodElapsedCallback in main.c */
 void Speedometer_OverflowISR(void)
@@ -269,9 +277,13 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
   if (hadc->Instance == ADC1)
   {
-    linpot_raw_value = HAL_ADC_GetValue(hadc);
+    tach_raw_value = HAL_ADC_GetValue(hadc);
     HAL_ADC_Start_IT(hadc);  // re-arm for next conversion
   }
+}
+
+void HAL_FDCAN_RxFifo0MsgPendingCallback(FDCAN_HandleTypeDef *hfdcan) {
+  fdcan_transport_rx_callback(hfdcan);
 }
 
 /* USER CODE END 4 */

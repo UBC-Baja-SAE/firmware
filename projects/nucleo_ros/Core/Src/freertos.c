@@ -38,6 +38,9 @@
 #include <rmw_microxrcedds_c/config.h>
 #include <rmw_microros/rmw_microros.h>
 
+#include "fdcan.h"
+#include "fdcan_transport.h"
+
 #include <usart.h>
 /* USER CODE END Includes */
 
@@ -61,7 +64,7 @@
 
 extern volatile uint32_t speedometer_kmh;
 extern volatile uint32_t last_magnet_time;
-extern volatile uint32_t linpot_raw_value;
+extern volatile uint32_t tach_raw_value;
 
 
 /* USER CODE END Variables */
@@ -141,12 +144,13 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
   rmw_uros_set_custom_transport(
-    true,
-    (void *) &huart4,
+    false,
+    (void *)&hfdcan1,
     cubemx_transport_open,
     cubemx_transport_close,
     cubemx_transport_write,
-    cubemx_transport_read);
+    cubemx_transport_read
+  );
 
   rcl_allocator_t freeRTOS_allocator = rcutils_get_zero_initialized_allocator();
   freeRTOS_allocator.allocate = microros_allocate;
@@ -155,64 +159,57 @@ void StartDefaultTask(void *argument)
   freeRTOS_allocator.zero_allocate = microros_zero_allocate;
 
   if (!rcutils_set_default_allocator(&freeRTOS_allocator)) {
-    printf("Error on default allocators (line %d)\n", __LINE__);
+      printf("Error on default allocators (line %d)\n", __LINE__);
   }
 
   rcl_publisher_t speed_publisher;
-  rcl_publisher_t linpot_publisher;
+  rcl_publisher_t tach_publisher;
   std_msgs__msg__Int32 speed_msg;
-  std_msgs__msg__Float32 linpot_msg;
+  std_msgs__msg__Float32 tach_msg;
   rclc_support_t support;
   rcl_allocator_t allocator;
   rcl_node_t node;
 
   allocator = rcl_get_default_allocator();
 
-  const int timeout_ms = 100;
-  const uint8_t attempts = 5;
-
-  while (rmw_uros_ping_agent(timeout_ms, attempts) != RMW_RET_OK) {
+  // Ping until agent responds
+  while (rmw_uros_ping_agent(100, 5) != RMW_RET_OK) {
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
     osDelay(500);
   }
 
+  // Solid on = connected
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
-  osDelay(1000);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 
   rclc_support_init(&support, 0, NULL, &allocator);
   rclc_node_init_default(&node, "rear_ecu", "", &support);
 
   rclc_publisher_init_default(
-    &speed_publisher,
-    &node,
+    &speed_publisher, &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "speedometer");
 
   rclc_publisher_init_default(
-    &linpot_publisher,
-    &node,
+    &tach_publisher, &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
-    "potentiometer");
+    "tachometer");
 
   speed_msg.data = 0;
-  linpot_msg.data = 0;
+  tach_msg.data  = 0.0f;
 
   for (;;)
   {
-    if ((HAL_GetTick() - last_magnet_time) > 1000U)  // <-- remove the extern line above this
-    {
-      speedometer_kmh = 0;
+    if (rmw_uros_ping_agent(50, 1) != RMW_RET_OK) {
+      HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
+      osDelay(500);
+      continue;
     }
 
     speed_msg.data = (int32_t)speedometer_kmh;
-    linpot_msg.data   = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
+    tach_msg.data  = 36.5f + ((float)tach_raw_value / 4095.0f) * 25.0f;
 
-    if (rcl_publish(&speed_publisher, &speed_msg, NULL) != RCL_RET_OK)
-      printf("Error publishing speed (line %d)\n", __LINE__);
-
-    if (rcl_publish(&linpot_publisher, &linpot_msg, NULL) != RCL_RET_OK)
-      printf("Error publishing linpot (line %d)\n", __LINE__);
+    rcl_publish(&speed_publisher, &speed_msg, NULL);
+    rcl_publish(&tach_publisher,  &tach_msg,  NULL);
 
     osDelay(50);
   }
@@ -221,6 +218,40 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+// void StartDefaultTask(void *argument)
+// {
+//   // Wait for FDCAN to be ready
+//   osDelay(500);
+//
+//   // Try to send a raw frame completely bypassing micro-ROS
+//   FDCAN_TxHeaderTypeDef txhdr = {
+//     .Identifier          = 0x123,
+//     .IdType              = FDCAN_STANDARD_ID,
+//     .TxFrameType         = FDCAN_DATA_FRAME,
+//     .DataLength          = FDCAN_DLC_BYTES_4,
+//     .ErrorStateIndicator = FDCAN_ESI_ACTIVE,
+//     .BitRateSwitch       = FDCAN_BRS_OFF,
+//     .FDFormat            = FDCAN_CLASSIC_CAN,
+//     .TxEventFifoControl  = FDCAN_NO_TX_EVENTS,
+//     .MessageMarker       = 0,
+// };
+//   uint8_t data[4] = {0xDE, 0xAD, 0xBE, 0xEF};
+//
+//   // Start FDCAN here directly
+//   HAL_StatusTypeDef start_ret = HAL_FDCAN_Start(&hfdcan1);
+//   // start_ret should be HAL_OK (0)
+//   // If HAL_ERROR (1), FDCAN peripheral isn't configured correctly
+//
+//   for (;;) {
+//     HAL_StatusTypeDef tx_ret = HAL_FDCAN_AddMessageToTxFifoQ(
+//         &hfdcan1, &txhdr, data);
+//     // tx_ret should be HAL_OK
+//     // If HAL_ERROR, Tx FIFO isn't configured (TxFifoQueueElmtsNbr = 0?)
+//
+//     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
+//     osDelay(200);
+//   }
+// }
 
 /* USER CODE END Application */
 
