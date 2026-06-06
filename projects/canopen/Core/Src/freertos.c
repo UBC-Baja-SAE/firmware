@@ -160,8 +160,8 @@ void canopen_task(void *argument)
     //Reflect CANopenStatus on Nucleo LEDs
     //Review the hardware configuration to control the LEDs
     //Turns on the LED when pin is set to low (ergo negation)
-    HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, canOpenNodeSTM32.outStatusLEDGreen);
-    HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, canOpenNodeSTM32.outStatusLEDRed);
+    HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, !canOpenNodeSTM32.outStatusLEDGreen);
+    HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, !canOpenNodeSTM32.outStatusLEDRed);
     canopen_app_process();
     // Sleep for 1ms, you can decrease it if required, in the canopen_app_process we will double check to make sure 1ms passed
     vTaskDelay(pdMS_TO_TICKS(1));
