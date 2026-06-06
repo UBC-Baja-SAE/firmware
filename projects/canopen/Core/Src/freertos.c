@@ -29,6 +29,7 @@
 #include "tim.h"
 #include "stm32h7xx_hal_gpio.h"
 #include "CO_app_STM32.h"
+#include "OD.h"
 
 /* USER CODE END Includes */
 
@@ -49,6 +50,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+extern volatile uint32_t speedometer_kmh;
+extern volatile uint32_t last_magnet_time;
+extern volatile uint32_t tach_rpm;
+
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -132,6 +137,13 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+    if ((HAL_GetTick() - last_magnet_time) > 1000U) {
+      speedometer_kmh = 0;
+    }
+
+    OD_RAM.x2000_speedometer = (uint32_t)speedometer_kmh;
+    OD_RAM.x2001_tachometer  = (uint32_t)tach_rpm;
+
     osDelay(1);
   }
   /* USER CODE END StartDefaultTask */

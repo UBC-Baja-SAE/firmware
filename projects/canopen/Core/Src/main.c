@@ -38,6 +38,15 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define MAGNET_DEBOUNCE_TIME_MS 10
+#define SPARK_DEBOUNCE_TIME_MS 5
+#define TIM3_CLOCK_FREQ 1000000.0f  // Adjust to your actual TIM3 clock frequency
+#define TIM8_CLOCK_FREQ 1000000.0f  // Adjust to your actual TIM8 clock frequency
+#define SMOOTHING_FACTOR 0.1f
+#define TIRE_CIRCUMFERENCE_KM 0.0016f // Example circumference
+#define PULSES_PER_REV 1.0f
+#define MAX_RPM_LIMIT 4500.0f
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,6 +57,15 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+volatile uint32_t speedometer_kmh = 0;
+volatile uint32_t last_magnet_time = 0;
+volatile uint32_t tach_rpm = 0;
+
+volatile uint32_t last_spark_time = 0;
+static uint32_t previous_speedometer_capture_value = 0;
+static uint32_t previous_tachometer_capture_value = 0;
+static float smoothed_speed_freq = 0.0f;
+static float smoothed_tach_freq = 0.0f;
 
 /* USER CODE END PV */
 
@@ -98,8 +116,12 @@ int main(void)
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   MX_TIM17_Init();
+  MX_TIM2_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_IC_Start_IT(&htim5, TIM_CHANNEL_2);
 
   /* USER CODE END 2 */
 
@@ -183,7 +205,89 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  // Ensure we are handling TIM2, Channel 1 (Speedometer)
+  if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+  {
+    uint32_t current_time = HAL_GetTick();
 
+    if ((current_time - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS)
+    {
+      return;
+    }
+
+    uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+    uint32_t diff = 0;
+
+    if (current_capture >= previous_speedometer_capture_value)
+    {
+      diff = current_capture - previous_speedometer_capture_value;
+    }
+    else
+    {
+      // (Period - Old) + New + 1
+      diff = (htim->Init.Period - previous_speedometer_capture_value) + current_capture + 1;
+    }
+
+    if (diff > 0)
+    {
+      float instant_freq = (float)TIM3_CLOCK_FREQ / diff;
+
+      // Exponential Smoothing
+      smoothed_speed_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_speed_freq * (1.0f - SMOOTHING_FACTOR));
+      double smoothed_speed_kmh = smoothed_speed_freq * TIRE_CIRCUMFERENCE_KM * 3600.0;
+
+      // Update the global volatile variable for FreeRTOS/CANopen
+      speedometer_kmh = (uint32_t)smoothed_speed_kmh;
+
+      previous_speedometer_capture_value = current_capture;
+      last_magnet_time = current_time;
+    }
+  }
+
+  // Ensure we are handling TIM5, Channel 2 (Tachometer)
+  if (htim->Instance == TIM5 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
+  {
+    uint32_t current_time = HAL_GetTick();
+
+    if ((current_time - last_spark_time) < SPARK_DEBOUNCE_TIME_MS)
+    {
+      return;
+    }
+
+    uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
+    uint32_t diff = 0;
+
+    if (current_capture >= previous_tachometer_capture_value)
+    {
+      diff = current_capture - previous_tachometer_capture_value;
+    }
+    else
+    {
+      diff = (htim->Init.Period - previous_tachometer_capture_value) + current_capture + 1;
+    }
+
+    if (diff > 0)
+    {
+      float instant_freq = (float)TIM8_CLOCK_FREQ / diff;
+
+      smoothed_tach_freq = (instant_freq * SMOOTHING_FACTOR) + (smoothed_tach_freq * (1.0f - SMOOTHING_FACTOR));
+
+      double calculated_rpm = ((smoothed_tach_freq * 60.0f) / PULSES_PER_REV);
+
+      if (calculated_rpm > MAX_RPM_LIMIT) {
+        calculated_rpm = MAX_RPM_LIMIT;
+      }
+
+      // Update the global volatile variable for FreeRTOS/CANopen
+      tach_rpm = (uint32_t)calculated_rpm;
+
+      previous_tachometer_capture_value = current_capture;
+      last_spark_time = current_time;
+    }
+  }
+}
 /* USER CODE END 4 */
 
  /* MPU Configuration */

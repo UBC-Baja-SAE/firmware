@@ -76,6 +76,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+        Core/Inc
         # CANopenNode core
         ${CANOPENNODE_DIR}
         ${CANOPENNODE_DIR}/301
@@ -85,7 +86,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         ${CANOPENNODE_DIR}/309
         # CANopenNODE STM32
         ${CANOPENSTM32_DIR}
-        Core/Inc
+
         # Add user defined include paths
 )
 
