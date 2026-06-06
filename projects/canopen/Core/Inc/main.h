@@ -57,13 +57,19 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define NUCLEO_GREEN_LED_Pin GPIO_PIN_0
+#define NUCLEO_GREEN_LED_GPIO_Port GPIOB
+#define NUCLEO_RED_LED_Pin GPIO_PIN_14
+#define NUCLEO_RED_LED_GPIO_Port GPIOB
+#define NUCLEO_YELLOW_LED_Pin GPIO_PIN_1
+#define NUCLEO_YELLOW_LED_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 
 // Need to be set accordingly for easy nucleo debugging
 #define LED1_Pin GPIO_PIN_0
 #define LED1_GPIO_Port GPIOB
-#define LED2_Pin GPIO_PIN_1
+#define LED2_Pin GPIO_PIN_14
 #define LED2_GPIO_Port GPIOB
 
 /* USER CODE END Private defines */
