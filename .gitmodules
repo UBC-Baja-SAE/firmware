@@ -1,0 +1,3 @@
+[submodule "projects/canopen/Middlewares/CANopenSTM32"]
+	path = projects/canopen/Middlewares/CANopenSTM32
+	url = https://github.com/CANopenNode/CanOpenSTM32.git
