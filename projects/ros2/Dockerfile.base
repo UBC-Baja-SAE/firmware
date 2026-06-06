@@ -1,36 +1,18 @@
-# Dockerfile.base
 FROM docker.io/library/ros:jazzy-ros-base
 
-# Install essential build tools and CAN networking utilities
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
     can-utils \
     ros-jazzy-foxglove-bridge \
+    ros-jazzy-ros2-canopen \
     iproute2 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Download Foxglove CLI binary (ARM64 for Pi)
+# Foxglove CLI (ARM64 for Pi)
 RUN curl -L https://github.com/foxglove/foxglove-cli/releases/latest/download/foxglove-linux-arm64 \
     -o /usr/local/bin/foxglove && \
     chmod +x /usr/local/bin/foxglove
 
-WORKDIR /uros_ws
-RUN mkdir src
-
-# Clone the micro-ROS-Agent and its required message definitions
-RUN git clone -b jazzy https://github.com/micro-ROS/micro-ROS-Agent.git src/micro-ROS-Agent && \
-    git clone -b jazzy https://github.com/micro-ROS/micro_ros_msgs.git src/micro_ros_msgs
-
-RUN apt-get update && \
-    rosdep init || true && \
-    rosdep update && \
-    rosdep install --from-paths src --ignore-src -y
-
-# Source ROS 2 and build the agent
-RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && \
-    MAKEFLAGS=\"-j1\" colcon build --executor sequential --cmake-args -DUAGENT_BUILD_EXECUTABLE=ON -DSPDLOG_FMT_EXTERNAL=OFF -DUAGENT_USE_SYSTEM_LOGGER=OFF"
-
-# Set up the entrypoint to source the workspace automatically
-RUN echo "source /uros_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
