@@ -21,6 +21,8 @@ while True:
     # Give Docker a few seconds to spin up
     time.sleep(3)
 
+    CONTAINER_NAME = "mochi_ros2_gui"
+
     # 5. Suspend this host script until the container completely shuts down
     print("Container is running. Host script going to sleep...")
     subprocess.run(["docker", "wait", CONTAINER_NAME])

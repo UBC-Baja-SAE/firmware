@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.gui
     image: bfrzn/ros2-gui:jazzy
+    container_name: mochi_ros2_gui
     stop_grace_period: 300s
     network_mode: "host"
     privileged: true
@@ -25,8 +26,6 @@ services:
       - "/dev/can0:/dev/can0"   # expose CAN interface to container
     command: >
       bash -c "
-        source /opt/ros/jazzy/setup.bash ;
-        source /ros_ws/install/setup.bash ;
         printf 'auth_type: 2\nbase_url: https://api.foxglove.dev\nbearer_token: %s\n' $$FOXGLOVE_API_KEY > /root/.foxgloverc ;
         cleanup() {
           trap - EXIT SIGTERM SIGINT ;
@@ -46,19 +45,24 @@ services:
         } ;
         trap cleanup EXIT SIGTERM SIGINT ;
         source /opt/ros/jazzy/setup.bash ;
-        # Bring up CAN interface (may already be up from host)
+      
         ip link set can0 type can bitrate 500000 2>/dev/null || true ;
         ip link set can0 up 2>/dev/null || true ;
-        # Generate master DCF from bus.yml + EDS files
-        echo 'Generating CANopen DCF...' ;
-        cd /ros_ws/canopen && dcfgen bus.yml -r /ros_ws/canopen ;
-        echo 'DCF generation complete.' ;
-        python3 /ros_ws/gui/Backend.py &
-        ros2 launch canopen_core canopen_system.launch.py \
-          bus_config:=/ros_ws/canopen/bus.yml \
-          master_config:=/ros_ws/canopen/master.dcf \
-          can_interface_name:=can0 &
-        ros2 launch foxglove_bridge foxglove_bridge_launch.xml &
-        sleep 3 ;
-        ros2 bag record -s mcap -o /logs/$$(date +%a_%b_%d_%I:%M%p) -a
+      
+      # Generate master DCF from bus.yml + EDS files
+      echo 'Generating CANopen DCF...' ;
+      cd /ros_ws/canopen && dcfgen bus.yml -d /ros_ws/canopen ;
+      echo 'DCF generation complete.' ;
+      
+      # (This will still crash on Mac, but will work on your Pi/Linux box)
+      python3 /ros_ws/gui/Backend.py &
+      
+      # Put the launch command on a single line with the correct file name
+      ros2 launch canopen_core canopen.launch.py bus_config:=/ros_ws/canopen/bus.yml master_config:=/ros_ws/canopen/master.dcf can_interface_name:=can0 &
+               
+      ros2 launch foxglove_bridge foxglove_bridge_launch.xml &
+      sleep 3 ;
+               
+      ros2 bag record -s mcap -o /logs/$$(date +%a_%b_%d_%H-%M) -a &
+      wait $$!
       "
