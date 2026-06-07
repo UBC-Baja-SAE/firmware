@@ -11,12 +11,12 @@
 
     File info:
         File Names:   OD.h; OD.c
-        Project File: ubcbaja.xdd
+        Project File: rear_ecu.xdd
         File Version: 1
 
-        Created:      2026-06-06 1:11:13 PM
-        Created By:   
-        Modified:     2026-06-06 9:12:43 PM
+        Created:      2026-06-07 10:17:32 AM
+        Created By:   Benjamin Friesen
+        Modified:     2026-06-07 10:26:35 AM
         Modified By:  
 
     Device Info:
@@ -244,6 +244,7 @@ typedef struct {
     } x1200_SDOServerParameter;
     uint32_t x2000_speedometer;
     uint32_t x2001_tachometer;
+    uint32_t xFFFF_tachometer;
 } OD_RAM_t;
 
 #ifndef OD_ATTR_PERSIST_COMM
@@ -300,6 +301,7 @@ extern OD_ATTR_OD OD_t *OD;
 #define OD_ENTRY_H1A03 &OD->list[32]
 #define OD_ENTRY_H2000 &OD->list[33]
 #define OD_ENTRY_H2001 &OD->list[34]
+#define OD_ENTRY_HFFFF &OD->list[35]
 
 
 /*******************************************************************************
@@ -340,6 +342,7 @@ extern OD_ATTR_OD OD_t *OD;
 #define OD_ENTRY_H1A03_TPDOMappingParameter &OD->list[32]
 #define OD_ENTRY_H2000_speedometer &OD->list[33]
 #define OD_ENTRY_H2001_tachometer &OD->list[34]
+#define OD_ENTRY_HFFFF_tachometer &OD->list[35]
 
 
 /*******************************************************************************

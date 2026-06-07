@@ -47,25 +47,25 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
     },
     .x1400_RPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x05,
-        .COB_IDUsedByRPDO = 0x80000311,
+        .COB_IDUsedByRPDO = 0x80000223,
         .transmissionType = 0xFE,
         .eventTimer = 0x0000
     },
     .x1401_RPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x05,
-        .COB_IDUsedByRPDO = 0x80000411,
+        .COB_IDUsedByRPDO = 0x80000323,
         .transmissionType = 0xFE,
         .eventTimer = 0x0000
     },
     .x1402_RPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x05,
-        .COB_IDUsedByRPDO = 0x80000511,
+        .COB_IDUsedByRPDO = 0x80000423,
         .transmissionType = 0xFE,
         .eventTimer = 0x0000
     },
     .x1403_RPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x05,
-        .COB_IDUsedByRPDO = 0x80000611,
+        .COB_IDUsedByRPDO = 0x80000523,
         .transmissionType = 0xFE,
         .eventTimer = 0x0000
     },
@@ -115,15 +115,15 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
     },
     .x1800_TPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x06,
-        .COB_IDUsedByTPDO = 0x00000189,
+        .COB_IDUsedByTPDO = 0x00000180,
         .transmissionType = 0xFE,
         .inhibitTime = 0x0000,
-        .eventTimer = 0x0032,
+        .eventTimer = 0x0000,
         .SYNCStartValue = 0x00
     },
     .x1801_TPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x06,
-        .COB_IDUsedByTPDO = 0xC0000391,
+        .COB_IDUsedByTPDO = 0xC00002A3,
         .transmissionType = 0xFE,
         .inhibitTime = 0x0000,
         .eventTimer = 0x0000,
@@ -131,7 +131,7 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
     },
     .x1802_TPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x06,
-        .COB_IDUsedByTPDO = 0xC0000491,
+        .COB_IDUsedByTPDO = 0xC00003A3,
         .transmissionType = 0xFE,
         .inhibitTime = 0x0000,
         .eventTimer = 0x0000,
@@ -139,7 +139,7 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
     },
     .x1803_TPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x06,
-        .COB_IDUsedByTPDO = 0xC0000591,
+        .COB_IDUsedByTPDO = 0xC00004A3,
         .transmissionType = 0xFE,
         .inhibitTime = 0x0000,
         .eventTimer = 0x0000,
@@ -203,7 +203,8 @@ OD_ATTR_RAM OD_RAM_t OD_RAM = {
         .COB_IDServerToClientTx = 0x00000580
     },
     .x2000_speedometer = 0x00000000,
-    .x2001_tachometer = 0x00000000
+    .x2001_tachometer = 0x00000000,
+    .xFFFF_tachometer = 0x00000000
 };
 
 
@@ -247,6 +248,7 @@ typedef struct {
     OD_obj_record_t o_1A03_TPDOMappingParameter[9];
     OD_obj_var_t o_2000_speedometer;
     OD_obj_var_t o_2001_tachometer;
+    OD_obj_var_t o_FFFF_tachometer;
 } ODObjs_t;
 
 static CO_PROGMEM ODObjs_t ODObjs = {
@@ -1123,6 +1125,11 @@ static CO_PROGMEM ODObjs_t ODObjs = {
         .dataOrig = &OD_RAM.x2001_tachometer,
         .attribute = ODA_SDO_R | ODA_TPDO | ODA_MB,
         .dataLength = 4
+    },
+    .o_FFFF_tachometer = {
+        .dataOrig = &OD_RAM.xFFFF_tachometer,
+        .attribute = ODA_SDO_RW | ODA_MB,
+        .dataLength = 4
     }
 };
 
@@ -1166,6 +1173,7 @@ static OD_ATTR_OD OD_entry_t ODList[] = {
     {0x1A03, 0x09, ODT_REC, &ODObjs.o_1A03_TPDOMappingParameter, NULL},
     {0x2000, 0x01, ODT_VAR, &ODObjs.o_2000_speedometer, NULL},
     {0x2001, 0x01, ODT_VAR, &ODObjs.o_2001_tachometer, NULL},
+    {0xFFFF, 0x01, ODT_VAR, &ODObjs.o_FFFF_tachometer, NULL},
     {0x0000, 0x00, 0, NULL, NULL}
 };
 
