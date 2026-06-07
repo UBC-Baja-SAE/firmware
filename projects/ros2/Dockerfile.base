@@ -5,10 +5,21 @@ RUN apt-get update && apt-get install -y \
     git \
     can-utils \
     ros-jazzy-foxglove-bridge \
-    ros-jazzy-ros2-canopen \
     iproute2 \
     python3-pip \
+    python3-colcon-common-extensions \
+    ros-jazzy-ament-cmake \
     && rm -rf /var/lib/apt/lists/*
+
+# Build ros2_canopen from source
+RUN mkdir -p /ros_ws/src && \
+    cd /ros_ws/src && \
+    git clone --branch jazzy https://github.com/ros-industrial/ros2_canopen.git && \
+    cd /ros_ws && \
+    source /opt/ros/jazzy/setup.bash && \
+    rosdep install --from-paths src --ignore-src -r -y && \
+    colcon build --symlink-install && \
+    rm -rf /ros_ws/src
 
 RUN pip3 install dcfgen --break-system-packages
 
@@ -17,4 +28,5 @@ RUN curl -L https://github.com/foxglove/foxglove-cli/releases/latest/download/fo
     -o /usr/local/bin/foxglove && \
     chmod +x /usr/local/bin/foxglove
 
-RUN echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+RUN echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc && \
+    echo "source /ros_ws/install/setup.bash" >> ~/.bashrc

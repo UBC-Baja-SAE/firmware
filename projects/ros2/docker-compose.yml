@@ -25,6 +25,8 @@ services:
       - "/dev/can0:/dev/can0"   # expose CAN interface to container
     command: >
       bash -c "
+        source /opt/ros/jazzy/setup.bash ;
+        source /ros_ws/install/setup.bash ;
         printf 'auth_type: 2\nbase_url: https://api.foxglove.dev\nbearer_token: %s\n' $$FOXGLOVE_API_KEY > /root/.foxgloverc ;
         cleanup() {
           trap - EXIT SIGTERM SIGINT ;
