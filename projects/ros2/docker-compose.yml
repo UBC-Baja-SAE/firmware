@@ -1,5 +1,8 @@
 services:
   ros2:
+    build:
+      context: .
+      dockerfile: Dockerfile.gui
     image: bfrzn/ros2-gui:jazzy
     stop_grace_period: 300s
     network_mode: "host"
