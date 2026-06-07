@@ -1,0 +1,12 @@
+master:
+  node_id: 127
+  driver: "ros2_canopen::MasterDriver"
+  package: "canopen_master_driver"
+  baudrate: 500000
+  
+nodes:
+  rear_ecu:
+    node_id: 5
+    driver: "ros2_canopen::BasicDriver"
+    package: "canopen_basic_driver"
+    eds: "/ros_ws/canopen/rear_ecu.eds"
