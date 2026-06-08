@@ -53,14 +53,14 @@ extern CANopenNodeSTM32 canOpenNodeSTM32;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 1024 * 4,
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for canopen */
 osThreadId_t canopenHandle;
 const osThreadAttr_t canopen_attributes = {
   .name = "canopen",
-  .stack_size = 1024 * 4,
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
 
@@ -148,7 +148,7 @@ void canopen_task(void *argument)
   canOpenNodeSTM32.CANHandle = &hfdcan1;
   canOpenNodeSTM32.HWInitFunction = MX_FDCAN1_Init;
   canOpenNodeSTM32.timerHandle = &htim6;   // your 1ms timer
-  canOpenNodeSTM32.desiredNodeID = 21;
+  canOpenNodeSTM32.desiredNodeID = 5;
   canOpenNodeSTM32.baudrate = 500;
   canopen_app_init(&canOpenNodeSTM32);
   /* Infinite loop */
