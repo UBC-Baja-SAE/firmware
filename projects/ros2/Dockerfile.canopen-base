@@ -18,10 +18,7 @@ WORKDIR /canopen_ws
 RUN mkdir -p src && \
     git clone --depth 1 -b master \
         https://github.com/ros-industrial/ros2_canopen.git \
-        src/ros2_canopen && \
-    git clone --depth 1 -b ros2 \
-        https://github.com/foxglove/ros-foxglove-bridge.git \
-        src/foxglove_bridge
+        src/ros2_canopen
 
 # rosdep install for the cloned sources
 RUN apt-get update && \
@@ -43,7 +40,6 @@ RUN . /opt/ros/jazzy/setup.sh && \
             canopen_master_driver \
             canopen_base_driver \
             canopen_proxy_driver \
-            foxglove_bridge \
         --cmake-args \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF \
@@ -65,6 +61,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         iproute2 \
         python3-pip \
         python3-dcf-tools \
+        ros-jazzy-foxglove-bridge \
     && apt-get purge -y --auto-remove software-properties-common gpg \
     && rm -rf /var/lib/apt/lists/*
 
