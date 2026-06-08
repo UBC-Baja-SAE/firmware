@@ -93,7 +93,7 @@ services:
         }
         trap _cleanup SIGTERM SIGINT
 
-        mkdir -p /tmp/runtime-root
+        mkdir -p /tmp/runtime-root && chmod 700 /tmp/runtime-root
 
         echo '==> Starting GUI backend...'
         python3 /ros_ws/gui/Backend.py &
