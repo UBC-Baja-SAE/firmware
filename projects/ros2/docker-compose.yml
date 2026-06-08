@@ -23,6 +23,8 @@ services:
     devices:
       - "/dev/dri:/dev/dri"
       - "/dev/input:/dev/input"
+      - "/dev/gpiomem:/dev/gpiomem"
+      - "/dev/gpiochip0:/dev/gpiochip0"
       - "/dev/can0:/dev/can0"   # expose CAN interface to container
     command: >
       bash -c "

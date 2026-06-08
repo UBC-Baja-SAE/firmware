@@ -1,8 +1,6 @@
 import sys
-import signal
-import os
+import subprocess
 import rclpy
-import threading
 from rclpy.node import Node
 from std_msgs.msg import Float32, Float64, Int32
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtProperty, QTimer, QUrl
@@ -76,7 +74,6 @@ class Backend(QObject):
         self.clicked.emit()
 
 
-# Mapping of supported ROS message types to their class and value extractor
 supportedTypes = {
     'std_msgs/msg/Float32': (Float32, lambda msg: float(msg.data)),
     'std_msgs/msg/Float64': (Float64, lambda msg: float(msg.data)),
@@ -138,10 +135,8 @@ class BackendNode(Node):
             return
 
         topicName, msgClass, extractor = entry
-
         self.leftTopic = topicName
         self.filteredSpeed = 0.0
-
         self.leftSub = self.create_subscription(
             msgClass,
             topicName,
@@ -154,25 +149,18 @@ class HardwareInterface:
     def __init__(self, backend):
         self.backend = backend
         self.encoder = RotaryEncoder(17, 27, wrap=False, max_steps=0)
-
-        # Let gpiozero handle the 5-second timing natively
         self.button = Button(22, pull_up=True, bounce_time=0.05, hold_time=5)
+
+        self._was_held = False
 
         self.encoder.when_rotated_clockwise = lambda: self.backend.triggerScroll(1)
         self.encoder.when_rotated_counter_clockwise = lambda: self.backend.triggerScroll(-1)
-
-        # Track if the hold event fired so we don't accidentally click on release
-        self._was_held = False
-
         self.button.when_released = self.onRelease
         self.button.when_held = self.onLongPress
 
     def onRelease(self):
-        # Only trigger a menu click if it was a quick tap, not a 5-second hold
         if not self._was_held:
             self.backend.triggerClick()
-
-        # Reset the flag for the next press
         self._was_held = False
 
     def onLongPress(self):
@@ -187,6 +175,8 @@ def main():
     backend = Backend()
     rosNode = BackendNode(backend)
     hwInterface = HardwareInterface(backend)
+
+    rosTimer = QTimer()
 
     def onScroll(direction):
         if not backend.menuVisible:
@@ -208,19 +198,23 @@ def main():
             backend.menuVisible = False
 
     def onShutdownRequested():
-        print("Long press detected — stopping rosbag to unblock container shutdown...")
-        app.quit()
-
-        # Kill the ros2 bag process directly instead of signalling Bash
-        os.system("pkill -SIGINT -f 'ros2 bag'")
+        print("Long press — stopping container...")
+        try:
+            rosTimer.stop()
+            app.quit()
+            if rclpy.ok():
+                rosNode.destroy_node()
+                rclpy.shutdown()
+        except Exception:
+            pass
+        subprocess.run(['docker', 'stop', 'mochi_ros2_gui'])
 
     backend.scrolled.connect(onScroll)
     backend.clicked.connect(onClick)
     backend.shutdownRequested.connect(onShutdownRequested)
 
-    timer = QTimer()
-    timer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
-    timer.start(10)
+    rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
+    rosTimer.start(10)
 
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("backend", backend)
@@ -230,7 +224,6 @@ def main():
         sys.exit(-1)
 
     exitCode = app.exec_()
-    # Safely clean up ROS only if it's still running
     if rclpy.ok():
         rosNode.destroy_node()
         rclpy.shutdown()
