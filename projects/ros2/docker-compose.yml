@@ -26,7 +26,6 @@ services:
       - "/dev/input:/dev/input"
       - "/dev/gpiomem:/dev/gpiomem"
       - "/dev/gpiochip0:/dev/gpiochip0"
-      - "/dev/can0:/dev/can0"
     command: >
       bash -c "
         printf 'auth_type: 2\nbase_url: https://api.foxglove.dev\nbearer_token: %s\n' $$FOXGLOVE_API_KEY > /root/.foxgloverc ;
@@ -54,8 +53,9 @@ services:
         source /canopen_ws/install/setup.bash 2>/dev/null || true ;
         source /ros_ws/install/setup.bash 2>/dev/null || true ;
 
-        ip link set can0 type can bitrate 500000 2>/dev/null || true ;
-        ip link set can0 up 2>/dev/null || true ;
+        echo 'Configuring can0...' ;
+        ip link set can0 type can bitrate 500000 || echo 'FAILED to set bitrate' ;
+        ip link set can0 up || echo 'FAILED to bring can0 up' ;
 
         echo 'Generating CANopen DCF...' ;
         cd /ros_ws/canopen && dcfgen bus.yml -d /ros_ws/canopen || true ;
