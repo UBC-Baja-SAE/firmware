@@ -210,7 +210,7 @@ def main():
                 rclpy.shutdown()
         except Exception:
             pass
-        subprocess.run(['docker', 'stop', 'ros2-ros2-1'])
+        subprocess.run(['docker', 'stop', 'mochi_ros2_gui'])
 
     backend.scrolled.connect(onScroll)
     backend.clicked.connect(onClick)
