@@ -38,7 +38,23 @@ services:
         ros2 launch canopen_core canopen.launch.py \
           bus_config:=/ros_ws/canopen/bus.yml \
           master_config:=/ros_ws/canopen/master.dcf \
-          can_interface_name:=can0
+          can_interface_name:=can0 &
+        CANOPEN_PID=$!
+
+        echo '==> Waiting for device_container_node...'
+        until ros2 node list 2>/dev/null | grep -q device_container_node; do
+          sleep 0.5
+        done
+
+        echo '==> Configuring device_container_node...'
+        ros2 lifecycle set /device_container_node configure
+        sleep 2
+
+        echo '==> Activating device_container_node...'
+        ros2 lifecycle set /device_container_node activate
+
+        echo '==> CANopen stack is active.'
+        wait $CANOPEN_PID
 
   # ---------------------------------------------------------------------------
   # ros2-gui
