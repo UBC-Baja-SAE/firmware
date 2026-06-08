@@ -54,6 +54,7 @@ services:
         source /ros_ws/install/setup.bash 2>/dev/null || true ;
 
         echo 'Configuring can0...' ;
+        ip link set can0 down 2>/dev/null || true ;
         ip link set can0 type can bitrate 500000 || echo 'FAILED to set bitrate' ;
         ip link set can0 up || echo 'FAILED to bring can0 up' ;
 
