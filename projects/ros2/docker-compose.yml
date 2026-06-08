@@ -38,7 +38,7 @@ services:
         dcfgen bus.yml -d /tmp/canopen_dcf --no-strict
 
         echo '==> Writing canopen params file...'
-        cat > /tmp/canopen_params.yaml << 'YAML_EOF'
+        cat > /tmp/canopen_params.yaml <<- 'YAML_EOF'
         canopen_master:
           ros__parameters:
             dcf_path: "/tmp/canopen_dcf/master.dcf"
