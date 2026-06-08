@@ -4,6 +4,9 @@
 # Used by:     ros2_canopen canopen_core
 # =============================================================================
 #
+# IMPORTANT: dcfgen requires slave sections to be top-level keys.
+# There must be NO 'nodes:' wrapper — master + slaves all sit at root level.
+#
 # Node ID assignment:
 #   127  — ROS2 CANopen master (Pi 4)
 #     1  — rr_ecu  (rear-right)
@@ -12,8 +15,7 @@
 #     4  — fl_ecu  (front-left)
 #     5  — rear_ecu (rear main ECU / telemetry node)
 #
-# EDS files are expected at /ros_ws/canopen/*.eds
-# DCF output will be written to /ros_ws/canopen/dcf/
+# 'dcf' key accepts .eds files directly — dcfgen reads them as EDS/DCF.
 # =============================================================================
 
 master:
@@ -22,33 +24,32 @@ master:
   package: "canopen_master_driver"
   baudrate: 500000
 
-nodes:
-  rr_ecu:
-    node_id: 1
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    dcf: "/ros_ws/canopen/rr_ecu.eds"
+rr_ecu:
+  node_id: 1
+  driver: "ros2_canopen::ProxyDriver"
+  package: "canopen_proxy_driver"
+  dcf: "/ros_ws/canopen/rr_ecu.eds"
 
-  rl_ecu:
-    node_id: 2
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    dcf: "/ros_ws/canopen/rl_ecu.eds"
+rl_ecu:
+  node_id: 2
+  driver: "ros2_canopen::ProxyDriver"
+  package: "canopen_proxy_driver"
+  dcf: "/ros_ws/canopen/rl_ecu.eds"
 
-  fr_ecu:
-    node_id: 3
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    dcf: "/ros_ws/canopen/fr_ecu.eds"
+fr_ecu:
+  node_id: 3
+  driver: "ros2_canopen::ProxyDriver"
+  package: "canopen_proxy_driver"
+  dcf: "/ros_ws/canopen/fr_ecu.eds"
 
-  fl_ecu:
-    node_id: 4
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    dcf: "/ros_ws/canopen/fl_ecu.eds"
+fl_ecu:
+  node_id: 4
+  driver: "ros2_canopen::ProxyDriver"
+  package: "canopen_proxy_driver"
+  dcf: "/ros_ws/canopen/fl_ecu.eds"
 
-  rear_ecu:
-    node_id: 5
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    dcf: "/ros_ws/canopen/rear_ecu.eds"
+rear_ecu:
+  node_id: 5
+  driver: "ros2_canopen::ProxyDriver"
+  package: "canopen_proxy_driver"
+  dcf: "/ros_ws/canopen/rear_ecu.eds"
