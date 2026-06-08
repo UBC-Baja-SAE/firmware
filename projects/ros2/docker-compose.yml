@@ -49,8 +49,9 @@ services:
         } ;
 
         trap cleanup EXIT SIGTERM SIGINT ;
-
+      
         source /opt/ros/jazzy/setup.bash ;
+        source /canopen_ws/install/setup.bash 2>/dev/null || true ;
         source /ros_ws/install/setup.bash 2>/dev/null || true ;
 
         ip link set can0 type can bitrate 500000 2>/dev/null || true ;
