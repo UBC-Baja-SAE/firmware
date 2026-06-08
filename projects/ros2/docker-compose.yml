@@ -1,26 +1,79 @@
+# =============================================================================
+# docker-compose.yml — Baja SAE ROS2 CANopen telemetry stack
+# Raspberry Pi 4B · linux/arm64 · ROS 2 Jazzy
+# =============================================================================
+
 services:
-  ros2:
+
+  # ---------------------------------------------------------------------------
+  # canopen-bridge
+  # Brings up the CAN interface and runs ros2_canopen manager + device drivers.
+  # Separated from the GUI so it can restart independently on CAN bus faults.
+  # ---------------------------------------------------------------------------
+  canopen-bridge:
+    image: bfrzn/ros2-gui:jazzy        # already has canopen overlay sourced
+    container_name: mochi_canopen
+    stop_grace_period: 30s
+    network_mode: "host"
+    privileged: true                   # required for ip link + /dev/can*
+    restart: unless-stopped
+    environment:
+      - TZ=America/Vancouver
+      - ROS_DOMAIN_ID=0                # keep all containers on the same domain
+    volumes:
+      - ./canopen:/ros_ws/canopen:ro   # EDS/DCF files + bus.yml (read-only)
+    command: >
+      bash -c "
+        set -e
+
+        echo '==> Configuring can0 at 500 kbps...'
+        ip link set can0 down 2>/dev/null || true
+        ip link set can0 type can bitrate 500000 restart-ms 100
+        ip link set can0 up
+        echo '==> can0 is up.'
+
+        echo '==> Generating DCF files from EDS...'
+        cd /ros_ws/canopen
+        dcfgen bus.yml -d /ros_ws/canopen/dcf
+
+        echo '==> Launching canopen_core...'
+        ros2 launch canopen_core canopen.launch.py \
+          bus_config:=/ros_ws/canopen/bus.yml \
+          master_config:=/ros_ws/canopen/dcf/master.dcf \
+          can_interface_name:=can0
+      "
+
+  # ---------------------------------------------------------------------------
+  # ros2-gui
+  # Qt6 dashboard + Foxglove bridge + MCAP bag recorder.
+  # ---------------------------------------------------------------------------
+  ros2-gui:
     build:
       context: .
       dockerfile: Dockerfile.gui
+      # Explicitly tag on build so the image name is deterministic
     image: bfrzn/ros2-gui:jazzy
     container_name: mochi_ros2_gui
     stop_grace_period: 300s
     network_mode: "host"
     privileged: true
     restart: unless-stopped
+    depends_on:
+      - canopen-bridge
     environment:
       - TZ=America/Vancouver
-      - FOXGLOVE_API_KEY=fox_sk_3va2wRx9YT4btXPJxwgCeofNLNHEXJJf
-      - FOXGLOVE_DEVICE_ID=dev_0eHNnHWW6p4clvbd
+      - ROS_DOMAIN_ID=0
+      - FOXGLOVE_API_KEY=${FOXGLOVE_API_KEY}
+      - FOXGLOVE_DEVICE_ID=${FOXGLOVE_DEVICE_ID}
+      # eglfs for Pi 4 VideoCore — no X11/Wayland needed
       - QT_QPA_PLATFORM=eglfs
       - QT_QPA_EGLFS_ALWAYS_SET_MODE=1
       - QT_QPA_EGLFS_HIDECURSOR=1
       - XDG_RUNTIME_DIR=/tmp/runtime-root
     volumes:
       - ./mcap_logs:/logs
-      - ./gui:/ros_ws/gui
-      - ./canopen:/ros_ws/canopen
+      - ./gui:/ros_ws/gui:ro
+      - ./canopen:/ros_ws/canopen:ro
     devices:
       - "/dev/dri:/dev/dri"
       - "/dev/input:/dev/input"
@@ -28,23 +81,31 @@ services:
       - "/dev/gpiochip0:/dev/gpiochip0"
     command: >
       bash -c "
-        set -e ; 
-        # ... (keep your Foxglove auth/cleanup trap logic)
+        set -e
 
-        source /opt/ros/jazzy/setup.bash ;
-        source /canopen_ws/install/setup.bash ; 
-        source /ros_ws/install/setup.bash ;
+        # Foxglove CLI auth (token already in env)
+        foxglove auth login --api-key \"$$FOXGLOVE_API_KEY\" 2>/dev/null || true
 
-        echo 'Configuring can0...' ;
-        ip link set can0 type can bitrate 500000 up 2>/dev/null || echo 'CAN setup failed' ;
-      
-        # Generate DCF and launch
-        cd /ros_ws/canopen && dcfgen bus.yml -d /ros_ws/canopen --no-strict ;
-      
-        # Launch your processes
+        # Graceful cleanup on SIGTERM/SIGINT
+        _cleanup() {
+          echo 'Shutting down...'
+          kill -- -$$  2>/dev/null || true
+        }
+        trap _cleanup SIGTERM SIGINT
+
+        mkdir -p /tmp/runtime-root
+
+        echo '==> Starting GUI backend...'
         python3 /ros_ws/gui/Backend.py &
-        ros2 launch canopen_core canopen.launch.py ... &
-        ros2 launch foxglove_bridge foxglove_bridge_launch.xml &
-        ros2 bag record -s mcap -o /logs/$(date +%a_%b_%d_%H-%M) -a &
+
+        echo '==> Starting Foxglove bridge...'
+        ros2 launch foxglove_bridge foxglove_bridge_launch.xml \
+          port:=8765 \
+          address:=0.0.0.0 &
+
+        echo '==> Starting MCAP recorder...'
+        BAG_NAME=\"/logs/$$(date +%a_%b_%d_%H-%M)\"
+        ros2 bag record -s mcap -o \"$$BAG_NAME\" -a &
+
         wait
       "

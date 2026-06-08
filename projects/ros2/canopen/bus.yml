@@ -1,35 +1,55 @@
+# =============================================================================
+# bus.yml — CANopen network description for dcfgen
+# Consumed by: dcfgen bus.yml -d /ros_ws/canopen/dcf
+# Used by:     ros2_canopen canopen_core
+# =============================================================================
+#
+# Node ID assignment:
+#   127  — ROS2 CANopen master (Pi 4)
+#     1  — rr_ecu  (rear-right)
+#     2  — rl_ecu  (rear-left)
+#     3  — fr_ecu  (front-right)
+#     4  — fl_ecu  (front-left)
+#     5  — rear_ecu (rear main ECU / telemetry node)
+#
+# EDS files are expected at /ros_ws/canopen/*.eds
+# DCF output will be written to /ros_ws/canopen/dcf/
+# =============================================================================
+
 master:
   node_id: 127
   driver: "ros2_canopen::MasterDriver"
   package: "canopen_master_driver"
   baudrate: 500000
 
-rr_ecu:
-  node_id: 1
-  driver: "ros2_canopen::BasicDriver"
-  package: "canopen_basic_driver"
-  dcf: "/ros_ws/canopen/rr_ecu.eds"
+nodes:
+  rr_ecu:
+    node_id: 1
+    driver: "ros2_canopen::BasicDriver"
+    package: "canopen_basic_driver"
+    eds: "/ros_ws/canopen/rr_ecu.eds"
+    # dcfgen will produce rr_ecu.dcf in the output directory (-d flag)
 
-rl_ecu:
-  node_id: 2
-  driver: "ros2_canopen::BasicDriver"
-  package: "canopen_basic_driver"
-  dcf: "/ros_ws/canopen/rl_ecu.eds"
+  rl_ecu:
+    node_id: 2
+    driver: "ros2_canopen::BasicDriver"
+    package: "canopen_basic_driver"
+    eds: "/ros_ws/canopen/rl_ecu.eds"
 
-fr_ecu:
-  node_id: 3
-  driver: "ros2_canopen::BasicDriver"
-  package: "canopen_basic_driver"
-  dcf: "/ros_ws/canopen/fr_ecu.eds"
+  fr_ecu:
+    node_id: 3
+    driver: "ros2_canopen::BasicDriver"
+    package: "canopen_basic_driver"
+    eds: "/ros_ws/canopen/fr_ecu.eds"
 
-fl_ecu:
-  node_id: 4
-  driver: "ros2_canopen::BasicDriver"
-  package: "canopen_basic_driver"
-  dcf: "/ros_ws/canopen/fl_ecu.eds"
+  fl_ecu:
+    node_id: 4
+    driver: "ros2_canopen::BasicDriver"
+    package: "canopen_basic_driver"
+    eds: "/ros_ws/canopen/fl_ecu.eds"
 
-rear_ecu:
-  node_id: 5
-  driver: "ros2_canopen::BasicDriver"
-  package: "canopen_basic_driver"
-  dcf: "/ros_ws/canopen/rear_ecu.eds"
+  rear_ecu:
+    node_id: 5
+    driver: "ros2_canopen::BasicDriver"
+    package: "canopen_basic_driver"
+    eds: "/ros_ws/canopen/rear_ecu.eds"

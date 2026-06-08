@@ -1,21 +1,33 @@
-# Use the final runtime stage of your base image
+# =============================================================================
+# Dockerfile.gui
+# Extends bfrzn/ros2-base:jazzy with Qt/display + GPIO drivers.
+# Target: Raspberry Pi 4B (linux/arm64)
+# =============================================================================
+
 FROM bfrzn/ros2-base:jazzy
 
-# Install UI and hardware-specific drivers
-RUN apt-get update && apt-get install -y \
+# Qt5 + display stack for eglfs on Pi's VideoCore GPU
+# libgles2-mesa / libgbm1 are the correct Mesa packages for Pi 4 aarch64.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pyqt5 \
     python3-pyqt5.qtquick \
     qml-module-qtquick-controls \
     qml-module-qtquick-controls2 \
     qml-module-qtquick-extras \
     qml-module-qtquick-templates2 \
+    libqt5gui5-gles \
     libegl1 \
     libgles2 \
+    libgles2-mesa \
     libdrm2 \
     libgbm1 \
+    libgl1-mesa-dri \
     udev \
     python3-gpiozero \
     && rm -rf /var/lib/apt/lists/*
 
-# Note: You no longer need to build CANopen here,
-# it is already in /canopen_ws/install from the base image.
+# Workspace for the ROS2 application layer (gui + canopen configs)
+WORKDIR /ros_ws
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]

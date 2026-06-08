@@ -1,0 +1,72 @@
+# =============================================================================
+# Dockerfile.canopen-base
+# Builds ros2_canopen from source and produces bfrzn/ros2-base:jazzy
+# Target: Raspberry Pi 4B (linux/arm64)
+# =============================================================================
+
+# --- Stage 1: Build ros2_canopen ---
+FROM ros:jazzy-ros-base AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    python3-colcon-common-extensions \
+    ros-dev-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /canopen_ws
+RUN mkdir -p src && \
+    git clone --depth 1 -b master \
+        https://github.com/ros-industrial/ros2_canopen.git \
+        src/ros2_canopen
+
+# rosdep install for the cloned sources
+RUN apt-get update && \
+    rosdep update --rosdistro jazzy && \
+    rosdep install \
+        --from-paths src \
+        --ignore-src \
+        --rosdistro jazzy \
+        -r -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build only the packages we actually need at runtime.
+# canopen_core brings in canopen_master_driver + canopen_base_driver transitively.
+RUN . /opt/ros/jazzy/setup.sh && \
+    colcon build \
+        --executor parallel \
+        --packages-up-to \
+            canopen_core \
+            canopen_master_driver \
+            canopen_base_driver \
+            canopen_basic_driver \
+        --cmake-args \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF \
+    && rm -rf build log  # drop intermediate artifacts from image layer
+
+# --- Stage 2: Runtime base (bfrzn/ros2-base:jazzy) ---
+FROM ros:jazzy-ros-base AS ros2-base
+
+# CAN tools + dcfgen (lely-coapp) + python-can for the bridge script
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    can-utils \
+    iproute2 \
+    python3-pip \
+    python3-lely \
+    && pip3 install --no-cache-dir \
+        python-can \
+        canopen \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pull built install tree from builder stage
+COPY --from=builder /canopen_ws/install /canopen_ws/install
+
+# Entrypoint sources ROS overlay so every exec'd command sees it.
+# We do NOT mutate ~/.bashrc — that only runs for interactive login shells.
+COPY ros_entrypoint.sh /ros_entrypoint.sh
+RUN chmod +x /ros_entrypoint.sh
+
+WORKDIR /canopen_ws
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]
