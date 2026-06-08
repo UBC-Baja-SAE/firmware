@@ -11,18 +11,18 @@
 
     File info:
         File Names:   OD.h; OD.c
-        Project File: rr_ecu.xdd
+        Project File: rear_ecu.xdd
         File Version: 1
 
-        Created:      2026-06-07 1:27:48 PM
+        Created:      2026-06-07 10:17:32 AM
         Created By:   Benjamin Friesen
-        Modified:     2026-06-08 2:30:13 PM
+        Modified:     2026-06-08 2:38:33 PM
         Modified By:  
 
     Device Info:
         Vendor Name:  
         Vendor ID:    
-        Product Name: rr_ecu
+        Product Name: rear_ecu
         Product ID:   
 
         Description:  
@@ -55,7 +55,6 @@
 #define OD_CNT_ARR_1010 4
 #define OD_CNT_ARR_1011 4
 #define OD_CNT_ARR_1016 8
-#define OD_CNT_ARR_2001 6
 
 
 /*******************************************************************************
@@ -243,9 +242,9 @@ typedef struct {
         uint32_t COB_IDClientToServerRx;
         uint32_t COB_IDServerToClientTx;
     } x1200_SDOServerParameter;
-    uint32_t x2000_linearPotentiometer;
-    uint8_t x2001_imu_sub0;
-    float32_t x2001_imu[OD_CNT_ARR_2001];
+    uint32_t x2000_speedometer;
+    uint32_t x2001_tachometer;
+    uint32_t xFFFF_tachometer;
 } OD_RAM_t;
 
 #ifndef OD_ATTR_PERSIST_COMM
@@ -302,6 +301,7 @@ extern OD_ATTR_OD OD_t *OD;
 #define OD_ENTRY_H1A03 &OD->list[32]
 #define OD_ENTRY_H2000 &OD->list[33]
 #define OD_ENTRY_H2001 &OD->list[34]
+#define OD_ENTRY_HFFFF &OD->list[35]
 
 
 /*******************************************************************************
@@ -340,8 +340,9 @@ extern OD_ATTR_OD OD_t *OD;
 #define OD_ENTRY_H1A01_TPDOMappingParameter &OD->list[30]
 #define OD_ENTRY_H1A02_TPDOMappingParameter &OD->list[31]
 #define OD_ENTRY_H1A03_TPDOMappingParameter &OD->list[32]
-#define OD_ENTRY_H2000_linearPotentiometer &OD->list[33]
-#define OD_ENTRY_H2001_imu &OD->list[34]
+#define OD_ENTRY_H2000_speedometer &OD->list[33]
+#define OD_ENTRY_H2001_tachometer &OD->list[34]
+#define OD_ENTRY_HFFFF_tachometer &OD->list[35]
 
 
 /*******************************************************************************
