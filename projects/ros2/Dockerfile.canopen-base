@@ -39,7 +39,7 @@ RUN . /opt/ros/jazzy/setup.sh && \
             canopen_core \
             canopen_master_driver \
             canopen_base_driver \
-            canopen_basic_driver \
+            canopen_proxy_driver \
         --cmake-args \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF \
