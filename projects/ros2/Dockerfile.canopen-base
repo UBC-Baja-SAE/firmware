@@ -48,10 +48,10 @@ RUN . /opt/ros/jazzy/setup.sh && \
 # --- Stage 2: Runtime base (bfrzn/ros2-base:jazzy) ---
 FROM ros:jazzy-ros-base AS ros2-base
 
-# Add Lely PPA — the only source of python3-dcf-tools (which ships dcfgen).
-# software-properties-common provides add-apt-repository; gpg is needed to
-# verify the PPA key. Both are safe to remove after the PPA is registered
-# because apt caches the key in /etc/apt/trusted.gpg.d/.
+# Install ros2_canopen runtime dependencies the correct way:
+# copy the source list from the builder so rosdep can resolve the same deps,
+# then install only the runtime ROS packages (not -dev, not build tools).
+# ros-jazzy-diagnostic-updater, ros-jazzy-canopen-* etc. are all pulled in here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common \
     gpg \
@@ -62,6 +62,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip \
         python3-dcf-tools \
         ros-jazzy-foxglove-bridge \
+        ros-jazzy-diagnostic-updater \
+        ros-jazzy-canopen-interfaces \
         libboost-thread1.83.0 \
         libboost-atomic1.83.0 \
         libboost-chrono1.83.0 \
@@ -81,11 +83,15 @@ RUN pip3 install --no-cache-dir --break-system-packages \
 # Pull built install tree from builder stage
 COPY --from=builder /canopen_ws/install /canopen_ws/install
 
-# Copy any extra shared libs rosdep installed into the builder that aren't
-# in the base ros:jazzy-ros-base image (e.g. lely, canopen-specific libs).
-# This catches transitive .so deps without having to enumerate them manually.
-COPY --from=builder /usr/lib/aarch64-linux-gnu/libcanopen*.so* /usr/lib/aarch64-linux-gnu/
-COPY --from=builder /usr/lib/aarch64-linux-gnu/liblely*.so* /usr/lib/aarch64-linux-gnu/
+# Update the dynamic linker cache so the runtime can find libs in the
+# colcon install tree (e.g. /canopen_ws/install/*/lib/)
+RUN echo "/canopen_ws/install/canopen_core/lib" > /etc/ld.so.conf.d/canopen.conf && \
+    echo "/canopen_ws/install/canopen_master_driver/lib" >> /etc/ld.so.conf.d/canopen.conf && \
+    echo "/canopen_ws/install/canopen_base_driver/lib" >> /etc/ld.so.conf.d/canopen.conf && \
+    echo "/canopen_ws/install/canopen_proxy_driver/lib" >> /etc/ld.so.conf.d/canopen.conf && \
+    echo "/canopen_ws/install/canopen_interfaces/lib" >> /etc/ld.so.conf.d/canopen.conf && \
+    echo "/canopen_ws/install/lely_core_libraries/lib" >> /etc/ld.so.conf.d/canopen.conf && \
+    ldconfig
 
 # Entrypoint sources ROS overlay so every exec'd command sees it.
 # We do NOT mutate ~/.bashrc — that only runs for interactive login shells.
