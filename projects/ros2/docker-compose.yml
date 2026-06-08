@@ -39,82 +39,83 @@ services:
 
         echo '==> Writing canopen params file...'
         cat > /tmp/canopen_params.yaml << 'YAML_EOF'
-  canopen_master:
-    ros__parameters:
-      dcf_path: "/tmp/canopen_dcf/master.dcf"
-      yaml_path: "/ros_ws/canopen/bus.yml"
-      can_interface_name: "can0"
-  YAML_EOF
-  
-  echo '==> Launching canopen_core...'
-  ros2 launch canopen_core bring_up_master.launch.py \\
-  parameter_file_path:=/tmp/canopen_params.yaml
-  "
+        canopen_master:
+          ros__parameters:
+            dcf_path: \"/tmp/canopen_dcf/master.dcf\"
+            yaml_path: \"/ros_ws/canopen/bus.yml\"
+            can_interface_name: \"can0\"
+        YAML_EOF
+
+        echo '==> Launching canopen_core...'
+        ros2 launch canopen_core bring_up_master.launch.py \\
+          parameter_file_path:=/tmp/canopen_params.yaml
+      "
+
 
 # ---------------------------------------------------------------------------
 # ros2-gui
 # Qt6 dashboard + Foxglove bridge + MCAP bag recorder.
 # ---------------------------------------------------------------------------
-ros2-gui:
-  build:
-    context: .
-    dockerfile: Dockerfile.gui
-    # Explicitly tag on build so the image name is deterministic
-  image: bfrzn/ros2-gui:jazzy
-  container_name: mochi_ros2_gui
-  stop_grace_period: 300s
-  network_mode: "host"
-  privileged: true
-  restart: unless-stopped
-  depends_on:
-    - canopen-bridge
-  environment:
-    - TZ=America/Vancouver
-    - ROS_DOMAIN_ID=0
-    - FOXGLOVE_API_KEY=${FOXGLOVE_API_KEY}
-    - FOXGLOVE_DEVICE_ID=${FOXGLOVE_DEVICE_ID}
-    # eglfs for Pi 4 VideoCore — no X11/Wayland needed
-    - QT_QPA_PLATFORM=eglfs
-    - QT_QPA_EGLFS_ALWAYS_SET_MODE=1
-    - QT_QPA_EGLFS_HIDECURSOR=1
-    - XDG_RUNTIME_DIR=/tmp/runtime-root
-    - GPIOZERO_PIN_FACTORY=lgpio
-  volumes:
-    - ./mcap_logs:/logs
-    - ./gui:/ros_ws/gui:ro
-    - ./canopen:/ros_ws/canopen:ro
-  devices:
-    - "/dev/dri:/dev/dri"
-    - "/dev/input:/dev/input"
-    - "/dev/gpiomem:/dev/gpiomem"
-    - "/dev/gpiochip0:/dev/gpiochip0"
-  command: >
-    bash -c "
-      set -e
-    
-      # Foxglove CLI auth (token already in env)
-      foxglove auth login --api-key \"$$FOXGLOVE_API_KEY\" 2>/dev/null || true
-    
-      # Graceful cleanup on SIGTERM/SIGINT
-      _cleanup() {
-        echo 'Shutting down...'
-        kill -- -$$  2>/dev/null || true
-      }
-      trap _cleanup SIGTERM SIGINT
-    
-      mkdir -p /tmp/runtime-root && chmod 700 /tmp/runtime-root
-    
-      echo '==> Starting GUI backend...'
-      python3 /ros_ws/gui/Backend.py &
-    
-      echo '==> Starting Foxglove bridge...'
-      ros2 launch foxglove_bridge foxglove_bridge_launch.xml \
-        port:=8765 \
-        address:=0.0.0.0 &
-    
-      echo '==> Starting MCAP recorder...'
-      BAG_NAME=\"/logs/$$(date +%a_%b_%d_%H-%M)\"
-      ros2 bag record -s mcap -o \"$$BAG_NAME\" -a &
-    
-      wait
-    "
+  ros2-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.gui
+      # Explicitly tag on build so the image name is deterministic
+    image: bfrzn/ros2-gui:jazzy
+    container_name: mochi_ros2_gui
+    stop_grace_period: 300s
+    network_mode: "host"
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      - canopen-bridge
+    environment:
+      - TZ=America/Vancouver
+      - ROS_DOMAIN_ID=0
+      - FOXGLOVE_API_KEY=${FOXGLOVE_API_KEY}
+      - FOXGLOVE_DEVICE_ID=${FOXGLOVE_DEVICE_ID}
+      # eglfs for Pi 4 VideoCore — no X11/Wayland needed
+      - QT_QPA_PLATFORM=eglfs
+      - QT_QPA_EGLFS_ALWAYS_SET_MODE=1
+      - QT_QPA_EGLFS_HIDECURSOR=1
+      - XDG_RUNTIME_DIR=/tmp/runtime-root
+      - GPIOZERO_PIN_FACTORY=lgpio
+    volumes:
+      - ./mcap_logs:/logs
+      - ./gui:/ros_ws/gui:ro
+      - ./canopen:/ros_ws/canopen:ro
+    devices:
+      - "/dev/dri:/dev/dri"
+      - "/dev/input:/dev/input"
+      - "/dev/gpiomem:/dev/gpiomem"
+      - "/dev/gpiochip0:/dev/gpiochip0"
+    command: >
+      bash -c "
+        set -e
+
+        # Foxglove CLI auth (token already in env)
+        foxglove auth login --api-key \"$$FOXGLOVE_API_KEY\" 2>/dev/null || true
+
+        # Graceful cleanup on SIGTERM/SIGINT
+        _cleanup() {
+          echo 'Shutting down...'
+          kill -- -$$  2>/dev/null || true
+        }
+        trap _cleanup SIGTERM SIGINT
+
+        mkdir -p /tmp/runtime-root && chmod 700 /tmp/runtime-root
+
+        echo '==> Starting GUI backend...'
+        python3 /ros_ws/gui/Backend.py &
+
+        echo '==> Starting Foxglove bridge...'
+        ros2 launch foxglove_bridge foxglove_bridge_launch.xml \
+          port:=8765 \
+          address:=0.0.0.0 &
+
+        echo '==> Starting MCAP recorder...'
+        BAG_NAME=\"/logs/$$(date +%a_%b_%d_%H-%M)\"
+        ros2 bag record -s mcap -o \"$$BAG_NAME\" -a &
+
+        wait
+      "
