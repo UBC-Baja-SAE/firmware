@@ -151,40 +151,32 @@ class BackendNode(Node):
 
 
 class HardwareInterface:
-    longPressSeconds = 5
-
     def __init__(self, backend):
         self.backend = backend
         self.encoder = RotaryEncoder(17, 27, wrap=False, max_steps=0)
-        self.button = Button(22, pull_up=True, bounce_time=0.05)
 
-        self.longPressTimer = None
-        self.longPressFired = False
+        # Let gpiozero handle the 5-second timing natively
+        self.button = Button(22, pull_up=True, bounce_time=0.05, hold_time=5)
 
         self.encoder.when_rotated_clockwise = lambda: self.backend.triggerScroll(1)
         self.encoder.when_rotated_counter_clockwise = lambda: self.backend.triggerScroll(-1)
 
-        self.button.when_pressed = self.onPress
-        self.button.when_released = self.onRelease
+        # Track if the hold event fired so we don't accidentally click on release
+        self._was_held = False
 
-    def onPress(self):
-        self.longPressFired = False
-        self.longPressTimer = threading.Timer(
-            self.longPressSeconds,
-            self.onLongPress
-        )
-        self.longPressTimer.start()
+        self.button.when_released = self.onRelease
+        self.button.when_held = self.onLongPress
 
     def onRelease(self):
-        if self.longPressTimer is not None:
-            self.longPressTimer.cancel()
-            self.longPressTimer = None
-
-        if not self.longPressFired:
+        # Only trigger a menu click if it was a quick tap, not a 5-second hold
+        if not self._was_held:
             self.backend.triggerClick()
 
+        # Reset the flag for the next press
+        self._was_held = False
+
     def onLongPress(self):
-        self.longPressFired = True
+        self._was_held = True
         self.backend.shutdownRequested.emit()
 
 
@@ -232,7 +224,7 @@ def main():
 
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("backend", backend)
-    engine.load(QUrl.fromLocalFile('/uros_ws/gui/Main.qml'))
+    engine.load(QUrl.fromLocalFile('/ros_ws/gui/Main.qml'))
 
     if not engine.rootObjects():
         sys.exit(-1)

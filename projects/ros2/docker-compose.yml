@@ -8,7 +8,7 @@ services:
     stop_grace_period: 300s
     network_mode: "host"
     privileged: true
-    restart: on-failure
+    restart: unless-stopped
     environment:
       - TZ=America/Vancouver
       - FOXGLOVE_API_KEY=fox_sk_3va2wRx9YT4btXPJxwgCeofNLNHEXJJf
