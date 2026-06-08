@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dri \
     udev \
     python3-gpiozero \
+    python3-lgpio \
     && rm -rf /var/lib/apt/lists/*
 
 # Workspace for the ROS2 application layer (gui + canopen configs)
