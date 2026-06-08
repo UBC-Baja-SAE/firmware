@@ -58,7 +58,7 @@ services:
         ip link set can0 up || echo 'FAILED to bring can0 up' ;
 
         echo 'Generating CANopen DCF...' ;
-        cd /ros_ws/canopen && dcfgen bus.yml -d /ros_ws/canopen || true ;
+        cd /ros_ws/canopen && dcfgen bus.yml -d /ros_ws/canopen ;
         echo 'DCF generation complete.' ;
 
         python3 /ros_ws/gui/Backend.py &
