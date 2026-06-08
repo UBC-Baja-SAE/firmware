@@ -7,7 +7,8 @@
 FROM bfrzn/ros2-base:jazzy
 
 # Qt5 + display stack for eglfs on Pi's VideoCore GPU.
-# libgles2-mesa was dropped in Noble — libgles2 is the real runtime package.
+# Noble uses libqt5gui5t64 (pulled transitively by python3-pyqt5) — the
+# -gles variant conflicts with it and must not be explicitly installed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pyqt5 \
     python3-pyqt5.qtquick \
@@ -15,7 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qml-module-qtquick-controls2 \
     qml-module-qtquick-extras \
     qml-module-qtquick-templates2 \
-    libqt5gui5-gles \
     libegl1 \
     libgles2 \
     libdrm2 \
