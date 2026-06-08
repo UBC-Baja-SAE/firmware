@@ -21,7 +21,8 @@ services:
       - TZ=America/Vancouver
       - ROS_DOMAIN_ID=0                # keep all containers on the same domain
     volumes:
-      - ./canopen:/ros_ws/canopen:ro   # EDS/DCF files + bus.yml (read-only)
+      - ./canopen:/ros_ws/canopen:ro
+      - canopen_dcf:/ros_ws/canopen/dcf
     command: >
       bash -c "
         set -e
@@ -34,7 +35,8 @@ services:
 
         echo '==> Generating DCF files from EDS...'
         cd /ros_ws/canopen
-        dcfgen bus.yml -d /ros_ws/canopen/dcf
+        mkdir -p /ros_ws/canopen/dcf
+        dcfgen bus.yml -d /ros_ws/canopen/dcf --no-strict
 
         echo '==> Launching canopen_core...'
         ros2 launch canopen_core canopen.launch.py \
@@ -74,6 +76,7 @@ services:
       - ./mcap_logs:/logs
       - ./gui:/ros_ws/gui:ro
       - ./canopen:/ros_ws/canopen:ro
+      - canopen_dcf:/ros_ws/canopen/dcf
     devices:
       - "/dev/dri:/dev/dri"
       - "/dev/input:/dev/input"
@@ -109,3 +112,6 @@ services:
 
         wait
       "
+
+volumes:
+  canopen_dcf:  # writable scratch space for dcfgen output; separate from read-only EDS sources
