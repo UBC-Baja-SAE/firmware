@@ -10,25 +10,21 @@ nodes:
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     dcf: "/ros_ws/canopen/rr_ecu.eds"
-
   rl_ecu:
     node_id: 2
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     dcf: "/ros_ws/canopen/rl_ecu.eds"
-
   fr_ecu:
     node_id: 3
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     dcf: "/ros_ws/canopen/fr_ecu.eds"
-
   fl_ecu:
     node_id: 4
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     dcf: "/ros_ws/canopen/fl_ecu.eds"
-
   rear_ecu:
     node_id: 5
     driver: "ros2_canopen::BasicDriver"
