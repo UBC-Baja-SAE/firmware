@@ -39,11 +39,11 @@ services:
 
         echo '==> Writing canopen params file...'
         cat > /tmp/canopen_params.yaml << 'YAML_EOF'
-canopen_master:
-  ros__parameters:
-    dcf_path: "/tmp/canopen_dcf/master.dcf"
-    yaml_path: "/ros_ws/canopen/bus.yml"
-    can_interface_name: "can0"
+  canopen_master:
+    ros__parameters:
+      dcf_path: "/tmp/canopen_dcf/master.dcf"
+      yaml_path: "/ros_ws/canopen/bus.yml"
+      can_interface_name: "can0"
   YAML_EOF
   
   echo '==> Launching canopen_core...'
