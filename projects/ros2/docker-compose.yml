@@ -34,26 +34,11 @@ services:
         ip link set can0 up
         echo '==> can0 is up.'
 
-        echo '==> Writing canopen params file...'
-        python3 - << 'PYEOF'
-        import yaml
-        params = {
-            'canopen_master': {
-                'ros__parameters': {
-                    'dcf_path': '/ros_ws/canopen/master.dcf',
-                    'yaml_path': '/ros_ws/canopen/bus.yml',
-                    'can_interface_name': 'can0',
-                }
-            }
-        }
-        with open('/tmp/canopen_params.yaml', 'w') as f:
-            yaml.dump(params, f, default_flow_style=False)
-        print('Params written to /tmp/canopen_params.yaml')
-        PYEOF
-
         echo '==> Launching canopen_core...'
-        ros2 launch canopen_core bring_up_master.launch.py \
-          parameter_file_path:=/tmp/canopen_params.yaml
+        ros2 launch canopen_core canopen.launch.py \
+          bus_config:=/ros_ws/canopen/bus.yml \
+          master_config:=/ros_ws/canopen/master.dcf \
+          can_interface_name:=can0
 
   # ---------------------------------------------------------------------------
   # ros2-gui
