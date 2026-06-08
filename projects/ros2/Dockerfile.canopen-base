@@ -48,20 +48,25 @@ RUN . /opt/ros/jazzy/setup.sh && \
 # --- Stage 2: Runtime base (bfrzn/ros2-base:jazzy) ---
 FROM ros:jazzy-ros-base AS ros2-base
 
-# CAN tools + build deps for lely-coapp wheel (no apt package on Noble)
+# Add Lely PPA — the only source of python3-dcf-tools (which ships dcfgen).
+# software-properties-common provides add-apt-repository; gpg is needed to
+# verify the PPA key. Both are safe to remove after the PPA is registered
+# because apt caches the key in /etc/apt/trusted.gpg.d/.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    can-utils \
-    iproute2 \
-    python3-pip \
-    python3-dev \
-    gcc \
+    software-properties-common \
+    gpg \
+    && add-apt-repository -y ppa:lely/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        can-utils \
+        iproute2 \
+        python3-pip \
+        python3-dcf-tools \
+    && apt-get purge -y --auto-remove software-properties-common gpg \
     && rm -rf /var/lib/apt/lists/*
 
-# lely-coapp provides the `dcfgen` CLI used to convert EDS -> DCF at runtime.
 # python-can + canopen are used by the CANopen-to-ROS2 Python bridge script.
 # --break-system-packages is required on Noble (PEP 668 externally-managed env).
 RUN pip3 install --no-cache-dir --break-system-packages \
-    lely-coapp \
     python-can \
     canopen
 
