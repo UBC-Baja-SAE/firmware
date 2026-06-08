@@ -22,34 +22,34 @@ rear_ecu:
   polling: true
   period: 10
 
-rr_ecu:
-  node_id: 1
-  driver: "ros2_canopen::ProxyDriver"
-  package: "canopen_proxy_driver"
-  dcf: "/ros_ws/canopen/rr_ecu.dcf"
-  polling: true
-  period: 10
-
-rl_ecu:
-  node_id: 2
-  driver: "ros2_canopen::ProxyDriver"
-  package: "canopen_proxy_driver"
-  dcf: "/ros_ws/canopen/rl_ecu.dcf"
-  polling: true
-  period: 10
-
-fr_ecu:
-  node_id: 3
-  driver: "ros2_canopen::ProxyDriver"
-  package: "canopen_proxy_driver"
-  dcf: "/ros_ws/canopen/fr_ecu.dcf"
-  polling: true
-  period: 10
-
-fl_ecu:
-  node_id: 4
-  driver: "ros2_canopen::ProxyDriver"
-  package: "canopen_proxy_driver"
-  dcf: "/ros_ws/canopen/fl_ecu.dcf"
-  polling: true
-  period: 10
+#rr_ecu:
+#  node_id: 1
+#  driver: "ros2_canopen::ProxyDriver"
+#  package: "canopen_proxy_driver"
+#  dcf: "/ros_ws/canopen/rr_ecu.dcf"
+#  polling: true
+#  period: 10
+#
+#rl_ecu:
+#  node_id: 2
+#  driver: "ros2_canopen::ProxyDriver"
+#  package: "canopen_proxy_driver"
+#  dcf: "/ros_ws/canopen/rl_ecu.dcf"
+#  polling: true
+#  period: 10
+#
+#fr_ecu:
+#  node_id: 3
+#  driver: "ros2_canopen::ProxyDriver"
+#  package: "canopen_proxy_driver"
+#  dcf: "/ros_ws/canopen/fr_ecu.dcf"
+#  polling: true
+#  period: 10
+#
+#fl_ecu:
+#  node_id: 4
+#  driver: "ros2_canopen::ProxyDriver"
+#  package: "canopen_proxy_driver"
+#  dcf: "/ros_ws/canopen/fl_ecu.dcf"
+#  polling: true
+#  period: 10
