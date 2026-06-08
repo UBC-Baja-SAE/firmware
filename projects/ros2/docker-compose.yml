@@ -64,7 +64,7 @@ services:
         python3 -c \"import yaml; d=yaml.safe_load(open('/ros_ws/canopen/bus.yml')); out={'master':d['master']}; out.update(d['nodes']); yaml.dump(out, open('/tmp/flat.yml', 'w'))\" ;
       
         echo 'Generating CANopen DCF...' ;
-        cd /ros_ws/canopen && dcfgen /tmp/flat.yml -d /ros_ws/canopen ;
+        cd /ros_ws/canopen && dcfgen /tmp/flat.yml -d /ros_ws/canopen --no-strict ;
         echo 'DCF generation complete.' ;
       
         python3 /ros_ws/gui/Backend.py &
