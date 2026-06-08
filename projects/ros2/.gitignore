@@ -1,1 +1,3 @@
-/mcap_logs/
+.env
+mcap_logs/
+canopen/dcf/

@@ -6,8 +6,8 @@
 
 FROM bfrzn/ros2-base:jazzy
 
-# Qt5 + display stack for eglfs on Pi's VideoCore GPU
-# libgles2-mesa / libgbm1 are the correct Mesa packages for Pi 4 aarch64.
+# Qt5 + display stack for eglfs on Pi's VideoCore GPU.
+# libgles2-mesa was dropped in Noble — libgles2 is the real runtime package.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pyqt5 \
     python3-pyqt5.qtquick \
@@ -18,7 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libqt5gui5-gles \
     libegl1 \
     libgles2 \
-    libgles2-mesa \
     libdrm2 \
     libgbm1 \
     libgl1-mesa-dri \
