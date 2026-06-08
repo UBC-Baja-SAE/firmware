@@ -153,17 +153,20 @@ class HardwareInterface:
 
         self._was_held = False
 
-        self.encoder.when_rotated_clockwise = lambda: self.backend.triggerScroll(1)
-        self.encoder.when_rotated_counter_clockwise = lambda: self.backend.triggerScroll(-1)
+        self.encoder.when_rotated_clockwise = lambda: (print('ENC CW', flush=True), self.backend.triggerScroll(1))
+        self.encoder.when_rotated_counter_clockwise = lambda: (print('ENC CCW', flush=True), self.backend.triggerScroll(-1))
+        self.button.when_pressed = lambda: print('BTN PRESSED', flush=True)
         self.button.when_released = self.onRelease
         self.button.when_held = self.onLongPress
 
     def onRelease(self):
+        print('BTN RELEASED', flush=True)
         if not self._was_held:
             self.backend.triggerClick()
         self._was_held = False
 
     def onLongPress(self):
+        print('BTN HELD', flush=True)
         self._was_held = True
         self.backend.shutdownRequested.emit()
 
