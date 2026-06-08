@@ -52,8 +52,10 @@ services:
         trap cleanup EXIT SIGTERM SIGINT ;
       
         source /opt/ros/jazzy/setup.bash ;
-        source /canopen_ws/install/setup.bash 2>/dev/null || true ;
-        source /ros_ws/install/setup.bash 2>/dev/null || true ;
+        # Source the CANopen workspace FIRST
+        source /canopen_ws/install/setup.bash ; 
+        # Source your local project workspace SECOND
+        source /ros_ws/install/setup.bash ;
       
         echo 'Configuring can0...' ;
         ip link set can0 down 2>/dev/null || true ;
