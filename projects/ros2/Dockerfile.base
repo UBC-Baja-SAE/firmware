@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y \
     ros-jazzy-canopen \
     && rm -rf /var/lib/apt/lists/*
 
-# To this:
 RUN pip3 install dcf-tools --break-system-packages
 
 # Foxglove CLI (ARM64 for Pi)
@@ -20,4 +19,20 @@ RUN curl -L https://github.com/foxglove/foxglove-cli/releases/latest/download/fo
     -o /usr/local/bin/foxglove && \
     chmod +x /usr/local/bin/foxglove
 
+# Build canopen_master_driver and canopen_basic_driver from source
+WORKDIR /canopen_ws
+RUN mkdir src && git clone -b jazzy https://github.com/ros-industrial/ros2_canopen.git src/ros2_canopen
+
+RUN apt-get update && \
+    rosdep update && \
+    rosdep install --from-paths src --ignore-src -r -y \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && \
+    colcon build \
+      --executor sequential \
+      --packages-select canopen_master_driver canopen_basic_driver \
+      --cmake-args -DCMAKE_BUILD_TYPE=Release"
+
 RUN echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+RUN echo "source /canopen_ws/install/setup.bash" >> ~/.bashrc

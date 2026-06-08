@@ -3,30 +3,35 @@ master:
   driver: "ros2_canopen::MasterDriver"
   package: "canopen_master_driver"
   baudrate: 500000
-  
+
 nodes:
   rr_ecu:
     node_id: 1
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     eds: "/ros_ws/canopen/rr_ecu.eds"
+    dcf: "/ros_ws/canopen/rr_ecu.dcf"
   rl_ecu:
     node_id: 2
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     eds: "/ros_ws/canopen/rl_ecu.eds"
+    dcf: "/ros_ws/canopen/rl_ecu.dcf"
   fr_ecu:
     node_id: 3
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     eds: "/ros_ws/canopen/fr_ecu.eds"
+    dcf: "/ros_ws/canopen/fr_ecu.dcf"
   fl_ecu:
     node_id: 4
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     eds: "/ros_ws/canopen/fl_ecu.eds"
+    dcf: "/ros_ws/canopen/fl_ecu.dcf"
   rear_ecu:
     node_id: 5
     driver: "ros2_canopen::BasicDriver"
     package: "canopen_basic_driver"
     eds: "/ros_ws/canopen/rear_ecu.eds"
+    dcf: "/ros_ws/canopen/rear_ecu.dcf"
