@@ -48,16 +48,22 @@ RUN . /opt/ros/jazzy/setup.sh && \
 # --- Stage 2: Runtime base (bfrzn/ros2-base:jazzy) ---
 FROM ros:jazzy-ros-base AS ros2-base
 
-# CAN tools + dcfgen (lely-coapp) + python-can for the bridge script
+# CAN tools + build deps for lely-coapp wheel (no apt package on Noble)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     can-utils \
     iproute2 \
     python3-pip \
-    python3-lely \
-    && pip3 install --no-cache-dir \
-        python-can \
-        canopen \
+    python3-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
+
+# lely-coapp provides the `dcfgen` CLI used to convert EDS -> DCF at runtime.
+# python-can + canopen are used by the CANopen-to-ROS2 Python bridge script.
+# --break-system-packages is required on Noble (PEP 668 externally-managed env).
+RUN pip3 install --no-cache-dir --break-system-packages \
+    lely-coapp \
+    python-can \
+    canopen
 
 # Pull built install tree from builder stage
 COPY --from=builder /canopen_ws/install /canopen_ws/install
