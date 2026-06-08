@@ -21,7 +21,7 @@ RUN curl -L https://github.com/foxglove/foxglove-cli/releases/latest/download/fo
 
 # Build canopen_master_driver and canopen_basic_driver from source
 WORKDIR /canopen_ws
-RUN mkdir src && git clone -b jazzy https://github.com/ros-industrial/ros2_canopen.git src/ros2_canopen
+RUN mkdir src && git clone -b master https://github.com/ros-industrial/ros2_canopen.git src/ros2_canopen
 
 RUN apt-get update && \
     rosdep update && \
