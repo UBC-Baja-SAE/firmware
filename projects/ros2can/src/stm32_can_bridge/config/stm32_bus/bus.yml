@@ -5,7 +5,8 @@ master:
   node_id: 1
   driver: "ros2_canopen::MasterDriver"
   package: "canopen_master_driver"
-  sync_period: 0
+  sync_period: 10000000
+
 
 nodes:
   rear_ecu:
@@ -13,5 +14,4 @@ nodes:
     dcf: "rear_ecu.eds"
     driver: "ros2_canopen::ProxyDriver"
     package: "canopen_proxy_driver"
-    polling: true
-    period: 10
+    polling: false
