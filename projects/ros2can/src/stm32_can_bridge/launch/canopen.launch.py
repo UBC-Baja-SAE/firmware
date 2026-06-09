@@ -19,7 +19,7 @@ def generate_launch_description():
         parameters=[
             {'bus_config': bus_config_yml},
             {'master_config': master_config_dcf},
-            {'can_interface_name': 'vcan0'},
+            {'can_interface_name': 'can0'},
         ]
     )
 
