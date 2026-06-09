@@ -132,7 +132,7 @@ ParameterName=NMT startup
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x00000008
+DefaultValue=0x0000000C
 PDOMapping=0
 
 [0x1F81]
@@ -185,7 +185,7 @@ ParameterName=NMT slave assignment node 5
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x00000000
+DefaultValue=0x00000009   ; bit 0 (assigned) + bit 3 (send NMT start after boot)
 PDOMapping=0
 
 [0x1F82]
@@ -246,5 +246,5 @@ ParameterName=Bootup time
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=5000
+DefaultValue=15000
 PDOMapping=0
