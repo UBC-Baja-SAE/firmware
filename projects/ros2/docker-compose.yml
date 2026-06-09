@@ -31,6 +31,7 @@ services:
         echo '==> Configuring can0 at 500 kbps...'
         ip link set can0 down 2>/dev/null || true
         ip link set can0 type can bitrate 500000 restart-ms 100
+        ip link set can0 txqueuelen 1000
         ip link set can0 up
         echo '==> can0 is up.'
 
