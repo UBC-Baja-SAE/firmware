@@ -8,7 +8,7 @@ Description=
 CreationTime=10:17AM
 CreationDate=06-07-2026
 CreatedBy=Benjamin Friesen
-ModificationTime=3:48PM
+ModificationTime=4:08PM
 ModificationDate=06-09-2026
 ModifiedBy=
 
@@ -1206,7 +1206,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0006
 AccessType=rw
-DefaultValue=0
+DefaultValue=100
 PDOMapping=0
 
 [1800sub5]
@@ -1266,7 +1266,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0006
 AccessType=rw
-DefaultValue=0
+DefaultValue=100
 PDOMapping=0
 
 [1801sub5]
@@ -1275,7 +1275,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0006
 AccessType=rw
-DefaultValue=0
+DefaultValue=50
 PDOMapping=0
 
 [1801sub6]

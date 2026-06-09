@@ -2,7 +2,7 @@ options:
   dcf_path: "@BUS_CONFIG_PATH@"
 
 master:
-  node_id: 1
+  node_id: 10
   driver: "ros2_canopen::MasterDriver"
   package: "canopen_master_driver"
   sync_period: 10000000
