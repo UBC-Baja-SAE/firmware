@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     python3-colcon-common-extensions \
     ros-dev-tools \
+    ros-jazzy-socketcan-bridge \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /canopen_ws
