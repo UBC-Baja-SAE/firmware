@@ -14,4 +14,6 @@ nodes:
     dcf: "rear_ecu.eds"
     driver: "ros2_canopen::ProxyDriver"
     package: "canopen_proxy_driver"
-    polling: false
+    polling: true
+    period: 10
+    boot: true
