@@ -6,60 +6,17 @@
 services:
 
   # ---------------------------------------------------------------------------
-  # canopen-bridge
-  # Brings up CAN interface and runs ros2_canopen. DCFs are pre-generated
-  # with CANopen Editor — no dcfgen step needed at runtime.
+  # socketcan-bridge
   # ---------------------------------------------------------------------------
-  canopen-bridge:
-    image: bfrzn/ros2-gui:jazzy
-    container_name: mochi_canopen
-    stop_grace_period: 30s
+  can-bridge:
+    image: ros:jazzy-ros-base
+    container_name: mochi_can_bridge
     network_mode: "host"
     privileged: true
-    cap_add:
-      - NET_ADMIN      # Allows modifying interface settings (txqueuelen, etc.)
-      - NET_RAW        # Allows raw socket access
-    restart: unless-stopped
-    environment:
-      - TZ=America/Vancouver
-      - ROS_DOMAIN_ID=0
-    volumes:
-      - ./canopen:/ros_ws/canopen:ro
-    command:
-      - bash
-      - -c
-      - |
-        set -e
-
-        echo '==> Configuring can0 at 500 kbps...'
-        ip link set can0 down 2>/dev/null || true
-        ip link set can0 type can bitrate 500000 restart-ms 100
-        ip link set can0 txqueuelen 1000
-        ip link set can0 up
-        echo '==> can0 is up.'
-
-        echo '==> Launching canopen_core...'
-        ros2 launch canopen_core canopen.launch.py \
-          bus_config:=/ros_ws/canopen/bus.yml \
-          master_config:=/ros_ws/canopen/master.dcf \
-          can_interface_name:=can0 &
-        CANOPEN_PID=$!
-
-        echo '==> Waiting for device_container_node...'
-        until ros2 node list 2>/dev/null | grep -q device_container_node; do
-          sleep 0.5
-        done
-
-        echo '==> Configuring device_container_node...'
-        ros2 lifecycle set /device_container_node configure
-        sleep 2
-
-        echo '==> Activating device_container_node...'
-        ros2 lifecycle set /device_container_node activate
-
-        echo '==> CANopen stack is active.'
-        wait $CANOPEN_PID
-
+    command: >
+      bash -c "source /opt/ros/jazzy/setup.bash && 
+      ros2 run socket_can_bridge socket_can_bridge_node --ros-args 
+      -p can_device:=can0"
   # ---------------------------------------------------------------------------
   # ros2-gui
   # PyQt5 dashboard + Foxglove bridge + MCAP bag recorder.
