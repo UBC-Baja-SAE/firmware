@@ -1756,15 +1756,6 @@ AccessType=rw
 DefaultValue=0x00000000
 PDOMapping=0
 
-[FFFF]
-ParameterName=tachometer
-ObjectType=0x7
-;StorageLocation=RAM
-DataType=0x0007
-AccessType=rw
-DefaultValue=0
-PDOMapping=0
-
 [ManufacturerObjects]
 SupportedObjects=2
 1=0x2000
