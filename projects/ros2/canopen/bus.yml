@@ -12,7 +12,7 @@ master:
   driver: "ros2_canopen::MasterDriver"
   package: "canopen_master_driver"
   baudrate: 500000
-  boot_timeout: 15000        # ms to wait for all slaves to boot
+  boot_timeout: 20000
 
 rear_ecu:
   node_id: 5
@@ -21,9 +21,10 @@ rear_ecu:
   dcf: "/ros_ws/canopen/rear_ecu.eds"
   polling: false
   period: 10
-  boot_inhibit: false      # ← change from true
+  boot_inhibit: false
   boot_timeout: 15000
-  sdo_timeout: 5000        # ← add this
+  sdo_timeout: 5000
+  auto_configure: false    # ← prevents the SDO configure step that's timing out
 
 #rr_ecu:
 #  node_id: 1
