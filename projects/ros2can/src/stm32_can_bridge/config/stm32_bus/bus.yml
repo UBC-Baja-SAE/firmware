@@ -1,0 +1,16 @@
+options:
+  dcf_path: "@BUS_CONFIG_PATH@"
+
+master:
+  node_id: 1
+  driver: "ros2_canopen::MasterDriver"
+  package: "canopen_master_driver"
+  sync_period: 10000
+
+nodes:
+  rear_ecu:
+    node_id: 5
+    dcf: "rear_ecu.eds"
+    driver: "ros2_canopen::ProxyDriver"
+    package: "canopen_proxy_driver"
+

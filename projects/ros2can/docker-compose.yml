@@ -1,0 +1,17 @@
+services:
+  mochi_can_bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ros2_canopen_proxy
+    # Host networking is strictly required so the container can see 'can0'
+    network_mode: "host"
+    # Privileged mode ensures the container has the necessary kernel rights
+    # to interact with the raw SPI CAN interface (like the MCP2515/MCP2518FD)
+    privileged: true
+    environment:
+      - RCUTILS_COLORIZED_OUTPUT=1
+    # Optional: Mount a directory if you want to record mcap bags inside this container
+    # volumes:
+    #   - ~/mcap_bags:/ros2_ws/bags
+    restart: unless-stopped
