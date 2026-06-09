@@ -12,6 +12,18 @@ find_package(lely_core_libraries REQUIRED)
 # Generate the master.dcf and master.bin files automatically in the build folder
 cogen_dcf(stm32_bus)
 
+# Generate master.bin from master.dcf
+add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.bin
+        COMMAND dcf2dev
+        ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.dcf
+        ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.bin
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.dcf
+)
+add_custom_target(generate_master_bin ALL
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.bin
+)
+
 # 1. Install the standard source directories
 install(DIRECTORY
         launch
