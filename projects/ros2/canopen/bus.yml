@@ -22,6 +22,7 @@ rear_ecu:
   polling: false
   period: 10
   boot_timeout: 5000
+  boot_inhibit: true
 
 #rr_ecu:
 #  node_id: 1
