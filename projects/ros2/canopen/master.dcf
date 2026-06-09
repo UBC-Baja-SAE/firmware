@@ -181,7 +181,7 @@ ParameterName=NMT slave assignment node 5
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x00000009
+DefaultValue=0x00000000
 PDOMapping=0
 
 [0x1F82]

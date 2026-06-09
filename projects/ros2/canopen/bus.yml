@@ -10,7 +10,6 @@ rear_ecu:
   driver: "ros2_canopen::ProxyDriver"
   package: "canopen_proxy_driver"
   dcf: "/ros_ws/canopen/rear_ecu.dcf"
-  polling: true
-  period: 10
-  boot_timeout: 15000
-  sdo_timeout: 5000
+  polling: false
+  boot_timeout: 100
+  sdo_timeout: 500

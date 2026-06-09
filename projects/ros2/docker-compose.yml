@@ -38,36 +38,7 @@ services:
         ros2 launch canopen_core canopen.launch.py \
           bus_config:=/ros_ws/canopen/bus.yml \
           master_config:=/ros_ws/canopen/master.dcf \
-          can_interface_name:=can0 &
-        CANOPEN_PID=$!
-
-        echo '==> Waiting for device_container_node...'
-        until ros2 node list 2>/dev/null | grep -q device_container_node; do
-          sleep 0.5
-        done
-
-        # Wait until the master's own heartbeat appears on the bus (COB-ID 0x77F).
-        # This confirms lely has opened the CAN socket and is actively listening —
-        # only then will it see the bootup frame from node 5.
-        echo '==> Waiting for master heartbeat on CAN (0x77F)...'
-        timeout 15 candump can0,77F:7FF -n 1 > /dev/null 2>&1 || true
-        echo '==> Master is on the bus. Triggering node 5 reset...'
-
-        # NMT Reset Communication to node 5: STM32 re-inits CAN and
-        # re-sends bootup frame (0x705 [1] 00) which the master now sees.
-        cansend can0 000#8105
-        sleep 2.0
-        echo '==> Node 5 reset sent.'
-
-        echo '==> Configuring device_container_node...'
-        ros2 lifecycle set /device_container_node configure
-        sleep 3
-
-        echo '==> Activating device_container_node...'
-        ros2 lifecycle set /device_container_node activate
-
-        echo '==> CANopen stack is active.'
-        wait $CANOPEN_PID
+          can_interface_name:=can0
 
   # ---------------------------------------------------------------------------
   # ros2-gui
