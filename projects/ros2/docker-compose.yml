@@ -32,7 +32,7 @@ services:
     privileged: true
     restart: unless-stopped
     depends_on:
-      - canopen-bridge
+      - can-bridge
     environment:
       - TZ=America/Vancouver
       - ROS_DOMAIN_ID=0
