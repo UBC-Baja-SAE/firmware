@@ -7,22 +7,12 @@
 # polling: true = master polls SDOs instead of waiting for TPDO events.
 # =============================================================================
 
-master:
-  node_id: 127
-  driver: "ros2_canopen::MasterDriver"
-  package: "canopen_master_driver"
-  baudrate: 500000
-  boot_timeout: 15000        # ms to wait for all slaves to boot
-
 rear_ecu:
   node_id: 5
-  driver: "ros2_canopen::ProxyDriver"
+  driver: "ros2_canopen::LifecycleNode" # Changed from ProxyDriver
   package: "canopen_proxy_driver"
-  dcf: "/ros_ws/canopen/empty.eds"
+  # No dcf or eds file needed
   polling: false
-  period: 10
-  boot_inhibit: true
-  boot_timeout: 15000
 
 #rr_ecu:
 #  node_id: 1
