@@ -26,11 +26,11 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
     .x1006_communicationCyclePeriod = 0x00000000,
     .x1007_synchronousWindowLength = 0x00000000,
     .x1012_COB_IDTimeStampObject = 0x00000100,
-    .x1014_COB_ID_EMCY = 0x00000080,
+    .x1014_COB_ID_EMCY = 0x00000085,
     .x1015_inhibitTimeEMCY = 0x0000,
     .x1016_consumerHeartbeatTime_sub0 = 0x08,
     .x1016_consumerHeartbeatTime = {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-    .x1017_producerHeartbeatTime = 0x0000,
+    .x1017_producerHeartbeatTime = 0x03E8,
     .x1018_identity = {
         .highestSub_indexSupported = 0x04,
         .vendor_ID = 0x00000000,
@@ -115,9 +115,9 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
     },
     .x1800_TPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x06,
-        .COB_IDUsedByTPDO = 0x00000180,
+        .COB_IDUsedByTPDO = 0x00000185,
         .transmissionType = 0xFE,
-        .inhibitTime = 0x0000,
+        .inhibitTime = 0x0064,
         .eventTimer = 0x0032,
         .SYNCStartValue = 0x00
     },

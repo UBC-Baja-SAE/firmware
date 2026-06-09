@@ -151,6 +151,8 @@ void canopen_task(void *argument)
   canOpenNodeSTM32.desiredNodeID = 5;
   canOpenNodeSTM32.baudrate = 500;
   canopen_app_init(&canOpenNodeSTM32);
+
+
   /* Infinite loop */
   for(;;)
   {
