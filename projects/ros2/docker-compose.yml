@@ -33,6 +33,11 @@ services:
         ip link set can0 type can bitrate 500000 restart-ms 100
         ip link set can0 up
         echo '==> can0 is up.'
+        (
+          sleep 5
+          echo '==> [Trigger] Sending NMT reset to node 5...'
+          cansend can0 000#8105 || true
+        ) &
 
         echo '==> Launching canopen_core...'
         ros2 launch canopen_core canopen.launch.py \

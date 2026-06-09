@@ -166,17 +166,17 @@ PDOMapping=0
 [0x1F81]
 ParameterName=NMT slave assignment
 ObjectType=0x8
-SubNumber=2
+SubNumber=6
 
 [0x1F81sub0]
 ParameterName=Highest sub-index supported
 ObjectType=0x7
 DataType=0x0005
 AccessType=ro
-DefaultValue=0x01
+DefaultValue=0x05
 PDOMapping=0
 
-[0x1F81sub1]
+[0x1F81sub5]
 ParameterName=NMT slave assignment node 5
 ObjectType=0x7
 DataType=0x0007
@@ -187,17 +187,17 @@ PDOMapping=0
 [0x1F82]
 ParameterName=Request NMT
 ObjectType=0x8
-SubNumber=2
+SubNumber=6
 
 [0x1F82sub0]
 ParameterName=Highest sub-index supported
 ObjectType=0x7
 DataType=0x0005
 AccessType=ro
-DefaultValue=0x01
+DefaultValue=0x05
 PDOMapping=0
 
-[0x1F82sub1]
+[0x1F82sub5]
 ParameterName=Request NMT node 5
 ObjectType=0x7
 DataType=0x0005

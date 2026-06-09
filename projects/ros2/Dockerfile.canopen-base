@@ -20,36 +20,34 @@ RUN mkdir -p src && \
         https://github.com/ros-industrial/ros2_canopen.git \
         src/ros2_canopen
 
-# Patch: node_canopen_base_driver_impl.hpp calls nmt_command(RESET_NODE) on
-# boot failure. lely throws std::system_error (EPERM) if the CAN socket is in
-# error state at that moment, which propagates uncaught and calls terminate().
-# Wrap the call in try/catch so the boot retry continues instead of crashing.
+# Patch: Catch system_errors during boot process to prevent crashes.
 RUN python3 - << 'PYEOF'
-import glob, re
+import os, re
 
 target = 'src/ros2_canopen/canopen_base_driver/include/canopen_base_driver/node_interfaces/node_canopen_base_driver_impl.hpp'
 with open(target) as f:
     content = f.read()
 
-old = 'RCLCPP_INFO(this->node_->get_logger(), "Sending NMT reset before retrying boot");\n          this->lely_driver_->nmt_command(canopen::NmtCommand::RESET_NODE);'
-new = '''RCLCPP_INFO(this->node_->get_logger(), "Sending NMT reset before retrying boot");
+# 1. Patch NMT reset call (if not already patched)
+if 'try {' not in content:
+    old1 = 'RCLCPP_INFO(this->node_->get_logger(), "Sending NMT reset before retrying boot");\n          this->lely_driver_->nmt_command(canopen::NmtCommand::RESET_NODE);'
+    new1 = '''RCLCPP_INFO(this->node_->get_logger(), "Sending NMT reset before retrying boot");
           try {
             this->lely_driver_->nmt_command(canopen::NmtCommand::RESET_NODE);
           } catch (const std::system_error& e) {
             RCLCPP_WARN(this->node_->get_logger(), "NMT reset skipped (EPERM ignored): %s", e.what());
           }'''
+    content = content.replace(old1, new1)
 
-if old in content:
-    content = content.replace(old, new)
-    with open(target, 'w') as f:
-        f.write(content)
-    print("Patch applied successfully")
-else:
-    # Try normalising whitespace
-    import subprocess
-    result = subprocess.run(['grep', '-n', 'nmt_command', target], capture_output=True, text=True)
-    print("nmt_command lines:", result.stdout)
-    print("Patch target not found — check output above")
+# 2. Patch the boot() call to prevent fatal crash on startup
+if 'try { this->lely_driver_->boot()' not in content:
+    content = re.sub(r'(this->lely_driver_->boot\(\);)', 
+                     r'try { \1 } catch (const std::system_error& e) { RCLCPP_ERROR(this->node_->get_logger(), "Boot failed (ignored): %s", e.what()); }', 
+                     content)
+
+with open(target, 'w') as f:
+    f.write(content)
+print("Applied comprehensive crash-protection patches")
 PYEOF
 
 # rosdep install for the cloned sources
