@@ -19,10 +19,10 @@ class TelemetryDemuxNode(Node):
             10) # QoS profile depth
 
         # Create clean, dedicated publishers for Foxglove
-        self.speed_pub = self.create_publisher(Float32, '/baja/speed', 10)
-        self.tach_pub = self.create_publisher(Int32, '/baja/tachometer', 10)
+        self.speed_pub = self.create_publisher(Int32, '/rear_ecu/speedometer', 10)
+        self.tach_pub = self.create_publisher(Int32, '/rear_ecu/tachometer', 10)
 
-        self.get_logger().info("Baja Telemetry Demuxer Started. Listening to /rear_ecu/rpdo...")
+        self.get_logger().info("Rear Ecu Demuxer Started. Listening to /rear_ecu/rpdo...")
 
     def rpdo_callback(self, msg):
         # Index 0x2000 (Decimal 8192) -> Speedometer
