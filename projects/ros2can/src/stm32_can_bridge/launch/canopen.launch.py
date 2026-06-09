@@ -33,11 +33,4 @@ def generate_launch_description():
         }]
     )
 
-    republisher = Node(
-        package='stm32_can_bridge',
-        executable='tpdo_republisher',
-        name='tpdo_republisher',
-        output='screen',
-    )
-
-    return LaunchDescription([device_container_node, foxglove_bridge, republisher])  # add foxglove_bridge here
+    return LaunchDescription([device_container_node, foxglove_bridge])  # add foxglove_bridge here

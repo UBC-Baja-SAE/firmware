@@ -14,9 +14,7 @@
     <depend>canopen_master_driver</depend>
     <depend>canopen_proxy_driver</depend>
     <depend>lely_core_libraries</depend>
-    <depend>canopen_interfaces</depend>
-    <depend>std_msgs</depend>
-    <depend>rclpy</depend>
+
 
     <export>
         <build_type>ament_cmake</build_type>
