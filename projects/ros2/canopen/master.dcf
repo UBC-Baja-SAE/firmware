@@ -153,7 +153,7 @@ ParameterName=NMT slave assignment node 1
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x00000001
+DefaultValue=0x00000000
 PDOMapping=0
 
 [0x1F81sub2]
@@ -161,7 +161,7 @@ ParameterName=NMT slave assignment node 2
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x00000001
+DefaultValue=0x00000000
 PDOMapping=0
 
 [0x1F81sub3]
@@ -169,7 +169,7 @@ ParameterName=NMT slave assignment node 3
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x00000001
+DefaultValue=0x00000000
 PDOMapping=0
 
 [0x1F81sub4]
@@ -177,7 +177,7 @@ ParameterName=NMT slave assignment node 4
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x00000001
+DefaultValue=0x00000000
 PDOMapping=0
 
 [0x1F81sub5]
@@ -185,7 +185,7 @@ ParameterName=NMT slave assignment node 5
 ObjectType=0x7
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x00000001
+DefaultValue=0x00000000
 PDOMapping=0
 
 [0x1F82]
