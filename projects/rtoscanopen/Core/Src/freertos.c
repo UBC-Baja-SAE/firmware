@@ -166,7 +166,7 @@ void canopen_task(void *argument)
     }
 
     OD_RAM.x2000_speedometer = speedometer_kmh;
-    OD_RAM.x2001_tachometer  = tach_raw_value;
+    OD_RAM.x2001_tachometer  = speedometer_kmh;
 
     canopen_app_process();
     osDelay(1);
