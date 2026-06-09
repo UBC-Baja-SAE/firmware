@@ -21,8 +21,9 @@ rear_ecu:
   dcf: "/ros_ws/canopen/rear_ecu.eds"
   polling: false
   period: 10
-  boot_inhibit: true
+  boot_inhibit: false      # ← change from true
   boot_timeout: 15000
+  sdo_timeout: 5000        # ← add this
 
 #rr_ecu:
 #  node_id: 1
