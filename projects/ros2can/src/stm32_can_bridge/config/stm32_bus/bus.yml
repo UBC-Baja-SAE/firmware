@@ -13,4 +13,5 @@ nodes:
     dcf: "rear_ecu.eds"
     driver: "ros2_canopen::ProxyDriver"
     package: "canopen_proxy_driver"
+    boot_timeout: 0
 
