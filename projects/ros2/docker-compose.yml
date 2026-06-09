@@ -17,9 +17,9 @@ services:
     network_mode: "host"
     privileged: true
     cap_add:
-      - NET_ADMIN      # Allows modifying interface settings (txqueuelen, etc.)
-      - NET_RAW        # Allows raw socket access
-    restart: unless-stopped
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_ADMIN
     environment:
       - TZ=America/Vancouver
       - ROS_DOMAIN_ID=0
