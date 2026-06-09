@@ -8,5 +8,4 @@ services:
     privileged: true
     environment:
       - RCUTILS_COLORIZED_OUTPUT=1
-    restart: "no"
-    command: /bin/bash -c "sleep infinity"
+    restart: unless-stopped
