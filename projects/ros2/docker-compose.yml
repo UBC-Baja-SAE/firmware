@@ -34,18 +34,6 @@ services:
         ip link set can0 up
         echo '==> can0 is up.'
 
-        # Force node 5 into operational state before the master starts.
-        # NMT command 0x01 to address 0x05 = "Start Remote Node, node 5"
-        # This ensures the STM32 is operational and sending heartbeats
-        # before lely tries to boot it, bypassing the chicken-and-egg.
-        echo '==> Sending NMT Start to node 5...'
-        cansend can0 000#0105
-        sleep 0.5
-        # Send again in case it was missed during STM32 startup
-        cansend can0 000#0105
-        sleep 0.5
-        echo '==> NMT Start sent.'
-
         echo '==> Launching canopen_core...'
         ros2 launch canopen_core canopen.launch.py \
           bus_config:=/ros_ws/canopen/bus.yml \
@@ -57,6 +45,16 @@ services:
         until ros2 node list 2>/dev/null | grep -q device_container_node; do
           sleep 0.5
         done
+
+        # Now that the master is listening, trigger a reset on node 5.
+        # This causes the STM32 to re-send its bootup frame (0x705 [1] 00)
+        # while the master is already up and waiting for it — fixing the
+        # race condition where the bootup frame arrived before the master started.
+        echo '==> Triggering NMT reset on node 5 so master sees bootup frame...'
+        sleep 0.5
+        cansend can0 000#8105
+        # 0x81 = Reset Communication, node 5
+        # STM32 will re-init CAN and re-send bootup frame within ~500ms
 
         echo '==> Configuring device_container_node...'
         ros2 lifecycle set /device_container_node configure
