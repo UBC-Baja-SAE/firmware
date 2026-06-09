@@ -50,6 +50,7 @@ extern CANopenNodeSTM32 canOpenNodeSTM32;
 /* USER CODE BEGIN Variables */
 extern volatile uint32_t speedometer_kmh;
 extern volatile uint32_t tach_raw_value;
+extern volatile uint64_t tim2_overflow_count;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -158,6 +159,12 @@ void canopen_task(void *argument)
   /* Infinite loop */
   for(;;)
   {
+
+    if (tim2_overflow_count > 0) {
+      speedometer_kmh = 0;
+      // speed_first_pulse = 1; // Optional: Reset the toggle if extern'd
+    }
+
     OD_RAM.x2000_speedometer = speedometer_kmh;
     OD_RAM.x2001_tachometer  = tach_raw_value;
 

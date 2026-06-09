@@ -99,6 +99,10 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_4);
+
+  HAL_TIM_Base_Start_IT(&htim2);
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -193,7 +197,7 @@ void SystemClock_Config(void)
 /* ── state (ISR-owned) ─────────────────────────────────────────────── */
 static volatile uint32_t previous_capture     = 0;
 static volatile uint8_t  speed_first_pulse    = 1;
-static volatile uint64_t tim2_overflow_count  = 0;  // exposed for PeriodElapsed
+volatile uint64_t tim2_overflow_count  = 0;  // exposed for PeriodElapsed
 static volatile float    smoothed_speed_freq  = 0.0f;
 
 volatile uint32_t last_magnet_time     = 0;
@@ -220,7 +224,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       return;
     last_magnet_time = now;
 
-    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
 
     if (speed_first_pulse)
     {
@@ -305,6 +309,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
   if (htim->Instance == TIM6) {
     canopen_app_interrupt();
+  }
+
+  // ADD THIS SO YOUR OVERFLOW TRACKING WORKS:
+  if (htim->Instance == TIM2) {
+    Speedometer_OverflowISR();
   }
   /* USER CODE END Callback 1 */
 }
