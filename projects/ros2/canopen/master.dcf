@@ -1,16 +1,214 @@
-master:
-  node_id: 127
-  driver: "ros2_canopen::MasterDriver"
-  package: "canopen_master_driver"
-  baudrate: 500000
-  boot_timeout: 20000
+[FileInfo]
+FileName=master.dcf
+FileVersion=1
+FileRevision=1
+EDSVersion=4.0
+Description=ROS2 CANopen Master node 127
+CreationTime=12:00AM
+CreationDate=06-08-2026
+CreatedBy=bfrzn
+ModificationTime=12:00AM
+ModificationDate=06-08-2026
+ModifiedBy=bfrzn
 
-rear_ecu:
-  node_id: 5
-  driver: "ros2_canopen::ProxyDriver"
-  package: "canopen_proxy_driver"
-  dcf: "/ros_ws/canopen/rear_ecu.dcf"
-  polling: true
-  period: 10
-  boot_timeout: 15000
-  sdo_timeout: 5000
+[DeviceInfo]
+VendorName=ROS2 CANopen Master
+VendorNumber=0x00000000
+ProductName=mochi_master
+ProductNumber=0x00000000
+RevisionNumber=0x00000000
+OrderCode=
+BaudRate_10=0
+BaudRate_20=0
+BaudRate_50=0
+BaudRate_125=0
+BaudRate_250=0
+BaudRate_500=1
+BaudRate_800=0
+BaudRate_1000=0
+SimpleBootUpMaster=1
+SimpleBootUpSlave=0
+Granularity=0
+DynamicChannelsSupported=0
+GroupMessaging=0
+NrOfRXPDO=0
+NrOfTXPDO=0
+LSS_Supported=0
+
+[DeviceComissioning]
+NodeID=0x7F
+Baudrate=500
+
+[DummyUsage]
+Dummy0001=0
+Dummy0002=0
+Dummy0003=0
+Dummy0004=0
+Dummy0005=0
+Dummy0006=0
+Dummy0007=0
+
+[Comments]
+Lines=0
+
+[ObjectCount]
+SupportedObjects=9
+
+[Objects]
+Object1=0x1000
+Object2=0x1001
+Object3=0x1017
+Object4=0x1016
+Object5=0x1F80
+Object6=0x1F81
+Object7=0x1F82
+Object8=0x1F89
+Object9=0x1018
+
+[0x1000]
+ParameterName=Device type
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0x00000000
+PDOMapping=0
+
+[0x1001]
+ParameterName=Error register
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0x00
+PDOMapping=0
+
+[0x1017]
+ParameterName=Producer heartbeat time
+ObjectType=0x7
+DataType=0x0006
+AccessType=rw
+DefaultValue=1000
+PDOMapping=0
+
+[0x1018]
+ParameterName=Identity
+ObjectType=0x9
+SubNumber=0x5
+
+[0x1018sub0]
+ParameterName=Highest sub-index supported
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0x04
+PDOMapping=0
+
+[0x1018sub1]
+ParameterName=Vendor-ID
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0x00000000
+PDOMapping=0
+
+[0x1018sub2]
+ParameterName=Product code
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0x00000000
+PDOMapping=0
+
+[0x1018sub3]
+ParameterName=Revision number
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0x00000000
+PDOMapping=0
+
+[0x1018sub4]
+ParameterName=Serial number
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0x00000000
+PDOMapping=0
+
+[0x1016]
+ParameterName=Consumer heartbeat time
+ObjectType=0x8
+SubNumber=2
+
+[0x1016sub0]
+ParameterName=Highest sub-index supported
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0x01
+PDOMapping=0
+
+[0x1016sub1]
+ParameterName=Consumer heartbeat time node 5
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=0x00052710
+PDOMapping=0
+
+[0x1F80]
+ParameterName=NMT startup
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=0x00000008
+PDOMapping=0
+
+[0x1F81]
+ParameterName=NMT slave assignment
+ObjectType=0x8
+SubNumber=2
+
+[0x1F81sub0]
+ParameterName=Highest sub-index supported
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0x01
+PDOMapping=0
+
+[0x1F81sub1]
+ParameterName=NMT slave assignment node 5
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=0x00000009
+PDOMapping=0
+
+[0x1F82]
+ParameterName=Request NMT
+ObjectType=0x8
+SubNumber=2
+
+[0x1F82sub0]
+ParameterName=Highest sub-index supported
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0x01
+PDOMapping=0
+
+[0x1F82sub1]
+ParameterName=Request NMT node 5
+ObjectType=0x7
+DataType=0x0005
+AccessType=rw
+DefaultValue=0x00
+PDOMapping=0
+
+[0x1F89]
+ParameterName=Bootup time
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=60000
+PDOMapping=0
