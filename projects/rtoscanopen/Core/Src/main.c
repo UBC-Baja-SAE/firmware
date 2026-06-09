@@ -96,6 +96,7 @@ int main(void)
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   MX_TIM6_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -181,6 +182,78 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+/* ── tuneable constants ────────────────────────────────────────────── */
+#define TIM2_CLOCK_FREQ         64000000UL   // HSI @ 64 MHz, prescaler = 0
+#define TIMER_PERIOD_TICKS      4294967296ULL // 2^32 for 32-bit TIM2
+#define MAGNET_DEBOUNCE_TIME_MS 5U
+#define SPEED_SMOOTHING         0.2f
+#define TIRE_CIRCUMFERENCE_KM   0.001963f
+#define MAX_SPEED_KMH           150U
+
+/* ── state (ISR-owned) ─────────────────────────────────────────────── */
+static volatile uint32_t previous_capture     = 0;
+static volatile uint8_t  speed_first_pulse    = 1;
+static volatile uint64_t tim2_overflow_count  = 0;  // exposed for PeriodElapsed
+static volatile float    smoothed_speed_freq  = 0.0f;
+
+volatile uint32_t last_magnet_time     = 0;
+
+/* ── speedometer output ────────────────────────────────── */
+volatile uint32_t speedometer_kmh = 0;
+
+/* ── lin pot output ────────────────────────────────── */
+volatile uint32_t tach_raw_value = 0;
+
+/* Called from HAL_TIM_PeriodElapsedCallback in main.c */
+void Speedometer_OverflowISR(void)
+{
+  tim2_overflow_count++;
+}
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
+  {
+    uint32_t now = HAL_GetTick();
+
+    if ((now - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS)
+      return;
+    last_magnet_time = now;
+
+    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+
+    if (speed_first_pulse)
+    {
+      previous_capture    = cap;
+      tim2_overflow_count = 0;
+      speed_first_pulse   = 0;
+      return;
+    }
+
+    // TIM2 is 32-bit so overflow is rare, but handled correctly
+    uint64_t diff = (tim2_overflow_count * TIMER_PERIOD_TICKS)
+                  + (uint64_t)cap
+                  - (uint64_t)previous_capture;
+
+    previous_capture    = cap;
+    tim2_overflow_count = 0;
+
+    if (diff > 0ULL)
+    {
+      float instant_freq = (float)TIM2_CLOCK_FREQ / (float)diff;
+
+      smoothed_speed_freq = (instant_freq * SPEED_SMOOTHING)
+                          + (smoothed_speed_freq * (1.0f - SPEED_SMOOTHING));
+
+      uint32_t kmh = (uint32_t)(smoothed_speed_freq
+                               * TIRE_CIRCUMFERENCE_KM
+                               * 3600.0f);
+
+      speedometer_kmh = (kmh > MAX_SPEED_KMH) ? MAX_SPEED_KMH : kmh;
+    }
+  }
+}
+
 /* USER CODE END 4 */
 
  /* MPU Configuration */
@@ -235,6 +308,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   /* USER CODE END Callback 1 */
 }
+
+
+
 
 /**
   * @brief  This function is executed in case of error occurrence.
