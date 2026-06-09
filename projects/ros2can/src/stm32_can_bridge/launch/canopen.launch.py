@@ -33,4 +33,4 @@ def generate_launch_description():
         }]
     )
 
-    return LaunchDescription([device_container_node])
+    return LaunchDescription([device_container_node, foxglove_bridge])  # add foxglove_bridge here
