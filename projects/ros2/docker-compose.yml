@@ -15,15 +15,8 @@ services:
     container_name: mochi_canopen
     stop_grace_period: 30s
     network_mode: "host"
-    pid: "host"          # ← add this
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-      - SYS_ADMIN
-    security_opt:
-      - seccomp:unconfined
-      - apparmor:unconfined
-      - no-new-privileges:false
+    privileged: true
+    restart: unless-stopped
     environment:
       - TZ=America/Vancouver
       - ROS_DOMAIN_ID=0
@@ -38,9 +31,20 @@ services:
         echo '==> Configuring can0 at 500 kbps...'
         ip link set can0 down 2>/dev/null || true
         ip link set can0 type can bitrate 500000 restart-ms 100
-        ip link set can0 txqueuelen 1000
         ip link set can0 up
         echo '==> can0 is up.'
+
+        # Force node 5 into operational state before the master starts.
+        # NMT command 0x01 to address 0x05 = "Start Remote Node, node 5"
+        # This ensures the STM32 is operational and sending heartbeats
+        # before lely tries to boot it, bypassing the chicken-and-egg.
+        echo '==> Sending NMT Start to node 5...'
+        cansend can0 000#0105
+        sleep 0.5
+        # Send again in case it was missed during STM32 startup
+        cansend can0 000#0105
+        sleep 0.5
+        echo '==> NMT Start sent.'
 
         echo '==> Launching canopen_core...'
         ros2 launch canopen_core canopen.launch.py \
@@ -50,19 +54,15 @@ services:
         CANOPEN_PID=$!
 
         echo '==> Waiting for device_container_node...'
-        until ros2 lifecycle get /device_container_node 2>/dev/null | grep -q unconfigured; do
-        sleep 0.5
+        until ros2 node list 2>/dev/null | grep -q device_container_node; do
+          sleep 0.5
         done
-  
-        echo '==> Configuring...'
+
+        echo '==> Configuring device_container_node...'
         ros2 lifecycle set /device_container_node configure
-  
-        echo '==> Waiting for inactive state...'
-        until ros2 lifecycle get /device_container_node 2>/dev/null | grep -q inactive; do
-        sleep 0.5
-        done
-  
-        echo '==> Activating...'
+        sleep 3
+
+        echo '==> Activating device_container_node...'
         ros2 lifecycle set /device_container_node activate
 
         echo '==> CANopen stack is active.'

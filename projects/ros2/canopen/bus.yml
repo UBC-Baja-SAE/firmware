@@ -1,12 +1,3 @@
-# =============================================================================
-# bus.yml — CANopen network description for ros2_canopen
-# DCF files are pre-generated with CANopen Editor.
-#
-# boot_timeout: per-node override in ms. Set high for nodes that may be slow
-#   to start, or nodes you want to wait for. Default is master's boot_timeout.
-# polling: true = master polls SDOs instead of waiting for TPDO events.
-# =============================================================================
-
 master:
   node_id: 127
   driver: "ros2_canopen::MasterDriver"
@@ -18,42 +9,8 @@ rear_ecu:
   node_id: 5
   driver: "ros2_canopen::ProxyDriver"
   package: "canopen_proxy_driver"
-  dcf: "/ros_ws/canopen/rear_ecu.eds"
-  polling: false
+  dcf: "/ros_ws/canopen/rear_ecu.dcf"
+  polling: true
   period: 10
-  boot_inhibit: false
   boot_timeout: 15000
   sdo_timeout: 5000
-  auto_configure: false    # ← prevents the SDO configure step that's timing out
-
-#rr_ecu:
-#  node_id: 1
-#  driver: "ros2_canopen::ProxyDriver"
-#  package: "canopen_proxy_driver"
-#  dcf: "/ros_ws/canopen/rr_ecu.dcf"
-#  polling: true
-#  period: 10
-#
-#rl_ecu:
-#  node_id: 2
-#  driver: "ros2_canopen::ProxyDriver"
-#  package: "canopen_proxy_driver"
-#  dcf: "/ros_ws/canopen/rl_ecu.dcf"
-#  polling: true
-#  period: 10
-#
-#fr_ecu:
-#  node_id: 3
-#  driver: "ros2_canopen::ProxyDriver"
-#  package: "canopen_proxy_driver"
-#  dcf: "/ros_ws/canopen/fr_ecu.dcf"
-#  polling: true
-#  period: 10
-#
-#fl_ecu:
-#  node_id: 4
-#  driver: "ros2_canopen::ProxyDriver"
-#  package: "canopen_proxy_driver"
-#  dcf: "/ros_ws/canopen/fl_ecu.dcf"
-#  polling: true
-#  period: 10
