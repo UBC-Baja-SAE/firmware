@@ -565,7 +565,7 @@ ParameterName=Producer heartbeat time
 ObjectType=0x7
 ;StorageLocation=PERSIST_COMM
 DataType=0x0006
-AccessType=rw
+AccessType=ro
 DefaultValue=100
 PDOMapping=0
 
