@@ -551,7 +551,7 @@ ObjectType=0x7
 ;StorageLocation=PERSIST_COMM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80
+DefaultValue=0x00000085
 ParameterValue=
 PDOMapping=0
 
@@ -810,7 +810,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000223
+DefaultValue=0x80000228
 ParameterValue=
 PDOMapping=0
 
@@ -861,7 +861,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000323
+DefaultValue=0x80000328
 ParameterValue=
 PDOMapping=0
 
@@ -912,7 +912,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000423
+DefaultValue=0x80000428
 ParameterValue=
 PDOMapping=0
 
@@ -963,7 +963,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000523
+DefaultValue=0x80000528
 ParameterValue=
 PDOMapping=0
 
@@ -1438,7 +1438,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x180
+DefaultValue=0x00000185
 ParameterValue=
 PDOMapping=0
 
@@ -1511,7 +1511,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0xC00002A3
+DefaultValue=0xC00002A8
 ParameterValue=
 PDOMapping=0
 
@@ -1584,7 +1584,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0xC00003A3
+DefaultValue=0xC00003A8
 ParameterValue=
 PDOMapping=0
 
@@ -1657,7 +1657,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0xC00004A3
+DefaultValue=0xC00004A8
 ParameterValue=
 PDOMapping=0
 
