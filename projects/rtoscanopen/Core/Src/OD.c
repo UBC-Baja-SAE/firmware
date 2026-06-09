@@ -26,11 +26,11 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
     .x1006_communicationCyclePeriod = 0x00000000,
     .x1007_synchronousWindowLength = 0x00000000,
     .x1012_COB_IDTimeStampObject = 0x00000100,
-    .x1014_COB_ID_EMCY = 0x00000085,
+    .x1014_COB_ID_EMCY = 0x00000080,
     .x1015_inhibitTimeEMCY = 0x0000,
     .x1016_consumerHeartbeatTime_sub0 = 0x08,
     .x1016_consumerHeartbeatTime = {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-    .x1017_producerHeartbeatTime = 0x03E8,
+    .x1017_producerHeartbeatTime = 0x0064,
     .x1018_identity = {
         .highestSub_indexSupported = 0x04,
         .vendor_ID = 0x00000000,
@@ -115,7 +115,7 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
     },
     .x1800_TPDOCommunicationParameter = {
         .highestSub_indexSupported = 0x06,
-        .COB_IDUsedByTPDO = 0x00000185,
+        .COB_IDUsedByTPDO = 0x00000180,
         .transmissionType = 0xFE,
         .inhibitTime = 0x0064,
         .eventTimer = 0x0032,
@@ -125,7 +125,7 @@ OD_ATTR_PERSIST_COMM OD_PERSIST_COMM_t OD_PERSIST_COMM = {
         .highestSub_indexSupported = 0x06,
         .COB_IDUsedByTPDO = 0xC00002A3,
         .transmissionType = 0xFE,
-        .inhibitTime = 0x0000,
+        .inhibitTime = 0x0064,
         .eventTimer = 0x0000,
         .SYNCStartValue = 0x00
     },
@@ -203,8 +203,7 @@ OD_ATTR_RAM OD_RAM_t OD_RAM = {
         .COB_IDServerToClientTx = 0x00000580
     },
     .x2000_speedometer = 0x00000000,
-    .x2001_tachometer = 0x00000000,
-    .xFFFF_tachometer = 0x00000000
+    .x2001_tachometer = 0x00000000
 };
 
 
@@ -248,7 +247,6 @@ typedef struct {
     OD_obj_record_t o_1A03_TPDOMappingParameter[9];
     OD_obj_var_t o_2000_speedometer;
     OD_obj_var_t o_2001_tachometer;
-    OD_obj_var_t o_FFFF_tachometer;
 } ODObjs_t;
 
 static CO_PROGMEM ODObjs_t ODObjs = {
@@ -1125,11 +1123,6 @@ static CO_PROGMEM ODObjs_t ODObjs = {
         .dataOrig = &OD_RAM.x2001_tachometer,
         .attribute = ODA_SDO_R | ODA_TPDO | ODA_MB,
         .dataLength = 4
-    },
-    .o_FFFF_tachometer = {
-        .dataOrig = &OD_RAM.xFFFF_tachometer,
-        .attribute = ODA_SDO_RW | ODA_MB,
-        .dataLength = 4
     }
 };
 
@@ -1173,7 +1166,6 @@ static OD_ATTR_OD OD_entry_t ODList[] = {
     {0x1A03, 0x09, ODT_REC, &ODObjs.o_1A03_TPDOMappingParameter, NULL},
     {0x2000, 0x01, ODT_VAR, &ODObjs.o_2000_speedometer, NULL},
     {0x2001, 0x01, ODT_VAR, &ODObjs.o_2001_tachometer, NULL},
-    {0xFFFF, 0x01, ODT_VAR, &ODObjs.o_FFFF_tachometer, NULL},
     {0x0000, 0x00, 0, NULL, NULL}
 };
 

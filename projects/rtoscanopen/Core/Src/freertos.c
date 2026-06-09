@@ -28,6 +28,7 @@
 #include "CO_app_STM32.h"
 #include "fdcan.h"
 #include "tim.h"
+#include "OD.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,7 +48,8 @@ extern CANopenNodeSTM32 canOpenNodeSTM32;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+extern volatile uint32_t speedometer_kmh;
+extern volatile uint32_t tach_raw_value;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -156,6 +158,9 @@ void canopen_task(void *argument)
   /* Infinite loop */
   for(;;)
   {
+    OD_RAM.x2000_speedometer = speedometer_kmh;
+    OD_RAM.x2001_tachometer  = tach_raw_value;
+
     canopen_app_process();
     osDelay(1);
   }

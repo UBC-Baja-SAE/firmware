@@ -8,8 +8,8 @@ Description=
 CreationTime=10:17AM
 CreationDate=06-07-2026
 CreatedBy=Benjamin Friesen
-ModificationTime=4:58PM
-ModificationDate=06-08-2026
+ModificationTime=2:25AM
+ModificationDate=06-09-2026
 ModifiedBy=
 
 [DeviceInfo]
@@ -124,7 +124,7 @@ DefaultValue=0x00000000
 PDOMapping=0
 
 [OptionalObjects]
-SupportedObjects=31
+SupportedObjects=30
 1=0x1003
 2=0x1005
 3=0x1006
@@ -155,7 +155,6 @@ SupportedObjects=31
 28=0x1A01
 29=0x1A02
 30=0x1A03
-31=0xFFFF
 
 [1003]
 ParameterName=Pre-defined error field
@@ -1267,7 +1266,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0006
 AccessType=rw
-DefaultValue=0
+DefaultValue=100
 PDOMapping=0
 
 [1801sub5]

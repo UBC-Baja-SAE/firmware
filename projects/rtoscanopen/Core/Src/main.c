@@ -309,9 +309,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE END Callback 1 */
 }
 
-
-
-
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
