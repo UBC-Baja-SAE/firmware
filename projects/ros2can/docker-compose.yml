@@ -8,4 +8,6 @@ services:
     privileged: true
     environment:
       - RCUTILS_COLORIZED_OUTPUT=1
+    ports:
+      - "8765:8765"
     restart: unless-stopped

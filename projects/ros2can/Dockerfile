@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     ros-jazzy-canopen-core \
     ros-jazzy-canopen-master-driver \
     ros-jazzy-canopen-proxy-driver \
+    ros-jazzy-foxglove-bridge \
     python3-colcon-common-extensions \
     can-utils \
     && rm -rf /var/lib/apt/lists/*

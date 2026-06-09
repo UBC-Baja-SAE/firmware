@@ -5,7 +5,7 @@ master:
   node_id: 1
   driver: "ros2_canopen::MasterDriver"
   package: "canopen_master_driver"
-  sync_period: 10000
+  sync_period: 0
 
 nodes:
   rear_ecu:

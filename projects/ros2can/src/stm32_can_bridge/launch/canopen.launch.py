@@ -23,4 +23,14 @@ def generate_launch_description():
         ]
     )
 
+    foxglove_bridge = Node(
+        package='foxglove_bridge',
+        executable='foxglove_bridge',
+        name='foxglove_bridge',
+        parameters=[{
+            'port': 8765,
+            'address': '0.0.0.0',
+        }]
+    )
+
     return LaunchDescription([device_container_node])
