@@ -1,0 +1,12 @@
+[FileInfo]
+FileName=empty.eds
+FileVersion=1
+FileRevision=1
+EDSVersion=4.0
+[DeviceInfo]
+VendorName=Baja
+ProductName=BajaNode
+RevisionNumber=0
+[DeviceComissioning]
+NodeID=5
+Baudrate=500

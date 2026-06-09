@@ -18,9 +18,10 @@ rear_ecu:
   node_id: 5
   driver: "ros2_canopen::ProxyDriver"
   package: "canopen_proxy_driver"
-  dcf: "/ros_ws/canopen/rear_ecu.eds"
+  dcf: "/ros_ws/canopen/empty.eds"
   polling: false
   period: 10
+  boot_inhibit: true
   boot_timeout: 5000
 
 #rr_ecu:
