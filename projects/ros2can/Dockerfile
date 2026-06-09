@@ -18,7 +18,7 @@ WORKDIR /ros2_ws
 COPY src/ /ros2_ws/src/
 
 # Compile the ROS 2 workspace (this generates the .bin file)
-RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build --symlink-install"
+RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build"
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

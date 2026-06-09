@@ -21,7 +21,7 @@ install(DIRECTORY
 
 # 2. THE MISSING PIECE: Install the auto-generated files from the build folder
 install(DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}/stm32_bus
+        ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus
         DESTINATION share/${PROJECT_NAME}/config
 )
 
