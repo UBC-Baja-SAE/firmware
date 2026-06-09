@@ -15,11 +15,14 @@ services:
     container_name: mochi_canopen
     stop_grace_period: 30s
     network_mode: "host"
-    privileged: true
+    pid: "host"          # ← add this
     cap_add:
       - NET_ADMIN
       - NET_RAW
       - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined   # ← add this
+      - apparmor:unconfined  # ← add this
     environment:
       - TZ=America/Vancouver
       - ROS_DOMAIN_ID=0
@@ -46,15 +49,19 @@ services:
         CANOPEN_PID=$!
 
         echo '==> Waiting for device_container_node...'
-        until ros2 node list 2>/dev/null | grep -q device_container_node; do
-          sleep 0.5
+        until ros2 lifecycle get /device_container_node 2>/dev/null | grep -q unconfigured; do
+        sleep 0.5
         done
-
-        echo '==> Configuring device_container_node...'
+  
+        echo '==> Configuring...'
         ros2 lifecycle set /device_container_node configure
-        sleep 2
-
-        echo '==> Activating device_container_node...'
+  
+        echo '==> Waiting for inactive state...'
+        until ros2 lifecycle get /device_container_node 2>/dev/null | grep -q inactive; do
+        sleep 0.5
+        done
+  
+        echo '==> Activating...'
         ros2 lifecycle set /device_container_node activate
 
         echo '==> CANopen stack is active.'
