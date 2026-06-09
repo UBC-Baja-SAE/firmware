@@ -10,6 +10,12 @@ find_package(lely_core_libraries REQUIRED)
 
 cogen_dcf(stm32_bus)
 
+install(PROGRAMS
+        scripts/tpdo_republisher.py
+        DESTINATION lib/${PROJECT_NAME}
+        RENAME tpdo_republisher
+)
+
 install(DIRECTORY
         launch
         config
