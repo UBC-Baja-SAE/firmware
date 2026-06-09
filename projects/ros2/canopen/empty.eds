@@ -3,10 +3,33 @@ FileName=empty.eds
 FileVersion=1
 FileRevision=1
 EDSVersion=4.0
+
 [DeviceInfo]
 VendorName=Baja
 ProductName=BajaNode
 RevisionNumber=0
+
 [DeviceComissioning]
 NodeID=5
 Baudrate=500
+
+[1800]
+ParameterName=TPDO1 communication parameter
+ObjectType=0x9
+SubNumber=0x06
+[1800sub1]
+ParameterName=COB-ID used by TPDO
+DefaultValue=0x00000185
+[1A00]
+ParameterName=TPDO1 mapping parameter
+ObjectType=0x9
+SubNumber=0x03
+[1A00sub0]
+ParameterName=Number of mapped objects
+DefaultValue=2
+[1A00sub1]
+ParameterName=Mapped object 1
+DefaultValue=0x20000020
+[1A00sub2]
+ParameterName=Mapped object 2
+DefaultValue=0x20010020
