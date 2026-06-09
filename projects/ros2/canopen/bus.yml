@@ -12,7 +12,7 @@ master:
   driver: "ros2_canopen::MasterDriver"
   package: "canopen_master_driver"
   baudrate: 500000
-  boot_timeout: 5000        # ms to wait for all slaves to boot
+  boot_timeout: 15000        # ms to wait for all slaves to boot
 
 rear_ecu:
   node_id: 5
@@ -22,7 +22,7 @@ rear_ecu:
   polling: false
   period: 10
   boot_inhibit: true
-  boot_timeout: 5000
+  boot_timeout: 15000
 
 #rr_ecu:
 #  node_id: 1
