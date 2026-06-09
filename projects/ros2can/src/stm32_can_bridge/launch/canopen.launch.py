@@ -7,9 +7,10 @@ def generate_launch_description():
     pkg_dir = get_package_share_directory('stm32_can_bridge')
 
     # Define ALL three file paths
-    bus_config_yml = os.path.join(pkg_dir, 'config', 'stm32_bus', 'bus.yml')
-    master_config_dcf = os.path.join(pkg_dir, 'config', 'stm32_bus', 'master.dcf')
-    master_config_bin = os.path.join(pkg_dir, 'config', 'stm32_bus', 'master.bin') # <-- Added this back
+    # Use explicit absolute paths inside the container
+    bus_config_yml = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/bus.yml'
+    master_config_dcf = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/master.dcf'
+    master_config_bin = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/master.bin'
 
     device_container_node = Node(
         package='canopen_core',
