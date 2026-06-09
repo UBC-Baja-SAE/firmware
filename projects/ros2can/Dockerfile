@@ -1,9 +1,7 @@
-# Native arm64 Jazzy base for Raspberry Pi
 FROM ros:jazzy-ros-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install the specific ROS 2 CANopen components, colcon build tools, and can-utils
 RUN apt-get update && apt-get install -y \
     ros-jazzy-canopen-core \
     ros-jazzy-canopen-master-driver \
@@ -14,11 +12,15 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /ros2_ws
 
-# Copy your source code
 COPY src/ /ros2_ws/src/
 
-# Compile the ROS 2 workspace (this generates the .bin file)
 RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build"
+
+# Generate master.bin from the DCF that cogen_dcf produced
+RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && \
+    /opt/ros/jazzy/bin/dcf2dev \
+    /ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/master.dcf \
+    /ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/master.bin"
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -10,17 +10,6 @@ find_package(lely_core_libraries REQUIRED)
 
 cogen_dcf(stm32_bus)
 
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.bin
-        COMMAND /opt/ros/jazzy/bin/dcf2dev
-        ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.dcf
-        ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.bin
-        DEPENDS stm32_bus
-)
-add_custom_target(generate_master_bin ALL
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.bin
-)
-
 install(DIRECTORY
         launch
         config
@@ -30,12 +19,6 @@ install(DIRECTORY
 install(DIRECTORY
         ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus
         DESTINATION share/${PROJECT_NAME}/config
-)
-
-# Explicitly install master.bin after it's generated
-install(FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus/master.bin
-        DESTINATION share/${PROJECT_NAME}/config/stm32_bus
 )
 
 ament_package()
