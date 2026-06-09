@@ -8,4 +8,5 @@ services:
     privileged: true
     environment:
       - RCUTILS_COLORIZED_OUTPUT=1
+      - CAN_INTERFACE=can0
     restart: unless-stopped
