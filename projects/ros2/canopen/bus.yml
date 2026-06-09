@@ -11,17 +11,18 @@ master:
   node_id: 127
   driver: "ros2_canopen::MasterDriver"
   package: "canopen_master_driver"
-  dcf: "/ros_ws/canopen/master.dcf" # Use the standard empty master.dcf
-  boot_inhibit: true
+  baudrate: 500000
+  boot_timeout: 15000        # ms to wait for all slaves to boot
 
 rear_ecu:
   node_id: 5
   driver: "ros2_canopen::ProxyDriver"
   package: "canopen_proxy_driver"
-  # Set this to a minimal EDS file
   dcf: "/ros_ws/canopen/empty.eds"
   polling: false
+  period: 10
   boot_inhibit: true
+  boot_timeout: 15000
 
 #rr_ecu:
 #  node_id: 1
