@@ -21,8 +21,9 @@ services:
       - NET_RAW
       - SYS_ADMIN
     security_opt:
-      - seccomp:unconfined   # ← add this
-      - apparmor:unconfined  # ← add this
+      - seccomp:unconfined
+      - apparmor:unconfined
+      - no-new-privileges:false
     environment:
       - TZ=America/Vancouver
       - ROS_DOMAIN_ID=0
