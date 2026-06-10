@@ -69,7 +69,7 @@ def generate_launch_description():
             'ros2', 'bag', 'record',
             '-a',
             '-s', 'mcap',
-            '--max-cache-size', '0',
+            '--max-cache-size', '10485760',
             '-o', bag_output_path
         ],
         output='screen'
