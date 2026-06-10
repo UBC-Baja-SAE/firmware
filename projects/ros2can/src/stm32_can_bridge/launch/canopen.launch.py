@@ -40,12 +40,13 @@ def generate_launch_description():
 
     # A smart bash bringup that polls for the nodes instead of sleeping blindly
     bringup_cmd = (
-        'echo "Waiting for /master node to appear on the ROS graph..."; '
-        'until ros2 node list | grep -q "/master"; do sleep 1; done; '
-        'echo "/master found! Configuring and activating..."; '
-        'ros2 lifecycle set /master configure; '
+        'echo "Waiting for /master lifecycle services to be available..."; '
+        'until ros2 lifecycle set /master configure; do '
+        '  sleep 1; '
+        'done; '
         'ros2 lifecycle set /master activate; '
-        'echo "Master ready. Initializing ECUs..."; '
+        'echo "Master is active! Giving ECUs 2 seconds to finish network discovery..."; '
+        'sleep 2; '
         'for node in rear_ecu rr_ecu rl_ecu fr_ecu fl_ecu; do '
         '  echo "Bringing up $node..."; '
         '  ros2 lifecycle set /$node configure; '
