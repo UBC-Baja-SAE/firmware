@@ -11,7 +11,7 @@ def generate_launch_description():
     bus_config_yml = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/bus.yml'
     master_config_dcf = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/master.dcf'
 
-    timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+    timestamp = datetime.now().strftime('%B_%d_%I_%M_%p')
     bag_output_path = f'/logs/mochi_log_{timestamp}'
 
     device_container_node = Node(
