@@ -35,11 +35,13 @@ class AVLoggerNode(Node):
                     msg.header.stamp = self.get_clock().now().to_msg()
                     msg.format = "jpeg"
                     msg.data = encoded_image.tobytes()
-                    self.video_pub.publish(msg)
+                    try:
+                        self.video_pub.publish(msg)
+                    except Exception:
+                        break  # Fails cleanly if the node is shutting down
 
     def audio_loop(self):
         self.get_logger().info("Starting Audio Stream via ALSA arecord (16kHz Mono)")
-        # Native ALSA command: Quiet (-q), 16kHz (-r 16000), Mono (-c 1), 16-bit (-f S16_LE)
         cmd = ['arecord', '-q', '-f', 'S16_LE', '-c', '1', '-r', '16000', '-t', 'raw']
 
         try:
@@ -49,20 +51,24 @@ class AVLoggerNode(Node):
                 if data:
                     msg = AudioData()
                     msg.data = list(data)
-                    self.audio_pub.publish(msg)
-        except Exception as e:
-            self.get_logger().error(f"Audio failed: {e}")
+                    try:
+                        self.audio_pub.publish(msg)
+                    except Exception:
+                        break  # Fails cleanly if the node is shutting down
+        except Exception:
+            pass
 
 def main(args=None):
     rclpy.init(args=args)
     node = AVLoggerNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        pass  # Catch the Ctrl+C quietly
     finally:
-        node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            node.destroy_node()
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
