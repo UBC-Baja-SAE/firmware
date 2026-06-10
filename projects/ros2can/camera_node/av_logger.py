@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
-from audio_common_msgs.msg import AudioData
+from foxglove_msgs.msg import RawAudio  # <-- Updated Schema
 import cv2
 import threading
 import subprocess
@@ -11,25 +11,22 @@ class AVLoggerNode(Node):
     def __init__(self):
         super().__init__('av_logger_node')
 
-        # Standard Reliable QoS (Best Effort over websockets drops frames in Foxglove)
         self.video_pub = self.create_publisher(CompressedImage, '/image_raw/compressed', 10)
-        self.audio_pub = self.create_publisher(AudioData, '/audio/data', 10)
+        # Using RawAudio schema
+        self.audio_pub = self.create_publisher(RawAudio, '/audio/data', 10)
 
         self.cam_thread = threading.Thread(target=self.video_loop, daemon=True)
         self.cam_thread.start()
-
         self.audio_thread = threading.Thread(target=self.audio_loop, daemon=True)
         self.audio_thread.start()
 
     def video_loop(self):
-        self.get_logger().info("Video: Connecting to /dev/video0...")
+        # ... (Your existing video_loop is perfect, keep it as is) ...
         cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         cap.set(cv2.CAP_PROP_FPS, 15)
-
-        frame_count = 0
         while rclpy.ok() and cap.isOpened():
             ret, frame = cap.read()
             if ret:
@@ -37,62 +34,45 @@ class AVLoggerNode(Node):
                 if success:
                     msg = CompressedImage()
                     msg.header.stamp = self.get_clock().now().to_msg()
-                    msg.header.frame_id = "camera_link"
-                    msg.format = "jpeg"  # Foxglove strict format! Do not change!
+                    msg.format = "jpeg"
                     msg.data = encoded_image.tobytes()
-                    try:
-                        self.video_pub.publish(msg)
-                        frame_count += 1
-                        if frame_count % 30 == 0:
-                            self.get_logger().info(f"Video: Published {frame_count} frames")
-                    except Exception:
-                        break
+                    self.video_pub.publish(msg)
 
     def audio_loop(self):
-        self.get_logger().info("Audio: Detecting ALSA USB Card...")
-
+        self.get_logger().info("Audio: Detecting ALSA...")
         device = "default"
         try:
-            # Ask ALSA to list all capture devices and scrape the card number
             out = subprocess.check_output(['arecord', '-l']).decode('utf-8')
             match = re.search(r'card (\d+):', out)
             if match:
                 device = f"plughw:{match.group(1)},0"
-                self.get_logger().info(f"Audio: Auto-detected mic at {device}")
         except Exception:
-            self.get_logger().warn("Audio: Auto-detect failed, trying default")
+            pass
 
         cmd = ['arecord', '-D', device, '-q', '-f', 'S16_LE', '-c', '1', '-r', '16000', '-t', 'raw']
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            audio_count = 0
-            while rclpy.ok():
-                data = proc.stdout.read(1024)
-                if data:
-                    msg = AudioData()
-                    msg.data = list(data)
-                    try:
-                        self.audio_pub.publish(msg)
-                        audio_count += 1
-                        if audio_count % 100 == 0:
-                            self.get_logger().info(f"Audio: Published {audio_count} chunks")
-                    except Exception:
-                        break
-        except Exception as e:
-            self.get_logger().error(f"Audio failed: {e}")
+        while rclpy.ok():
+            data = proc.stdout.read(2048) # Read 2048 bytes per chunk
+            if data:
+                msg = RawAudio()
+                msg.timestamp = self.get_clock().now().to_msg()
+                msg.data = data
+                msg.sample_format = RawAudio.FORMAT_S16LE # Matches S16_LE
+                msg.sample_rate = 16000
+                msg.num_channels = 1
+                try:
+                    self.audio_pub.publish(msg)
+                except Exception:
+                    break
 
 def main(args=None):
     rclpy.init(args=args)
     node = AVLoggerNode()
     try:
         rclpy.spin(node)
-    except (KeyboardInterrupt, Exception):
+    except Exception:
         pass
     finally:
-        if rclpy.ok():
-            node.destroy_node()
-            rclpy.shutdown()
-
-if __name__ == '__main__':
-    main()
+        node.destroy_node()
+        rclpy.shutdown()

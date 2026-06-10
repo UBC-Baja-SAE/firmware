@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pyaudio \
     alsa-utils \
     git \
+    ros-jazzy-foxglove-msgs \
     python3-colcon-common-extensions \
     && rm -rf /var/lib/apt/lists/*
 
