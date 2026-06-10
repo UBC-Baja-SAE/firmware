@@ -2,15 +2,17 @@ FROM ros:jazzy-ros-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# 1. Install the camera and the basic compressed transport
+# 2. Aggressively purge theora and compressed-depth so they physically cannot run
+# 3. Clean up the unneeded dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-usb-cam \
     ros-jazzy-compressed-image-transport \
+    && apt-get purge -y ros-jazzy-theora-image-transport ros-jazzy-compressed-depth-image-transport ros-jazzy-zstd-image-transport || true \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros2_ws
 
-COPY camera_params.yaml /ros2_ws/camera_params.yaml
-
-CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && \
-    ros2 run usb_cam usb_cam_node_exe --ros-args \
-        --params-file /ros2_ws/camera_params.yaml"]
+# We completely bypass the YAML file and pass the exact hardware flags directly
+CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/video0 -p framerate:=15.0 -p image_width:=640 -p image_height:=480 -p pixel_format:=mjpeg2rgb"]
