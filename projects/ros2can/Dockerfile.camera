@@ -2,27 +2,21 @@ FROM ros:jazzy-ros-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install the USB camera driver and the compression plugins
+# Only install compressed transport, NOT the full plugin bundle
+# Full image-transport-plugins includes compressed_depth and theora which cause errors
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-usb-cam \
-    ros-jazzy-image-transport-plugins \
+    ros-jazzy-compressed-image-transport \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros2_ws
 
-# In your Dockerfile.camera CMD, add the image_transport republisher
-# Or switch pixel_format to mjpeg and use a compressed topic
+# usb_cam auto-publishes /image_raw/compressed when the transport plugin is present
+# No separate republish node needed - that was causing duplicate publisher conflicts
 CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && \
     ros2 run usb_cam usb_cam_node_exe --ros-args \
         -p video_device:=/dev/video0 \
         -p framerate:=15.0 \
         -p image_width:=640 \
         -p image_height:=480 \
-        -p pixel_format:=mjpeg2rgb \
-    & \
-    sleep 2 && \
-    ros2 run image_transport republish raw compressed \
-        --ros-args \
-        --remap in:=/image_raw \
-        --remap out:=/image_raw/compressed \
-    & wait"]
+        -p pixel_format:=mjpeg2rgb"]
