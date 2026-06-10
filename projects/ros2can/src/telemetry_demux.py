@@ -7,9 +7,9 @@ from canopen_interfaces.msg import COData
 # Import standard ROS 2 message types for your dashboard
 from std_msgs.msg import Float32, Int32
 
-class TelemetryDemuxNode(Node):
+class DemuxNode(Node):
     def __init__(self):
-        super().__init__('telemetry_demuxer')
+        super().__init__('demuxer')
 
         # Subscribe to the chaotic proxy driver output
         self.subscription = self.create_subscription(
@@ -40,7 +40,7 @@ class TelemetryDemuxNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    demux_node = TelemetryDemuxNode()
+    demux_node = DemuxNode()
 
     try:
         rclpy.spin(demux_node)
