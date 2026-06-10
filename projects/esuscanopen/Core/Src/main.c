@@ -19,7 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "adc.h"
 #include "fdcan.h"
+#include "i2c.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -54,7 +56,8 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
-
+void ICM42670_Init(void);
+void ICM42670_ReadData(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -96,8 +99,14 @@ int main(void)
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   MX_TIM6_Init();
+  MX_ADC1_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
+  HAL_ADC_Start_IT(&hadc1);
+
+  ICM42670_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -169,7 +178,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV1;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV1;
 
@@ -180,6 +189,90 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+#define ICM42670_ADDR           (0x68 << 1)
+#define ICM42670_REG_WHO_AM_I   0x75
+#define ICM42670_REG_PWR_MGMT0  0x1F
+#define ICM42670_REG_GYRO_CONFIG0  0x20
+#define ICM42670_REG_ACCEL_CONFIG0 0x21
+
+#define ICM42670_REG_TEMP_DATA1    0x09
+#define ICM42670_REG_ACCEL_DATA_X1 0x0B
+#define ICM42670_REG_GYRO_DATA_X1  0x11
+
+volatile int16_t imu_accel_x = 0, imu_accel_y = 0, imu_accel_z = 0;
+volatile int16_t imu_gyro_x  = 0, imu_gyro_y  = 0, imu_gyro_z  = 0;
+volatile uint32_t linpot_raw_value = 0;
+
+
+static uint8_t ICM42670_WriteReg(uint8_t reg, uint8_t val)
+{
+  uint8_t buf[2] = { reg, val };
+  return HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, buf, 2, 10);
+}
+
+static uint8_t ICM42670_ReadReg(uint8_t reg)
+{
+  uint8_t val = 0;
+  HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, &reg, 1, 100);
+  HAL_I2C_Master_Receive(&hi2c1, ICM42670_ADDR, &val, 1, 100);
+  return val;
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+  if (hadc->Instance == ADC1)
+  {
+    linpot_raw_value = HAL_ADC_GetValue(hadc);
+    HAL_ADC_Start_IT(hadc);  // re-arm for next conversion
+  }
+}
+
+void ICM42670_Init(void)
+{
+  uint8_t who = ICM42670_ReadReg(ICM42670_REG_WHO_AM_I);
+  if (who != 0x67) { return; }
+
+  ICM42670_WriteReg(ICM42670_REG_PWR_MGMT0, 0x0F);
+  HAL_Delay(10);
+
+  ICM42670_WriteReg(ICM42670_REG_GYRO_CONFIG0, 0x04);
+  ICM42670_WriteReg(ICM42670_REG_ACCEL_CONFIG0, 0x24);
+}
+
+void ICM42670_ReadData(void)
+{
+  uint8_t buf[12] = {0};
+  uint8_t reg = ICM42670_REG_ACCEL_DATA_X1;
+
+  HAL_StatusTypeDef status;
+
+  status = HAL_I2C_Master_Transmit(&hi2c1, ICM42670_ADDR, &reg, 1, 10);
+  if (status != HAL_OK)
+  {
+    HAL_I2C_DeInit(&hi2c1);
+    HAL_Delay(5);
+    HAL_I2C_Init(&hi2c1);
+    return;  // skip this cycle, don't update imu_accel/gyro globals
+  }
+
+  status = HAL_I2C_Master_Receive(&hi2c1, ICM42670_ADDR, buf, 12, 10);
+  if (status != HAL_OK)
+  {
+    HAL_I2C_DeInit(&hi2c1);
+    HAL_Delay(5);
+    HAL_I2C_Init(&hi2c1);
+    return;
+  }
+
+  // Only update globals if read succeeded
+  imu_accel_x = (int16_t)(buf[0]  << 8 | buf[1]);
+  imu_accel_y = (int16_t)(buf[2]  << 8 | buf[3]);
+  imu_accel_z = (int16_t)(buf[4]  << 8 | buf[5]);
+  imu_gyro_x  = (int16_t)(buf[6]  << 8 | buf[7]);
+  imu_gyro_y  = (int16_t)(buf[8]  << 8 | buf[9]);
+  imu_gyro_z  = (int16_t)(buf[10] << 8 | buf[11]);
+}
 
 /* USER CODE END 4 */
 

@@ -48,6 +48,11 @@ extern CANopenNodeSTM32 canOpenNodeSTM32;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+
+extern volatile uint32_t linpot_raw_value;
+extern volatile int16_t  imu_accel_x, imu_accel_y, imu_accel_z;
+extern volatile int16_t  imu_gyro_x,  imu_gyro_y,  imu_gyro_z;
+
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -66,6 +71,9 @@ const osThreadAttr_t canopen_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
+
+void ICM42670_Init(void);
+void ICM42670_ReadData(void);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -127,10 +135,43 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+
+  // Constants for sensor scaling
+  const float GRAVITY_MSS = 9.80665f;
+  const float DEG_TO_RAD  = 0.0174533f;
+  const float ACCEL_SCALE = (1.0f / 4096.0f) * GRAVITY_MSS;
+  const float GYRO_SCALE  = (1.0f / 16.4f)   * DEG_TO_RAD;
+
+  // Wait briefly for CANopen to initialize before hammering the I2C/ADC
+  osDelay(500);
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    // 1. Read raw data from the IMU via I2C
+    ICM42670_ReadData();
+
+    // 2. Scale the linear potentiometer
+    float linpot_scaled = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
+
+    // 3. Write directly to the CANopen Object Dictionary
+    // CANopenNode automatically locks/unlocks the OD during PDO transmission,
+    // but writing basic 32-bit floats here is generally thread-safe on a 32-bit MCU.
+
+    // Write Linpot (Assuming OD_RAM generated it as a uint32_t, we cast the float bits)
+    // If OD_RAM generated it as a float32_t, just do OD_RAM.x2000_linearPotentiometer = linpot_scaled;
+    OD_RAM.x2000_linearPotentiometer = linpot_scaled;
+
+    // Write IMU Data (Assuming OD.h typed x2001_imu as float32_t array based on your REAL32 definition)
+    OD_RAM.x2001_imu[0] = (float)imu_accel_x * ACCEL_SCALE;
+    OD_RAM.x2001_imu[1] = (float)imu_accel_y * ACCEL_SCALE;
+    OD_RAM.x2001_imu[2] = (float)imu_accel_z * ACCEL_SCALE;
+    OD_RAM.x2001_imu[3] = (float)imu_gyro_x  * GYRO_SCALE;
+    OD_RAM.x2001_imu[4] = (float)imu_gyro_y  * GYRO_SCALE;
+    OD_RAM.x2001_imu[5] = (float)imu_gyro_z  * GYRO_SCALE;
+
+    // Run this task at roughly 20Hz (50ms)
+    osDelay(50);
   }
   /* USER CODE END StartDefaultTask */
 }
