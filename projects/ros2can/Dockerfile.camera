@@ -10,6 +10,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /ros2_ws
 
-# Launch the camera at 640x480 @ 15 FPS (Optimal for logging without CPU bloat)
-# Launch using the camera's native hardware MJPEG stream to save CPU
-CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/video0 -p framerate:=15.0 -p image_width:=640 -p image_height:=480 -p pixel_format:=mjpeg2rgb"]
+# In your Dockerfile.camera CMD, add the image_transport republisher
+# Or switch pixel_format to mjpeg and use a compressed topic
+CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && \
+    ros2 run usb_cam usb_cam_node_exe --ros-args \
+        -p video_device:=/dev/video0 \
+        -p framerate:=15.0 \
+        -p image_width:=640 \
+        -p image_height:=480 \
+        -p pixel_format:=mjpeg2rgb \
+    & \
+    sleep 2 && \
+    ros2 run image_transport republish raw compressed \
+        --ros-args \
+        --remap in:=/image_raw \
+        --remap out:=/image_raw/compressed \
+    & wait"]

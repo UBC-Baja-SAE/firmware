@@ -68,9 +68,10 @@ def generate_launch_description():
         cmd=[
             'ros2', 'bag', 'record',
             '-a',
-            '-x', '^/image_raw$',
+            '--exclude-regex', '^/image_raw$',
             '-s', 'mcap',
             '--max-cache-size', '10485760',
+            '--max-bag-size', '4294967296',  # 4 GB splits, safe for FAT32 and recovery
             '-o', bag_output_path
         ],
         output='screen'
