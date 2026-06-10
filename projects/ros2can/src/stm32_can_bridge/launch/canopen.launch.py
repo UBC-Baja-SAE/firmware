@@ -11,16 +11,14 @@ def generate_launch_description():
     bus_config_yml = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/bus.yml'
     master_config_dcf = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/master.dcf'
 
-    # Generate a unique timestamp for the bag folder name
     timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-    bag_output_path = f'/logs/can_bus_log_{timestamp}'
+    bag_output_path = f'/logs/mochi_log_{timestamp}'
 
     device_container_node = Node(
         package='canopen_core',
         executable='device_container_node',
         name='device_container',
         output='screen',
-        # Removed respawn=True to prevent Launch exceptions during debugging
         parameters=[
             {'bus_config': bus_config_yml},
             {'master_config': master_config_dcf},
@@ -38,7 +36,6 @@ def generate_launch_description():
         }]
     )
 
-    # A smart bash bringup that polls for the nodes instead of sleeping blindly
     bringup_cmd = (
         'echo "Waiting for /master lifecycle services to be available..."; '
         'until ros2 lifecycle set /master configure; do '
@@ -62,7 +59,13 @@ def generate_launch_description():
 
     # The rosbag recorder
     rosbag_recorder = ExecuteProcess(
-        cmd=['ros2', 'bag', 'record', '-a', '-s', 'mcap', '-o', bag_output_path],
+        cmd=[
+            'ros2', 'bag', 'record',
+            '-a',
+            '-s', 'mcap',
+            '--max-cache-size', '0',
+            '-o', bag_output_path
+        ],
         output='screen'
     )
 
