@@ -13,21 +13,22 @@ services:
       - CAN_INTERFACE=can0
     restart: unless-stopped
 
-  mochi_dash_gui:
+  mochi_dash:
     build:
       context: .
       dockerfile: Dockerfile.gui
-    container_name: mochi_gui
+    container_name: baja_dash_gui
     volumes:
-      # Mount the local gui folder into the container workspace
       - ./gui:/ros2_ws/gui
+      - /run/udev:/run/udev:ro
     network_mode: "host"
     privileged: true
+    tty: true
     environment:
-      # Force Qt to use EGLFS for headless rendering on the Pi
       - QT_QPA_PLATFORM=eglfs
       - QT_QPA_EGLFS_ALWAYS_SET_MODE=1
+      - QT_QPA_EGLFS_KMS_ATOMIC=1
     devices:
-      # Give the container access to the Pi's GPU hardware
       - "/dev/dri:/dev/dri"
+      - "/dev/tty1:/dev/tty1"
     restart: unless-stopped
