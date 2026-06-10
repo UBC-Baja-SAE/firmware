@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
@@ -10,6 +11,10 @@ def generate_launch_description():
 
     bus_config_yml = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/bus.yml'
     master_config_dcf = '/ros2_ws/install/stm32_can_bridge/share/stm32_can_bridge/config/stm32_bus/master.dcf'
+
+    # Generate a unique timestamp for the bag folder name
+    timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+    bag_output_path = f'/logs/can_bus_log_{timestamp}'
 
     device_container_node = Node(
         package='canopen_core',
@@ -35,8 +40,7 @@ def generate_launch_description():
         }]
     )
 
-    # A non-strict automated bringup that ignores failures if a node is disconnected.
-    # We trigger this whenever the device_container_node starts (or respawns).
+    # 1. The custom lifecycle bringup handler we added previously
     lifecycle_bringup = RegisterEventHandler(
         OnProcessStart(
             target_action=device_container_node,
@@ -54,8 +58,16 @@ def generate_launch_description():
         )
     )
 
+    # 2. Add the rosbag recorder
+    # '-a' records all topics. '-s mcap' forces the MCAP format.
+    rosbag_recorder = ExecuteProcess(
+        cmd=['ros2', 'bag', 'record', '-a', '-s', 'mcap', '-o', bag_output_path],
+        output='screen'
+    )
+
     return LaunchDescription([
         device_container_node,
         foxglove_bridge,
-        lifecycle_bringup
+        lifecycle_bringup,
+        rosbag_recorder     # <-- Added to the launch description
     ])

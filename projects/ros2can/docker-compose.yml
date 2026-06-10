@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ros2_canopen_proxy
+    volumes:
+      - /home/ubcbaja/firmware/logs:/logs
     network_mode: "host"
     privileged: true
     environment:
