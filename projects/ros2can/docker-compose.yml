@@ -7,6 +7,7 @@ services:
     volumes:
       - /home/ubcbaja/firmware/logs:/logs
     network_mode: "host"
+    ipc: "host"
     privileged: true
     environment:
       - RCUTILS_COLORIZED_OUTPUT=1
@@ -22,6 +23,7 @@ services:
       - ./gui:/ros2_ws/gui
       - /run/udev:/run/udev:ro
     network_mode: "host"
+    ipc: "host"
     privileged: true
     tty: true
     environment:
@@ -42,6 +44,7 @@ services:
       dockerfile: Dockerfile.camera
     container_name: mochi_camera
     network_mode: "host"
+    ipc: "host"
     privileged: true
     environment: # <-- ADDED
       - ROS_DOMAIN_ID=0              # <-- Binds it to the same network as the CAN bridge
