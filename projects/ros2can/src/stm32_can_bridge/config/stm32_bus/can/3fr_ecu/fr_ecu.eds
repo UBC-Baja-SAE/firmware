@@ -1,5 +1,5 @@
 [FileInfo]
-FileName=rr_ecu.eds
+FileName=fr_ecu.eds
 FileVersion=1
 FileRevision=1
 LastEDS=
@@ -8,14 +8,14 @@ Description=
 CreationTime=1:27PM
 CreationDate=06-07-2026
 CreatedBy=Benjamin Friesen
-ModificationTime=10:39PM
+ModificationTime=10:42PM
 ModificationDate=06-09-2026
 ModifiedBy=
 
 [DeviceInfo]
 VendorName=
 VendorNumber=
-ProductName=rr_ecu
+ProductName=fr_ecu
 ProductNumber=
 RevisionNumber=0
 BaudRate_10=0
@@ -35,6 +35,7 @@ GroupMessaging=0
 NrOfRXPDO=4
 NrOfTXPDO=4
 LSS_Supported=0
+NG_Slave=0
 
 [DummyUsage]
 Dummy0001=0

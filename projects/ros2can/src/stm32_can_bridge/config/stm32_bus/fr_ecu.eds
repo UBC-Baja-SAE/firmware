@@ -8,7 +8,7 @@ Description=
 CreationTime=1:27PM
 CreationDate=06-07-2026
 CreatedBy=Benjamin Friesen
-ModificationTime=10:15PM
+ModificationTime=10:42PM
 ModificationDate=06-09-2026
 ModifiedBy=
 
@@ -672,7 +672,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000238
+DefaultValue=$NODEID+0x80000240
 PDOMapping=0
 
 [1400sub2]
@@ -714,7 +714,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000338
+DefaultValue=$NODEID+0x80000340
 PDOMapping=0
 
 [1401sub2]
@@ -756,7 +756,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000438
+DefaultValue=$NODEID+0x80000440
 PDOMapping=0
 
 [1402sub2]
@@ -798,7 +798,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000538
+DefaultValue=$NODEID+0x80000540
 PDOMapping=0
 
 [1403sub2]
@@ -1689,7 +1689,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x20010420
+DefaultValue=0x20000020
 PDOMapping=0
 
 [1A03sub2]

@@ -1,21 +1,21 @@
 [FileInfo]
-FileName=rr_ecu.eds
+FileName=rear_ecu.eds
 FileVersion=1
 FileRevision=1
 LastEDS=
 EDSVersion=4.0
 Description=
-CreationTime=1:27PM
+CreationTime=10:17AM
 CreationDate=06-07-2026
 CreatedBy=Benjamin Friesen
-ModificationTime=10:39PM
+ModificationTime=4:08PM
 ModificationDate=06-09-2026
 ModifiedBy=
 
 [DeviceInfo]
 VendorName=
 VendorNumber=
-ProductName=rr_ecu
+ProductName=rear_ecu
 ProductNumber=
 RevisionNumber=0
 BaudRate_10=0
@@ -35,6 +35,7 @@ GroupMessaging=0
 NrOfRXPDO=4
 NrOfTXPDO=4
 LSS_Supported=0
+NG_Slave=0
 
 [DummyUsage]
 Dummy0001=0
@@ -672,7 +673,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000240
+DefaultValue=$NODEID+0x80000237
 PDOMapping=0
 
 [1400sub2]
@@ -714,7 +715,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000340
+DefaultValue=$NODEID+0x80000337
 PDOMapping=0
 
 [1401sub2]
@@ -756,7 +757,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000440
+DefaultValue=$NODEID+0x80000437
 PDOMapping=0
 
 [1402sub2]
@@ -798,7 +799,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x80000540
+DefaultValue=$NODEID+0x80000537
 PDOMapping=0
 
 [1403sub2]
@@ -1308,7 +1309,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x380
+DefaultValue=$NODEID+0xC00003B7
 PDOMapping=0
 
 [1802sub2]
@@ -1326,7 +1327,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0006
 AccessType=rw
-DefaultValue=100
+DefaultValue=0
 PDOMapping=0
 
 [1802sub5]
@@ -1335,7 +1336,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0006
 AccessType=rw
-DefaultValue=50
+DefaultValue=0
 PDOMapping=0
 
 [1802sub6]
@@ -1368,7 +1369,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=$NODEID+0x480
+DefaultValue=$NODEID+0xC00004B7
 PDOMapping=0
 
 [1803sub2]
@@ -1386,7 +1387,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0006
 AccessType=rw
-DefaultValue=100
+DefaultValue=0
 PDOMapping=0
 
 [1803sub5]
@@ -1395,7 +1396,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0006
 AccessType=rw
-DefaultValue=50
+DefaultValue=0
 PDOMapping=0
 
 [1803sub6]
@@ -1419,7 +1420,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0005
 AccessType=rw
-DefaultValue=2
+DefaultValue=1
 PDOMapping=0
 
 [1A00sub1]
@@ -1428,7 +1429,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x20010120
+DefaultValue=0x20000020
 PDOMapping=0
 
 [1A00sub2]
@@ -1437,7 +1438,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x20010420
+DefaultValue=0x00000000
 PDOMapping=0
 
 [1A00sub3]
@@ -1506,7 +1507,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0005
 AccessType=rw
-DefaultValue=2
+DefaultValue=1
 PDOMapping=0
 
 [1A01sub1]
@@ -1515,7 +1516,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x20010220
+DefaultValue=0x20010020
 PDOMapping=0
 
 [1A01sub2]
@@ -1524,7 +1525,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x20010520
+DefaultValue=0x00000000
 PDOMapping=0
 
 [1A01sub3]
@@ -1593,7 +1594,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0005
 AccessType=rw
-DefaultValue=2
+DefaultValue=0
 PDOMapping=0
 
 [1A02sub1]
@@ -1602,7 +1603,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x20010320
+DefaultValue=0x00000000
 PDOMapping=0
 
 [1A02sub2]
@@ -1611,7 +1612,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x20010620
+DefaultValue=0x00000000
 PDOMapping=0
 
 [1A02sub3]
@@ -1680,7 +1681,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0005
 AccessType=rw
-DefaultValue=1
+DefaultValue=0
 PDOMapping=0
 
 [1A03sub1]
@@ -1689,7 +1690,7 @@ ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
 AccessType=rw
-DefaultValue=0x20000020
+DefaultValue=0x00000000
 PDOMapping=0
 
 [1A03sub2]
@@ -1761,7 +1762,7 @@ SupportedObjects=2
 2=0x2001
 
 [2000]
-ParameterName=linear potentiometer
+ParameterName=speedometer
 ObjectType=0x7
 ;StorageLocation=RAM
 DataType=0x0007
@@ -1770,70 +1771,10 @@ DefaultValue=0
 PDOMapping=1
 
 [2001]
-ParameterName=imu
-ObjectType=0x8
-;StorageLocation=RAM
-SubNumber=0x7
-
-[2001sub0]
-ParameterName=Highest sub-index supported
+ParameterName=tachometer
 ObjectType=0x7
 ;StorageLocation=RAM
-DataType=0x0005
-AccessType=ro
-DefaultValue=0x06
-PDOMapping=0
-
-[2001sub1]
-ParameterName=accel_x
-ObjectType=0x7
-;StorageLocation=RAM
-DataType=0x0008
-AccessType=ro
-DefaultValue=0
-PDOMapping=1
-
-[2001sub2]
-ParameterName=accel_y
-ObjectType=0x7
-;StorageLocation=RAM
-DataType=0x0008
-AccessType=ro
-DefaultValue=0
-PDOMapping=1
-
-[2001sub3]
-ParameterName=accel_z
-ObjectType=0x7
-;StorageLocation=RAM
-DataType=0x0008
-AccessType=ro
-DefaultValue=0
-PDOMapping=1
-
-[2001sub4]
-ParameterName=gyro_x
-ObjectType=0x7
-;StorageLocation=RAM
-DataType=0x0008
-AccessType=ro
-DefaultValue=0
-PDOMapping=1
-
-[2001sub5]
-ParameterName=gyro_y
-ObjectType=0x7
-;StorageLocation=RAM
-DataType=0x0008
-AccessType=ro
-DefaultValue=0
-PDOMapping=1
-
-[2001sub6]
-ParameterName=gyro_z
-ObjectType=0x7
-;StorageLocation=RAM
-DataType=0x0008
+DataType=0x0007
 AccessType=ro
 DefaultValue=0
 PDOMapping=1
