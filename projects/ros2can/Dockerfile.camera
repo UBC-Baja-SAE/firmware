@@ -2,12 +2,18 @@ FROM ros:jazzy-ros-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install Python audio/video libraries and ROS audio message definitions
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-jazzy-usb-cam \
-    ros-jazzy-compressed-image-transport \
+    python3-opencv \
+    python3-pyaudio \
+    ros-jazzy-audio-common-msgs \
+    alsa-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros2_ws
 
-# We use the shell form of CMD to safely pass the JSON array to the ROS parameter server
-CMD /bin/bash -c "source /opt/ros/jazzy/setup.bash && ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/video0 -p framerate:=15.0 -p image_width:=640 -p image_height:=480 -p pixel_format:=mjpeg2rgb -p image_raw.disable_pub_plugins:=\"['compressedDepth', 'theora', 'zstd']\""
+# Copy our custom script into the container
+COPY camera_node/ /ros2_ws/camera_node/
+
+# Run the python script directly
+CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && python3 /ros2_ws/camera_node/av_logger.py"]

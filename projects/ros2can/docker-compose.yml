@@ -45,4 +45,5 @@ services:
     privileged: true
     devices:
       - "/dev/video0:/dev/video0"
+      - "/dev/snd:/dev/snd"          # <-- REQUIRED: Exposes the ALSA sound hardware
     restart: unless-stopped
