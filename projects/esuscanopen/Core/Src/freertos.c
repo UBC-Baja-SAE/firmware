@@ -29,6 +29,7 @@
 #include "fdcan.h"
 #include "tim.h"
 #include "OD.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -148,29 +149,28 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    // 1. Read raw data from the IMU via I2C
     ICM42670_ReadData();
 
-    // 2. Scale the linear potentiometer
-    float linpot_scaled = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
+    // 1. Calculate Linpot and cast to integer (Normal assignment is fine here)
+    float linpot_calc = 36.5f + ((float)linpot_raw_value / 4095.0f) * 25.0f;
+    OD_RAM.x2000_linearPotentiometer = (uint32_t)linpot_calc;
 
-    // 3. Write directly to the CANopen Object Dictionary
-    // CANopenNode automatically locks/unlocks the OD during PDO transmission,
-    // but writing basic 32-bit floats here is generally thread-safe on a 32-bit MCU.
+    // 2. Calculate IMU values as standard floats
+    float accel_x = (float)imu_accel_x * ACCEL_SCALE;
+    float accel_y = (float)imu_accel_y * ACCEL_SCALE;
+    float accel_z = (float)imu_accel_z * ACCEL_SCALE;
+    float gyro_x  = (float)imu_gyro_x  * GYRO_SCALE;
+    float gyro_y  = (float)imu_gyro_y  * GYRO_SCALE;
+    float gyro_z  = (float)imu_gyro_z  * GYRO_SCALE;
 
-    // Write Linpot (Assuming OD_RAM generated it as a uint32_t, we cast the float bits)
-    // If OD_RAM generated it as a float32_t, just do OD_RAM.x2000_linearPotentiometer = linpot_scaled;
-    OD_RAM.x2000_linearPotentiometer = linpot_scaled;
+    // 3. Type Punning: Force the exact float bits into the uint32_t OD array
+    memcpy((void*)&OD_RAM.x2001_imu[0], &accel_x, sizeof(float));
+    memcpy((void*)&OD_RAM.x2001_imu[1], &accel_y, sizeof(float));
+    memcpy((void*)&OD_RAM.x2001_imu[2], &accel_z, sizeof(float));
+    memcpy((void*)&OD_RAM.x2001_imu[3], &gyro_x,  sizeof(float));
+    memcpy((void*)&OD_RAM.x2001_imu[4], &gyro_y,  sizeof(float));
+    memcpy((void*)&OD_RAM.x2001_imu[5], &gyro_z,  sizeof(float));
 
-    // Write IMU Data (Assuming OD.h typed x2001_imu as float32_t array based on your REAL32 definition)
-    OD_RAM.x2001_imu[0] = (float)imu_accel_x * ACCEL_SCALE;
-    OD_RAM.x2001_imu[1] = (float)imu_accel_y * ACCEL_SCALE;
-    OD_RAM.x2001_imu[2] = (float)imu_accel_z * ACCEL_SCALE;
-    OD_RAM.x2001_imu[3] = (float)imu_gyro_x  * GYRO_SCALE;
-    OD_RAM.x2001_imu[4] = (float)imu_gyro_y  * GYRO_SCALE;
-    OD_RAM.x2001_imu[5] = (float)imu_gyro_z  * GYRO_SCALE;
-
-    // Run this task at roughly 20Hz (50ms)
     osDelay(50);
   }
   /* USER CODE END StartDefaultTask */
