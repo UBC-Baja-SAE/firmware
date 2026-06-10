@@ -7,6 +7,7 @@ master:
   package: "canopen_master_driver"
   sync_period: 10000000
 
+
 nodes:
   rear_ecu:
     node_id: 5
@@ -16,49 +17,3 @@ nodes:
     polling: true
     period: 10
     boot: true
-    mandatory: false        # <-- won't abort master boot if missing
-    boot_timeout: 5000      # ms to wait before giving up on this node
-
-  rr_ecu:
-    node_id: 1
-    dcf: "rr_ecu.eds"
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    polling: true
-    period: 10
-    boot: true
-    mandatory: false
-    boot_timeout: 5000
-
-  rl_ecu:
-    node_id: 2
-    dcf: "rl_ecu.eds"
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    polling: true
-    period: 10
-    boot: true
-    mandatory: false
-    boot_timeout: 5000
-
-  fr_ecu:
-    node_id: 3
-    dcf: "fr_ecu.eds"
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    polling: true
-    period: 10
-    boot: true
-    mandatory: false
-    boot_timeout: 5000
-
-  fl_ecu:
-    node_id: 4
-    dcf: "fl_ecu.eds"
-    driver: "ros2_canopen::ProxyDriver"
-    package: "canopen_proxy_driver"
-    polling: true
-    period: 10
-    boot: true
-    mandatory: false
-    boot_timeout: 5000
