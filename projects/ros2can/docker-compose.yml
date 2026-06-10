@@ -43,6 +43,9 @@ services:
     container_name: mochi_camera
     network_mode: "host"
     privileged: true
+    environment: # <-- ADDED
+      - ROS_DOMAIN_ID=0              # <-- Binds it to the same network as the CAN bridge
+      - TZ=America/Vancouver
     devices:
       - "/dev/video0:/dev/video0"
       - "/dev/snd:/dev/snd"          # <-- REQUIRED: Exposes the ALSA sound hardware
