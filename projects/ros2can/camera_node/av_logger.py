@@ -66,7 +66,9 @@ class AVLoggerNode(Node):
 
     def audio_loop(self):
         self.get_logger().info("Audio Thread: Connecting to ALSA...")
-        cmd = ['arecord', '-q', '-f', 'S16_LE', '-c', '1', '-r', '16000', '-t', 'raw']
+
+        # ADDED: -D plughw:1,0 explicitly selects the USB Mic and auto-converts the sample rate
+        cmd = ['arecord', '-D', 'plughw:1,0', '-q', '-f', 'S16_LE', '-c', '1', '-r', '16000', '-t', 'raw']
 
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
