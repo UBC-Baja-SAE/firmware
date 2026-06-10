@@ -53,8 +53,8 @@ def generate_launch_description():
         'sleep 2; '
         'for node in rear_ecu rr_ecu rl_ecu fr_ecu fl_ecu; do '
         '  echo "Bringing up $node..."; '
-        '  ros2 lifecycle set /$node configure; '
-        '  ros2 lifecycle set /$node activate; '
+        '  ros2 lifecycle set /$node configure || true; ' # <-- ADDED || true
+        '  ros2 lifecycle set /$node activate || true; '  # <-- ADDED || true
         'done; '
         'echo "Lifecycle bringup script finished."'
     )
