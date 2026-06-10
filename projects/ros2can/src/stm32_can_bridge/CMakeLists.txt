@@ -21,9 +21,6 @@ install(DIRECTORY
         DESTINATION share/${PROJECT_NAME}/config
 )
 
-# ---------------------------------------------------------
-# ADDED: Install the Python demuxer node as an executable
-# ---------------------------------------------------------
 install(PROGRAMS
         src/demuxer.py
         DESTINATION lib/${PROJECT_NAME}

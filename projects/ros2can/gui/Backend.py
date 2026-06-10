@@ -1,34 +1,24 @@
 import sys
-import subprocess
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32, Float64, Int32
+from std_msgs.msg import Float32
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtProperty, QTimer, QUrl
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtQml import QQmlApplicationEngine
-from gpiozero import RotaryEncoder, Button
-
 
 class Backend(QObject):
     speedChanged = pyqtSignal()
     tachChanged = pyqtSignal()
-    topicListChanged = pyqtSignal()
-    selectedIndexChanged = pyqtSignal()
-    menuVisibleChanged = pyqtSignal()
-    scrolled = pyqtSignal(int)
-    clicked = pyqtSignal()
-    shutdownRequested = pyqtSignal()
 
     def __init__(self):
         super().__init__()
         self._speed = 0.0
         self._tach = 0.0
-        self._topicList = []
-        self._selectedIndex = 0
-        self._menuVisible = False
 
     @pyqtProperty(float, notify=speedChanged)
-    def speed(self): return self._speed
+    def speed(self):
+        return self._speed
+
     @speed.setter
     def speed(self, val):
         if self._speed != val:
@@ -36,140 +26,36 @@ class Backend(QObject):
             self.speedChanged.emit()
 
     @pyqtProperty(float, notify=tachChanged)
-    def tach(self): return self._tach
+    def tach(self):
+        return self._tach
+
     @tach.setter
     def tach(self, val):
         if self._tach != val:
             self._tach = val
             self.tachChanged.emit()
 
-    @pyqtProperty(list, notify=topicListChanged)
-    def topicList(self): return self._topicList
-    @topicList.setter
-    def topicList(self, val):
-        if self._topicList != val:
-            self._topicList = val
-            self.topicListChanged.emit()
-
-    @pyqtProperty(int, notify=selectedIndexChanged)
-    def selectedIndex(self): return self._selectedIndex
-    @selectedIndex.setter
-    def selectedIndex(self, val):
-        if self._selectedIndex != val:
-            self._selectedIndex = val
-            self.selectedIndexChanged.emit()
-
-    @pyqtProperty(bool, notify=menuVisibleChanged)
-    def menuVisible(self): return self._menuVisible
-    @menuVisible.setter
-    def menuVisible(self, val):
-        if self._menuVisible != val:
-            self._menuVisible = val
-            self.menuVisibleChanged.emit()
-
-    def triggerScroll(self, direction):
-        self.scrolled.emit(direction)
-
-    def triggerClick(self):
-        self.clicked.emit()
-
-
-supportedTypes = {
-    'std_msgs/msg/Float32': (Float32, lambda msg: float(msg.data)),
-    'std_msgs/msg/Float64': (Float64, lambda msg: float(msg.data)),
-    'std_msgs/msg/Int32':   (Int32,   lambda msg: float(msg.data)),
-}
-
-
 class BackendNode(Node):
     def __init__(self, backend):
-        super().__init__('backend_display_node')
+        super().__init__('baja_dash_backend')
         self.backend = backend
-        self.speedAlpha = 0.35
+
+        # Smoothing filter for UI stability
+        self.alpha = 0.35
         self.filteredSpeed = 0.0
         self.filteredTach = 0.0
 
-        self.leftSub = None
-        self.leftTopic = None
-        self.topicEntries = []
+        # Subscribe directly to the Demuxer's output topics
+        self.create_subscription(Float32, '/rear_ecu/speedometer', self.speedCallback, 10)
+        self.create_subscription(Float32, '/rear_ecu/tachometer', self.tachCallback, 10)
 
-        self.create_subscription(Float32, 'tachometer', self.tachCallback, 10)
-        self.create_timer(2.0, self.refreshTopics)
+    def speedCallback(self, msg):
+        self.filteredSpeed = (self.alpha * msg.data) + ((1 - self.alpha) * self.filteredSpeed)
+        self.backend.speed = self.filteredSpeed
 
     def tachCallback(self, msg):
-        self.filteredTach = (self.speedAlpha * msg.data) + ((1 - self.speedAlpha) * self.filteredTach)
+        self.filteredTach = (self.alpha * msg.data) + ((1 - self.alpha) * self.filteredTach)
         self.backend.tach = self.filteredTach
-
-    def makeLeftCallback(self, extractor):
-        def cb(msg):
-            raw = extractor(msg)
-            self.filteredSpeed = (self.speedAlpha * raw) + ((1 - self.speedAlpha) * self.filteredSpeed)
-            self.backend.speed = self.filteredSpeed
-        return cb
-
-    def refreshTopics(self):
-        topicNamesAndTypes = self.get_topic_names_and_types()
-        entries = []
-
-        for name, types in topicNamesAndTypes:
-            for t in types:
-                if t in supportedTypes:
-                    msgClass, extractor = supportedTypes[t]
-                    entries.append((name, msgClass, extractor))
-                    break
-
-        self.topicEntries = entries
-        self.backend.topicList = [e[0] for e in entries]
-
-    def subscribeLeft(self, label):
-        if label == self.leftTopic:
-            return
-
-        if self.leftSub is not None:
-            self.destroy_subscription(self.leftSub)
-            self.leftSub = None
-
-        entry = next((e for e in self.topicEntries if e[0] == label), None)
-        if entry is None:
-            self.get_logger().warn(f'Topic entry not found: {label}')
-            return
-
-        topicName, msgClass, extractor = entry
-        self.leftTopic = topicName
-        self.filteredSpeed = 0.0
-        self.leftSub = self.create_subscription(
-            msgClass,
-            topicName,
-            self.makeLeftCallback(extractor),
-            10
-        )
-
-
-class HardwareInterface:
-    def __init__(self, backend):
-        self.backend = backend
-        self.encoder = RotaryEncoder(17, 27, wrap=False, max_steps=0)
-        self.button = Button(22, pull_up=True, bounce_time=0.05, hold_time=5)
-
-        self._was_held = False
-
-        self.encoder.when_rotated_clockwise = lambda: (print('ENC CW', flush=True), self.backend.triggerScroll(1))
-        self.encoder.when_rotated_counter_clockwise = lambda: (print('ENC CCW', flush=True), self.backend.triggerScroll(-1))
-        self.button.when_pressed = lambda: print('BTN PRESSED', flush=True)
-        self.button.when_released = self.onRelease
-        self.button.when_held = self.onLongPress
-
-    def onRelease(self):
-        print('BTN RELEASED', flush=True)
-        if not self._was_held:
-            self.backend.triggerClick()
-        self._was_held = False
-
-    def onLongPress(self):
-        print('BTN HELD', flush=True)
-        self._was_held = True
-        self.backend.shutdownRequested.emit()
-
 
 def main():
     rclpy.init()
@@ -177,62 +63,28 @@ def main():
 
     backend = Backend()
     rosNode = BackendNode(backend)
-    hwInterface = HardwareInterface(backend)
 
+    # Process ROS 2 callbacks in the Qt Event Loop
     rosTimer = QTimer()
-
-    def onScroll(direction):
-        if not backend.menuVisible:
-            return
-        topics = backend.topicList
-        if not topics:
-            return
-        backend.selectedIndex = (backend.selectedIndex + direction) % len(topics)
-
-    def onClick():
-        if not backend.menuVisible:
-            rosNode.refreshTopics()
-            QTimer.singleShot(500, rosNode.refreshTopics)
-            backend.menuVisible = True
-        else:
-            topics = backend.topicList
-            if topics:
-                rosNode.subscribeLeft(topics[backend.selectedIndex])
-            backend.menuVisible = False
-
-    def onShutdownRequested():
-        print("Long press — stopping container...")
-        try:
-            rosTimer.stop()
-            app.quit()
-            if rclpy.ok():
-                rosNode.destroy_node()
-                rclpy.shutdown()
-        except Exception:
-            pass
-        subprocess.run(['docker', 'stop', 'mochi_ros2_gui'])
-
-    backend.scrolled.connect(onScroll)
-    backend.clicked.connect(onClick)
-    backend.shutdownRequested.connect(onShutdownRequested)
-
     rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
     rosTimer.start(10)
 
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("backend", backend)
-    engine.load(QUrl.fromLocalFile('/ros_ws/gui/Main.qml'))
+
+    # Path inside the new Docker container
+    engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
 
     if not engine.rootObjects():
         sys.exit(-1)
 
     exitCode = app.exec_()
+
     if rclpy.ok():
         rosNode.destroy_node()
         rclpy.shutdown()
 
     sys.exit(exitCode)
-
 
 if __name__ == '__main__':
     main()

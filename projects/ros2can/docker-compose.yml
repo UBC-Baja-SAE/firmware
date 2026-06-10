@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ros2_canopen_proxy
+    container_name: mochi_can
     volumes:
       - /home/ubcbaja/firmware/logs:/logs
     network_mode: "host"
@@ -11,4 +11,23 @@ services:
     environment:
       - RCUTILS_COLORIZED_OUTPUT=1
       - CAN_INTERFACE=can0
+    restart: unless-stopped
+
+  mochi_dash_gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.gui
+    container_name: mochi_gui
+    volumes:
+      # Mount the local gui folder into the container workspace
+      - ./gui:/ros2_ws/gui
+    network_mode: "host"
+    privileged: true
+    environment:
+      # Force Qt to use EGLFS for headless rendering on the Pi
+      - QT_QPA_PLATFORM=eglfs
+      - QT_QPA_EGLFS_ALWAYS_SET_MODE=1
+    devices:
+      # Give the container access to the Pi's GPU hardware
+      - "/dev/dri:/dev/dri"
     restart: unless-stopped

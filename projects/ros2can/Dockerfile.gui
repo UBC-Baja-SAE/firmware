@@ -1,0 +1,24 @@
+FROM ros:jazzy-ros-base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Qt5 and hardware acceleration drivers for headless EGLFS
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pyqt5 \
+    python3-pyqt5.qtquick \
+    qml-module-qtquick-controls \
+    qml-module-qtquick-controls2 \
+    qml-module-qtquick-extras \
+    qml-module-qtquick-templates2 \
+    libegl1 \
+    libgles2 \
+    libdrm2 \
+    libgbm1 \
+    libgl1-mesa-dri \
+    udev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ros2_ws
+
+# Default command sources ROS 2 and runs the GUI backend
+CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && python3 /ros2_ws/gui/Backend.py"]

@@ -15,7 +15,6 @@
     <depend>canopen_proxy_driver</depend>
     <depend>lely_core_libraries</depend>
 
-
     <export>
         <build_type>ament_cmake</build_type>
     </export>

@@ -36,12 +36,9 @@ def generate_launch_description():
         }]
     )
 
-    # ---------------------------------------------------------
-    # ADDED: The Demuxer Node
-    # ---------------------------------------------------------
     demuxer_node = Node(
         package='stm32_can_bridge',
-        executable='demuxer.py', # Use 'demuxer' if you used setup.py console_scripts
+        executable='demuxer.py',
         name='demuxer',
         output='screen'
     )
@@ -81,7 +78,7 @@ def generate_launch_description():
     return LaunchDescription([
         device_container_node,
         foxglove_bridge,
-        demuxer_node,        # <-- Appended here
+        demuxer_node,
         lifecycle_bringup,
         rosbag_recorder
     ])
