@@ -16,7 +16,7 @@
 
         Created:      2026-06-07 1:27:48 PM
         Created By:   Benjamin Friesen
-        Modified:     2026-06-09 10:42:09 PM
+        Modified:     2026-06-09 10:54:11 PM
         Modified By:  
 
     Device Info:
@@ -245,7 +245,7 @@ typedef struct {
     } x1200_SDOServerParameter;
     uint32_t x2000_linearPotentiometer;
     uint8_t x2001_imu_sub0;
-    float32_t x2001_imu[OD_CNT_ARR_2001];
+    uint32_t x2001_imu[OD_CNT_ARR_2001];
 } OD_RAM_t;
 
 #ifndef OD_ATTR_PERSIST_COMM

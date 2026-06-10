@@ -204,7 +204,7 @@ OD_ATTR_RAM OD_RAM_t OD_RAM = {
     },
     .x2000_linearPotentiometer = 0x00000000,
     .x2001_imu_sub0 = 0x06,
-    .x2001_imu = {0, 0, 0, 0, 0, 0}
+    .x2001_imu = {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000}
 };
 
 
@@ -1126,7 +1126,7 @@ static CO_PROGMEM ODObjs_t ODObjs = {
         .attribute0 = ODA_SDO_R,
         .attribute = ODA_SDO_R | ODA_TPDO | ODA_MB,
         .dataElementLength = 4,
-        .dataElementSizeof = sizeof(float32_t)
+        .dataElementSizeof = sizeof(uint32_t)
     }
 };
 
