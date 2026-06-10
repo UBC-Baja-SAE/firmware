@@ -2,8 +2,6 @@ FROM ros:jazzy-ros-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Only install compressed transport, NOT the full plugin bundle
-# Full image-transport-plugins includes compressed_depth and theora which cause errors
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-usb-cam \
     ros-jazzy-compressed-image-transport \
@@ -11,12 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /ros2_ws
 
-# usb_cam auto-publishes /image_raw/compressed when the transport plugin is present
-# No separate republish node needed - that was causing duplicate publisher conflicts
+COPY camera_params.yaml /ros2_ws/camera_params.yaml
+
 CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && \
     ros2 run usb_cam usb_cam_node_exe --ros-args \
-        -p video_device:=/dev/video0 \
-        -p framerate:=15.0 \
-        -p image_width:=640 \
-        -p image_height:=480 \
-        -p pixel_format:=mjpeg2rgb"]
+        --params-file /ros2_ws/camera_params.yaml"]
