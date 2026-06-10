@@ -20,7 +20,7 @@ COPY src/ /ros2_ws/src/
 # ADDED: Clone the audio definitions into your CAN workspace before compiling!
 RUN git clone -b ros2 https://github.com/ros-drivers/audio_common.git /ros2_ws/src/audio_common
 
-RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build"
+RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build --packages-select audio_common_msgs stm32_can_bridge"
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
