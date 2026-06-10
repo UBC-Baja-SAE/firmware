@@ -35,3 +35,14 @@ services:
       - "/dev/tty1:/dev/tty1"
       - "/dev/input:/dev/input"
     restart: unless-stopped
+
+  mochi_camera:
+    build:
+      context: .
+      dockerfile: Dockerfile.camera
+    container_name: mochi_camera
+    network_mode: "host"
+    privileged: true
+    devices:
+      - "/dev/video0:/dev/video0"
+    restart: unless-stopped

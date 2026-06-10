@@ -1,0 +1,14 @@
+FROM ros:jazzy-ros-base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install the USB camera driver and the compression plugins
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-jazzy-usb-cam \
+    ros-jazzy-image-transport-plugins \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ros2_ws
+
+# Launch the camera at 640x480 @ 15 FPS (Optimal for logging without CPU bloat)
+CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/video0 -p framerate:=15.0 -p image_width:=640 -p image_height:=480"]

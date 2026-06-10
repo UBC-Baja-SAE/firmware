@@ -68,6 +68,7 @@ def generate_launch_description():
         cmd=[
             'ros2', 'bag', 'record',
             '-a',
+            '-x', '^/image_raw$',
             '-s', 'mcap',
             '--max-cache-size', '10485760',
             '-o', bag_output_path
