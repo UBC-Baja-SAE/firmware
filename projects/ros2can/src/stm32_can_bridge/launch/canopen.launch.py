@@ -36,6 +36,16 @@ def generate_launch_description():
         }]
     )
 
+    # ---------------------------------------------------------
+    # ADDED: The Demuxer Node
+    # ---------------------------------------------------------
+    demuxer_node = Node(
+        package='stm32_can_bridge',
+        executable='demuxer.py', # Use 'demuxer' if you used setup.py console_scripts
+        name='demuxer',
+        output='screen'
+    )
+
     bringup_cmd = (
         'echo "Waiting for /master lifecycle services to be available..."; '
         'until ros2 lifecycle set /master configure; do '
@@ -57,7 +67,6 @@ def generate_launch_description():
         output='screen'
     )
 
-    # The rosbag recorder
     rosbag_recorder = ExecuteProcess(
         cmd=[
             'ros2', 'bag', 'record',
@@ -72,6 +81,7 @@ def generate_launch_description():
     return LaunchDescription([
         device_container_node,
         foxglove_bridge,
+        demuxer_node,        # <-- Appended here
         lifecycle_bringup,
         rosbag_recorder
     ])

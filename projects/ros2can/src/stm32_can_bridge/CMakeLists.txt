@@ -10,7 +10,6 @@ find_package(lely_core_libraries REQUIRED)
 
 cogen_dcf(stm32_bus)
 
-
 install(DIRECTORY
         launch
         config
@@ -20,6 +19,14 @@ install(DIRECTORY
 install(DIRECTORY
         ${CMAKE_CURRENT_BINARY_DIR}/config/stm32_bus
         DESTINATION share/${PROJECT_NAME}/config
+)
+
+# ---------------------------------------------------------
+# ADDED: Install the Python demuxer node as an executable
+# ---------------------------------------------------------
+install(PROGRAMS
+        src/demuxer.py
+        DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()
