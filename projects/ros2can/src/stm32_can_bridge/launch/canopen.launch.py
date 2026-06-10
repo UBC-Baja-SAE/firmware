@@ -2,6 +2,8 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch.actions import ExecuteProcess, RegisterEventHandler
+from launch.event_handlers import OnProcessStart
 
 def generate_launch_description():
     pkg_dir = get_package_share_directory('stm32_can_bridge')
@@ -33,4 +35,27 @@ def generate_launch_description():
         }]
     )
 
-    return LaunchDescription([device_container_node, foxglove_bridge])  # add foxglove_bridge here
+    # A non-strict automated bringup that ignores failures if a node is disconnected.
+    # We trigger this whenever the device_container_node starts (or respawns).
+    lifecycle_bringup = RegisterEventHandler(
+        OnProcessStart(
+            target_action=device_container_node,
+            on_start=[
+                ExecuteProcess(
+                    cmd=['bash', '-c',
+                         'sleep 3; '
+                         'for node in master rear_ecu rr_ecu rl_ecu fr_ecu fl_ecu; do '
+                         '  ros2 lifecycle set /$node configure; '
+                         '  ros2 lifecycle set /$node activate; '
+                         'done'],
+                    output='screen'
+                )
+            ]
+        )
+    )
+
+    return LaunchDescription([
+        device_container_node,
+        foxglove_bridge,
+        lifecycle_bringup
+    ])

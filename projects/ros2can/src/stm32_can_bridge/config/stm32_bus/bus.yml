@@ -3,17 +3,57 @@ options:
 
 master:
   node_id: 10
-  driver: "ros2_canopen::MasterDriver"
+  driver: "ros2_canopen::LifecycleMasterDriver"    # <-- Updated
   package: "canopen_master_driver"
   sync_period: 10000000
-
 
 nodes:
   rear_ecu:
     node_id: 5
     dcf: "rear_ecu.eds"
-    driver: "ros2_canopen::ProxyDriver"
+    driver: "ros2_canopen::LifecycleProxyDriver"   # <-- Updated
     package: "canopen_proxy_driver"
     polling: true
     period: 10
     boot: true
+    boot_timeout: 5000
+
+  rr_ecu:
+    node_id: 1
+    dcf: "rr_ecu.eds"
+    driver: "ros2_canopen::LifecycleProxyDriver"   # <-- Updated
+    package: "canopen_proxy_driver"
+    polling: true
+    period: 10
+    boot: true
+    boot_timeout: 5000
+
+  rl_ecu:
+    node_id: 2
+    dcf: "rl_ecu.eds"
+    driver: "ros2_canopen::LifecycleProxyDriver"   # <-- Updated
+    package: "canopen_proxy_driver"
+    polling: true
+    period: 10
+    boot: true
+    boot_timeout: 5000
+
+  fr_ecu:
+    node_id: 3
+    dcf: "fr_ecu.eds"
+    driver: "ros2_canopen::LifecycleProxyDriver"   # <-- Updated
+    package: "canopen_proxy_driver"
+    polling: true
+    period: 10
+    boot: true
+    boot_timeout: 5000
+
+  fl_ecu:
+    node_id: 4
+    dcf: "fl_ecu.eds"
+    driver: "ros2_canopen::LifecycleProxyDriver"   # <-- Updated
+    package: "canopen_proxy_driver"
+    polling: true
+    period: 10
+    boot: true
+    boot_timeout: 5000
