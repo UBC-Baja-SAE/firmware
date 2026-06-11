@@ -1,5 +1,10 @@
 {
   "device": "/dev/dri/card1",
   "hwcursor": false,
-  "pbuffers": true
+  "pbuffers": true,
+  "outputs": [
+    {
+      "name": "HDMI-A-1"
+    }
+  ]
 }

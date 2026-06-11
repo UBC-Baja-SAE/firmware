@@ -22,6 +22,7 @@ services:
     volumes:
       - ./gui:/ros2_ws/gui
       - /run/udev:/run/udev:ro
+      - /dev:/dev  # <-- ADDED: Mounts all devices dynamically
     network_mode: "host"
     ipc: "host"
     privileged: true
@@ -29,13 +30,10 @@ services:
     environment:
       - QT_QPA_PLATFORM=eglfs
       - QT_QPA_EGLFS_ALWAYS_SET_MODE=1
-      - QT_QPA_EGLFS_KMS_ATOMIC=1
+      - QT_QPA_EGLFS_KMS_ATOMIC=0
       - QT_QPA_EGLFS_KMS_CONFIG=/ros2_ws/gui/kms.json
       - XDG_RUNTIME_DIR=/tmp/runtime-root
-    devices:
-      - "/dev/dri:/dev/dri"
-      - "/dev/tty1:/dev/tty1"
-      - "/dev/input:/dev/input"
+    # REMOVED the devices: block
     restart: unless-stopped
 
   mochi_camera:
@@ -43,13 +41,13 @@ services:
       context: .
       dockerfile: Dockerfile.camera
     container_name: mochi_camera
+    volumes:
+      - /dev:/dev  # <-- ADDED: Mounts the camera and sound dynamically
     network_mode: "host"
     ipc: "host"
     privileged: true
-    environment: # <-- ADDED
-      - ROS_DOMAIN_ID=0              # <-- Binds it to the same network as the CAN bridge
+    environment:
+      - ROS_DOMAIN_ID=0
       - TZ=America/Vancouver
-    devices:
-      - "/dev/video0:/dev/video0"
-      - "/dev/snd:/dev/snd"          # <-- REQUIRED: Exposes the ALSA sound hardware
+    # REMOVED the devices: block
     restart: unless-stopped
