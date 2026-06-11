@@ -138,9 +138,6 @@ def main():
     # Pre-load the ROS 2 network backend while Splash is up
     rclpy.init()
 
-    # ==========================================
-    # --- 3. THE SPLIT-SECOND HANDOFF ---
-    # ==========================================
     print("[Mochi Boot] Backend ready. Dropping Splash Screen...")
     os.system("plymouth quit")
 
@@ -148,10 +145,6 @@ def main():
     # that Plymouth dropped the DRM lock. 0.5s is usually the sweet spot.
     # You can tune this down to 0.3s or 0.2s if the Pi 5 handles it!
     time.sleep(0.5)
-
-    # ==========================================
-    # --- 4. INSTANT UI LAUNCH ---
-    # ==========================================
     app = QGuiApplication(sys.argv)
 
     backend = Backend()
