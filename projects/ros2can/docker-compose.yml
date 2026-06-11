@@ -6,7 +6,7 @@ services:
     container_name: mochi_can
     volumes:
       - /home/ubcbaja/firmware/logs:/logs
-      - /etc/localtime:/etc/localtime:ro   # <-- ADD THIS
+      - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     network_mode: "host"
     ipc: "host"
@@ -25,26 +25,25 @@ services:
     volumes:
       - ./gui:/ros2_ws/gui
       - /run/udev:/run/udev:ro
-      - /dev:/dev  # <-- ADDED: Mounts all devices dynamically
-      - /etc/localtime:/etc/localtime:ro   # <-- ADD THIS
+      - /dev:/dev
+      - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     network_mode: "host"
     ipc: "host"
     privileged: true
     tty: true
     pid: "host"
-    group_add: # <-- ADD THIS BLOCK
+    group_add:
       - video
     environment:
       - QT_QPA_PLATFORM=eglfs
       - QT_QPA_EGLFS_INTEGRATION=eglfs_kms
       - QT_QPA_EGLFS_ALWAYS_SET_MODE=1
       - QT_QPA_EGLFS_KMS_ATOMIC=0
-      - QT_QPA_EGLFS_FORCE888=1            # <-- ADD THIS
+      - QT_QPA_EGLFS_FORCE888=1
       - QT_QPA_EGLFS_KMS_CONFIG=/ros2_ws/gui/kms.json
       - XDG_RUNTIME_DIR=/tmp/runtime-root
       - TZ=America/Vancouver
-    # REMOVED the devices: block
     restart: unless-stopped
 
   mochi_camera:
@@ -53,8 +52,8 @@ services:
       dockerfile: Dockerfile.camera
     container_name: mochi_camera
     volumes:
-      - /dev:/dev  # <-- ADDED: Mounts the camera and sound dynamically
-      - /etc/localtime:/etc/localtime:ro   # <-- ADD THIS
+      - /dev:/dev
+      - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     network_mode: "host"
     ipc: "host"
@@ -63,5 +62,4 @@ services:
     environment:
       - ROS_DOMAIN_ID=0
       - TZ=America/Vancouver
-    # REMOVED the devices: block
     restart: unless-stopped
