@@ -4,7 +4,8 @@
   "pbuffers": true,
   "outputs": [
     {
-      "name": "HDMI-A-1"
+      "name": "HDMI-A-1",
+      "format": "xrgb8888"
     }
   ]
 }
