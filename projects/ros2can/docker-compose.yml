@@ -27,6 +27,9 @@ services:
     ipc: "host"
     privileged: true
     tty: true
+    pid: "host"
+    group_add: # <-- ADD THIS BLOCK
+      - video
     environment:
       - QT_QPA_PLATFORM=eglfs
       - QT_QPA_EGLFS_INTEGRATION=eglfs_kms
@@ -48,8 +51,7 @@ services:
     network_mode: "host"
     ipc: "host"
     privileged: true
-    group_add: # <-- ADD THIS BLOCK
-      - video
+
     environment:
       - ROS_DOMAIN_ID=0
       - TZ=America/Vancouver
