@@ -35,7 +35,6 @@ services:
       - QT_QPA_EGLFS_FORCE888=1            # <-- ADD THIS
       - QT_QPA_EGLFS_KMS_CONFIG=/ros2_ws/gui/kms.json
       - XDG_RUNTIME_DIR=/tmp/runtime-root
-      - QT_LOGGING_RULES=qt.qpa.eglfs*=true
     # REMOVED the devices: block
     restart: unless-stopped
 

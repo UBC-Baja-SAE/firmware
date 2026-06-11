@@ -1,6 +1,18 @@
 import sys
 import time # <-- ADDED for timeout tracking
+import os
 import rclpy
+
+# --- FORCE PI 5 GRAPHICS PIPELINE ---
+os.environ["QT_QPA_EGLFS_KMS_ATOMIC"] = "1"
+os.environ["QT_QPA_EGLFS_INTEGRATION"] = "eglfs_kms"
+os.environ["QT_QPA_EGLFS_ALWAYS_SET_MODE"] = "1"
+os.environ["QT_QPA_EGLFS_FORCE888"] = "1"
+os.environ["QT_QPA_EGLFS_HIDECURSOR"] = "1"
+os.environ["MESA_LOADER_DRIVER_OVERRIDE"] = "v3d" # Forces the Pi 5 3D render node
+# ------------------------------------
+
+
 from rclpy.node import Node
 from std_msgs.msg import Float32
 from sensor_msgs.msg import CompressedImage # <-- ADDED for camera tracking
