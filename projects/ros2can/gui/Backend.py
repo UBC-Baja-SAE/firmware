@@ -4,6 +4,7 @@ import os
 import rclpy
 import glob
 import json
+import signal
 
 
 # ==========================================
@@ -139,12 +140,25 @@ def main():
     rclpy.init()
 
     print("[Mochi Boot] Backend ready. Dropping Splash Screen...")
-    os.system("plymouth quit")
 
-    # We only need enough time for the Linux kernel to physically register
-    # that Plymouth dropped the DRM lock. 0.5s is usually the sweet spot.
-    # You can tune this down to 0.3s or 0.2s if the Pi 5 handles it!
-    time.sleep(0.5)
+    # Optional: Force the Baja logo to stay on screen for 3 extra seconds
+    time.sleep(3)
+
+    # Hunt down the host's Plymouth daemon and send a Graceful Exit signal
+    for pid in os.listdir('/proc'):
+        if pid.isdigit():
+            try:
+                with open(f"/proc/{pid}/comm", 'r') as f:
+                    if f.read().strip() == 'plymouthd':
+                        os.kill(int(pid), signal.SIGTERM) # SIGTERM tells it to safely drop the DRM lock
+                        print("[Mochi Boot] Sent SIGTERM to Plymouth.")
+                        break
+            except Exception:
+                pass
+
+    # Give the kernel 1.5 seconds to fully drop the DRM keys
+    time.sleep(1.5)
+
     app = QGuiApplication(sys.argv)
 
     backend = Backend()
