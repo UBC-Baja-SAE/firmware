@@ -1,52 +1,17 @@
 import sys
-import os
-import glob
-import json
+import time # <-- ADDED for timeout tracking
 import rclpy
-
-# ==========================================
-# --- 1. STRICT HARDWARE MAPPING ---
-# ==========================================
-active_card = "/dev/dri/card0"
-for status_file in glob.glob("/sys/class/drm/card*-*/status"):
-    try:
-        with open(status_file, 'r') as f:
-            if "connected" in f.read():
-                active_card = f"/dev/dri/{status_file.split('/')[-2].split('-')[0]}"
-                break
-    except Exception:
-        pass
-
-kms_config = {
-    "device": active_card,
-    "hwcursor": False,
-    "pbuffers": True,
-    "outputs": [{"name": "HDMI-A-1", "format": "xrgb8888"}]
-}
-with open("/ros2_ws/gui/kms.json", "w") as f:
-    json.dump(kms_config, f, indent=2)
-
-os.environ["QT_QPA_EGLFS_KMS_ATOMIC"] = "1"
-os.environ["QT_QPA_EGLFS_INTEGRATION"] = "eglfs_kms"
-os.environ["QT_QPA_EGLFS_ALWAYS_SET_MODE"] = "1"
-os.environ["QT_QPA_EGLFS_FORCE888"] = "1"
-os.environ["QT_QPA_EGLFS_HIDECURSOR"] = "1"
-os.environ["QT_QPA_EGLFS_KMS_CONFIG"] = "/ros2_ws/gui/kms.json"
-
-# ==========================================
-# --- 2. ROS 2 & UI IMPORTS ---
-# ==========================================
 from rclpy.node import Node
 from std_msgs.msg import Float32
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import CompressedImage # <-- ADDED for camera tracking
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtProperty, QTimer, QUrl
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtQml import QQmlApplicationEngine
-import time
 
 class Backend(QObject):
     speedChanged = pyqtSignal()
     tachChanged = pyqtSignal()
+    # <-- ADDED new signals
     canActiveChanged = pyqtSignal()
     camActiveChanged = pyqtSignal()
 
@@ -73,6 +38,7 @@ class Backend(QObject):
             self._tach = val
             self.tachChanged.emit()
 
+    # <-- ADDED Status Properties
     @pyqtProperty(bool, notify=canActiveChanged)
     def canActive(self): return self._canActive
     @canActive.setter
@@ -93,32 +59,38 @@ class BackendNode(Node):
     def __init__(self, backend):
         super().__init__('baja_dash_backend')
         self.backend = backend
+
         self.alpha = 0.35
         self.filteredSpeed = 0.0
         self.filteredTach = 0.0
+
+        # <-- ADDED Trackers
         self.last_can_time = 0.0
         self.last_cam_time = 0.0
 
         self.create_subscription(Float32, '/rear_ecu/speedometer', self.speedCallback, 10)
         self.create_subscription(Float32, '/rear_ecu/tachometer', self.tachCallback, 10)
+        # <-- ADDED Camera subscription (change topic if necessary)
         self.create_subscription(CompressedImage, '/image_raw/compressed', self.camCallback, 10)
+
+        # <-- ADDED Watchdog Timer (runs every 500ms)
         self.watchdog = self.create_timer(0.5, self.checkTimeouts)
 
     def speedCallback(self, msg):
-        self.last_can_time = time.time()
+        self.last_can_time = time.time() # Reset CAN timeout
         self.filteredSpeed = (self.alpha * msg.data) + ((1 - self.alpha) * self.filteredSpeed)
         self.backend.speed = self.filteredSpeed
 
     def tachCallback(self, msg):
-        self.last_can_time = time.time()
         self.filteredTach = (self.alpha * msg.data) + ((1 - self.alpha) * self.filteredTach)
         self.backend.tach = self.filteredTach
 
     def camCallback(self, msg):
-        self.last_cam_time = time.time()
+        self.last_cam_time = time.time() # Reset CAM timeout
 
     def checkTimeouts(self):
         now = time.time()
+        # If no message in the last 1.5 seconds, set status to False
         self.backend.canActive = (now - self.last_can_time) < 1.5
         self.backend.camActive = (now - self.last_cam_time) < 1.5
 
@@ -129,21 +101,26 @@ def main():
     backend = Backend()
     rosNode = BackendNode(backend)
 
+    # Process ROS 2 callbacks in the Qt Event Loop
     rosTimer = QTimer()
     rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
     rosTimer.start(10)
 
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("backend", backend)
+
+    # Path inside the new Docker container
     engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
 
     if not engine.rootObjects():
         sys.exit(-1)
 
     exitCode = app.exec_()
+
     if rclpy.ok():
         rosNode.destroy_node()
         rclpy.shutdown()
+
     sys.exit(exitCode)
 
 if __name__ == '__main__':
