@@ -48,6 +48,9 @@ services:
     network_mode: "host"
     ipc: "host"
     privileged: true
+    group_add: # <-- ADD THIS BLOCK
+      - video
+      - render
     environment:
       - ROS_DOMAIN_ID=0
       - TZ=America/Vancouver
