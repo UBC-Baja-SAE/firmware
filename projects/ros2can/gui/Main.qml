@@ -21,6 +21,47 @@ Window {
             fillMode: Image.PreserveAspectCrop
         }
 
+        // --- ADDED Diagnostic Icons ---
+        Row {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.margins: 25
+            spacing: 20
+            z: 5 // Ensure it stays on top of the background
+
+            // CAN Bus Indicator
+            Rectangle {
+                width: 50; height: 30; radius: 5
+                // Green if active, Red if disconnected
+                color: backend.canActive ? "#2ECC71" : "#E74C3C"
+                border.color: "#FFFFFF"; border.width: 2
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "CAN"
+                    color: "white"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+            }
+
+            // Camera Indicator
+            Rectangle {
+                width: 50; height: 30; radius: 5
+                color: backend.camActive ? "#2ECC71" : "#E74C3C"
+                border.color: "#FFFFFF"; border.width: 2
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "CAM"
+                    color: "white"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+            }
+        }
+        // ------------------------------
+
         Row {
             anchors.centerIn: parent
             anchors.verticalCenterOffset: 20
