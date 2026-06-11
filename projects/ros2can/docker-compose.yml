@@ -15,7 +15,7 @@ services:
       - RCUTILS_COLORIZED_OUTPUT=1
       - CAN_INTERFACE=can0
       - TZ=America/Vancouver
-    restart: unless-stopped
+    restart: "no"
 
   mochi_dash:
     build:
@@ -44,7 +44,7 @@ services:
       - QT_QPA_EGLFS_KMS_CONFIG=/ros2_ws/gui/kms.json
       - XDG_RUNTIME_DIR=/tmp/runtime-root
       - TZ=America/Vancouver
-    restart: unless-stopped
+    restart: "no"
 
   mochi_camera:
     build:
@@ -62,4 +62,4 @@ services:
     environment:
       - ROS_DOMAIN_ID=0
       - TZ=America/Vancouver
-    restart: unless-stopped
+    restart: "no"
