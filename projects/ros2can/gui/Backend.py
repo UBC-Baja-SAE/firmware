@@ -6,10 +6,10 @@ import glob
 import json
 
 
-os.system("plymouth quit")
-time.sleep(1.5) # Give the kernel time to fully clear the DRM state
-
-# 2. THE PI 5 CARD FLIP DETECTOR
+# ==========================================
+# --- 1. BACKGROUND HARDWARE SCAN ---
+# (Happens silently while Splash Screen is visible)
+# ==========================================
 active_card = "/dev/dri/card0"
 for status_file in glob.glob("/sys/class/drm/card*-*/status"):
     try:
@@ -24,33 +24,27 @@ for status_file in glob.glob("/sys/class/drm/card*-*/status"):
 
 print(f"[Mochi Boot] Found active display on: {active_card}")
 
-# 3. DYNAMIC KMS CONFIG WRITER
-# Stripped out the forced format/mode so Atomic KMS can auto-negotiate
 kms_config = {
     "device": active_card,
     "hwcursor": False,
     "pbuffers": True,
-    "outputs": [
-        {
-            "name": "HDMI-A-1"
-        }
-    ]
+    "outputs": [{"name": "HDMI-A-1"}]
 }
 with open("/ros2_ws/gui/kms.json", "w") as f:
     json.dump(kms_config, f, indent=2)
 
-# 4. INJECT ENVIRONMENT VARIABLES
 os.environ["QT_QPA_EGLFS_KMS_ATOMIC"] = "1"
 os.environ["QT_QPA_EGLFS_INTEGRATION"] = "eglfs_kms"
 os.environ["QT_QPA_EGLFS_ALWAYS_SET_MODE"] = "1"
 os.environ["QT_QPA_EGLFS_HIDECURSOR"] = "1"
 os.environ["QT_QPA_EGLFS_KMS_CONFIG"] = "/ros2_ws/gui/kms.json"
-# Note: Removed FORCE888 so the GPU can pick its preferred color depth
-# ==========================================
 
+# ==========================================
+# --- 2. ROS 2 & QT IMPORTS ---
+# ==========================================
 from rclpy.node import Node
 from std_msgs.msg import Float32
-from sensor_msgs.msg import CompressedImage # <-- ADDED for camera tracking
+from sensor_msgs.msg import CompressedImage
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtProperty, QTimer, QUrl
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtQml import QQmlApplicationEngine
@@ -58,7 +52,6 @@ from PyQt5.QtQml import QQmlApplicationEngine
 class Backend(QObject):
     speedChanged = pyqtSignal()
     tachChanged = pyqtSignal()
-    # <-- ADDED new signals
     canActiveChanged = pyqtSignal()
     camActiveChanged = pyqtSignal()
 
@@ -142,21 +135,34 @@ class BackendNode(Node):
         self.backend.camActive = (now - self.last_cam_time) < 1.5
 
 def main():
+    # Pre-load the ROS 2 network backend while Splash is up
     rclpy.init()
+
+    # ==========================================
+    # --- 3. THE SPLIT-SECOND HANDOFF ---
+    # ==========================================
+    print("[Mochi Boot] Backend ready. Dropping Splash Screen...")
+    os.system("plymouth quit")
+
+    # We only need enough time for the Linux kernel to physically register
+    # that Plymouth dropped the DRM lock. 0.5s is usually the sweet spot.
+    # You can tune this down to 0.3s or 0.2s if the Pi 5 handles it!
+    time.sleep(0.5)
+
+    # ==========================================
+    # --- 4. INSTANT UI LAUNCH ---
+    # ==========================================
     app = QGuiApplication(sys.argv)
 
     backend = Backend()
     rosNode = BackendNode(backend)
 
-    # Process ROS 2 callbacks in the Qt Event Loop
     rosTimer = QTimer()
     rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
     rosTimer.start(10)
 
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("backend", backend)
-
-    # Path inside the new Docker container
     engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
 
     if not engine.rootObjects():
