@@ -33,6 +33,7 @@ services:
       - QT_QPA_EGLFS_KMS_ATOMIC=0
       - QT_QPA_EGLFS_KMS_CONFIG=/ros2_ws/gui/kms.json
       - XDG_RUNTIME_DIR=/tmp/runtime-root
+      - QT_QPA_EGLFS_INTEGRATION=eglfs_kms
     # REMOVED the devices: block
     restart: unless-stopped
 
