@@ -31,7 +31,6 @@ services:
     network_mode: "host"
     ipc: "host"
     privileged: true
-    tty: true
     pid: "host"
     group_add:
       - video
