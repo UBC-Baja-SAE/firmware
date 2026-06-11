@@ -6,12 +6,15 @@ services:
     container_name: mochi_can
     volumes:
       - /home/ubcbaja/firmware/logs:/logs
+      - /etc/localtime:/etc/localtime:ro   # <-- ADD THIS
+      - /etc/timezone:/etc/timezone:ro
     network_mode: "host"
     ipc: "host"
     privileged: true
     environment:
       - RCUTILS_COLORIZED_OUTPUT=1
       - CAN_INTERFACE=can0
+      - TZ=America/Vancouver
     restart: unless-stopped
 
   mochi_dash:
@@ -23,6 +26,8 @@ services:
       - ./gui:/ros2_ws/gui
       - /run/udev:/run/udev:ro
       - /dev:/dev  # <-- ADDED: Mounts all devices dynamically
+      - /etc/localtime:/etc/localtime:ro   # <-- ADD THIS
+      - /etc/timezone:/etc/timezone:ro
     network_mode: "host"
     ipc: "host"
     privileged: true
@@ -38,6 +43,7 @@ services:
       - QT_QPA_EGLFS_FORCE888=1            # <-- ADD THIS
       - QT_QPA_EGLFS_KMS_CONFIG=/ros2_ws/gui/kms.json
       - XDG_RUNTIME_DIR=/tmp/runtime-root
+      - TZ=America/Vancouver
     # REMOVED the devices: block
     restart: unless-stopped
 
@@ -48,6 +54,8 @@ services:
     container_name: mochi_camera
     volumes:
       - /dev:/dev  # <-- ADDED: Mounts the camera and sound dynamically
+      - /etc/localtime:/etc/localtime:ro   # <-- ADD THIS
+      - /etc/timezone:/etc/timezone:ro
     network_mode: "host"
     ipc: "host"
     privileged: true
