@@ -94,4 +94,34 @@ class BackendNode(Node):
         self.backend.canActive = (now - self.last_can_time) < 1.5
         self.backend.camActive = (now - self.last_cam_time) < 1.5
 
-# ... (main() remains exactly the same) ...
+def main():
+    rclpy.init()
+    app = QGuiApplication(sys.argv)
+
+    backend = Backend()
+    rosNode = BackendNode(backend)
+
+    # Process ROS 2 callbacks in the Qt Event Loop
+    rosTimer = QTimer()
+    rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
+    rosTimer.start(10)
+
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("backend", backend)
+
+    # Path inside the new Docker container
+    engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
+
+    if not engine.rootObjects():
+        sys.exit(-1)
+
+    exitCode = app.exec_()
+
+    if rclpy.ok():
+        rosNode.destroy_node()
+        rclpy.shutdown()
+
+    sys.exit(exitCode)
+
+if __name__ == '__main__':
+    main()
