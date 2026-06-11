@@ -6,19 +6,15 @@ import glob
 import json
 
 
-# 1. THE DRM MASTER ASSASSIN
-# Force-kill Plymouth to guarantee the DRM hardware lock is free
-os.system("killall -9 plymouthd > /dev/null 2>&1")
-time.sleep(0.5) # Give the Linux kernel a half-second to release the lock
+os.system("plymouth quit")
+time.sleep(1.5) # Give the kernel time to fully clear the DRM state
 
 # 2. THE PI 5 CARD FLIP DETECTOR
-# Dynamically scan the hardware to find which card has the HDMI plugged in
-active_card = "/dev/dri/card0" # Fallback default
+active_card = "/dev/dri/card0"
 for status_file in glob.glob("/sys/class/drm/card*-*/status"):
     try:
         with open(status_file, 'r') as f:
             if "connected" in f.read():
-                # Extracts 'card1' from '/sys/class/drm/card1-HDMI-A-1/status'
                 folder_name = status_file.split('/')[-2]
                 card_name = folder_name.split('-')[0]
                 active_card = f"/dev/dri/{card_name}"
@@ -29,16 +25,14 @@ for status_file in glob.glob("/sys/class/drm/card*-*/status"):
 print(f"[Mochi Boot] Found active display on: {active_card}")
 
 # 3. DYNAMIC KMS CONFIG WRITER
-# Rewrite kms.json on the fly to match the active hardware
+# Stripped out the forced format/mode so Atomic KMS can auto-negotiate
 kms_config = {
     "device": active_card,
     "hwcursor": False,
     "pbuffers": True,
     "outputs": [
         {
-            "name": "HDMI-A-1",
-            "format": "xrgb8888",
-            "mode": "1280x480"
+            "name": "HDMI-A-1"
         }
     ]
 }
@@ -49,9 +43,9 @@ with open("/ros2_ws/gui/kms.json", "w") as f:
 os.environ["QT_QPA_EGLFS_KMS_ATOMIC"] = "1"
 os.environ["QT_QPA_EGLFS_INTEGRATION"] = "eglfs_kms"
 os.environ["QT_QPA_EGLFS_ALWAYS_SET_MODE"] = "1"
-os.environ["QT_QPA_EGLFS_FORCE888"] = "1"
 os.environ["QT_QPA_EGLFS_HIDECURSOR"] = "1"
 os.environ["QT_QPA_EGLFS_KMS_CONFIG"] = "/ros2_ws/gui/kms.json"
+# Note: Removed FORCE888 so the GPU can pick its preferred color depth
 # ==========================================
 
 from rclpy.node import Node
