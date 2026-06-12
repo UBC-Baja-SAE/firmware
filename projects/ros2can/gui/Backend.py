@@ -1,37 +1,27 @@
 import sys
 import os
-import time
 import glob
 import json
 import rclpy
 
 # ==========================================
-# --- 1. SMART BOOT: DRM & KMS AUTOCONFIG ---
+# --- 1. STRICT HARDWARE MAPPING ---
 # ==========================================
 active_card = "/dev/dri/card0"
 for status_file in glob.glob("/sys/class/drm/card*-*/status"):
     try:
         with open(status_file, 'r') as f:
             if "connected" in f.read():
-                folder_name = status_file.split('/')[-2]
-                card_name = folder_name.split('-')[0]
-                active_card = f"/dev/dri/{card_name}"
+                active_card = f"/dev/dri/{status_file.split('/')[-2].split('-')[0]}"
                 break
     except Exception:
         pass
-
-print(f"[Mochi Boot] Found active display on: {active_card}")
 
 kms_config = {
     "device": active_card,
     "hwcursor": False,
     "pbuffers": True,
-    "outputs": [
-        {
-            "name": "HDMI-A-1",
-            "format": "xrgb8888"
-        }
-    ]
+    "outputs": [{"name": "HDMI-A-1", "format": "xrgb8888"}]
 }
 with open("/ros2_ws/gui/kms.json", "w") as f:
     json.dump(kms_config, f, indent=2)
@@ -44,7 +34,7 @@ os.environ["QT_QPA_EGLFS_HIDECURSOR"] = "1"
 os.environ["QT_QPA_EGLFS_KMS_CONFIG"] = "/ros2_ws/gui/kms.json"
 
 # ==========================================
-# --- 2. ROS 2 IMPORTS & CLASSES ---
+# --- 2. ROS 2 & UI IMPORTS ---
 # ==========================================
 from rclpy.node import Node
 from std_msgs.msg import Float32
@@ -52,6 +42,7 @@ from sensor_msgs.msg import CompressedImage
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtProperty, QTimer, QUrl
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtQml import QQmlApplicationEngine
+import time
 
 class Backend(QObject):
     speedChanged = pyqtSignal()
@@ -131,14 +122,17 @@ class BackendNode(Node):
         self.backend.canActive = (now - self.last_can_time) < 1.5
         self.backend.camActive = (now - self.last_cam_time) < 1.5
 
-# ==========================================
-# --- 3. MAIN: UI FIRST, THEN ROS ---
-# ==========================================
 def main():
-    # Grab DRM master immediately — Plymouth already deactivated by the service file
+    rclpy.init()
     app = QGuiApplication(sys.argv)
 
     backend = Backend()
+    rosNode = BackendNode(backend)
+
+    rosTimer = QTimer()
+    rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
+    rosTimer.start(10)
+
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("backend", backend)
     engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
@@ -146,20 +140,10 @@ def main():
     if not engine.rootObjects():
         sys.exit(-1)
 
-    # Screen is up — now do the slow ROS init
-    rclpy.init()
-    rosNode = BackendNode(backend)
-
-    rosTimer = QTimer()
-    rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
-    rosTimer.start(10)
-
     exitCode = app.exec_()
-
     if rclpy.ok():
         rosNode.destroy_node()
         rclpy.shutdown()
-
     sys.exit(exitCode)
 
 if __name__ == '__main__':
