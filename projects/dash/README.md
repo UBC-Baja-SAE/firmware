@@ -1,0 +1,1 @@
+Simple Qt6 DAQ application for logging OpenCyphal CAN bus data to .mcap
