@@ -3,7 +3,6 @@ import os
 import time
 import glob
 import json
-import signal
 import rclpy
 
 # ==========================================
@@ -23,7 +22,6 @@ for status_file in glob.glob("/sys/class/drm/card*-*/status"):
 
 print(f"[Mochi Boot] Found active display on: {active_card}")
 
-# Restored explicit format mapping to prevent "null config" EGL errors
 kms_config = {
     "device": active_card,
     "hwcursor": False,
@@ -38,7 +36,6 @@ kms_config = {
 with open("/ros2_ws/gui/kms.json", "w") as f:
     json.dump(kms_config, f, indent=2)
 
-# Restored FORCE888 to ensure Pi 5 Atomic KMS driver accepts the UI
 os.environ["QT_QPA_EGLFS_KMS_ATOMIC"] = "1"
 os.environ["QT_QPA_EGLFS_INTEGRATION"] = "eglfs_kms"
 os.environ["QT_QPA_EGLFS_ALWAYS_SET_MODE"] = "1"
@@ -134,44 +131,36 @@ class BackendNode(Node):
         self.backend.canActive = (now - self.last_can_time) < 1.5
         self.backend.camActive = (now - self.last_cam_time) < 1.5
 
+# ==========================================
+# --- 3. MAIN: UI FIRST, THEN ROS ---
+# ==========================================
 def main():
-    def main():
-        # GRAB THE DISPLAY FIRST — before ROS, before anything slow
-        app = QGuiApplication(sys.argv)
+    # Grab DRM master immediately — Plymouth already deactivated by the service file
+    app = QGuiApplication(sys.argv)
 
-        # Qt now holds DRM master. Finish Plymouth cleanly.
-        import subprocess
-        subprocess.Popen(
-            ['plymouth', 'quit'],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+    backend = Backend()
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("backend", backend)
+    engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
 
-        # Show UI immediately — backend starts in "no data" state,
-        # which your existing canActive/camActive flags already handle
-        backend = Backend()
-        engine = QQmlApplicationEngine()
-        engine.rootContext().setContextProperty("backend", backend)
-        engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
+    if not engine.rootObjects():
+        sys.exit(-1)
 
-        if not engine.rootObjects():
-            sys.exit(-1)
+    # Screen is up — now do the slow ROS init
+    rclpy.init()
+    rosNode = BackendNode(backend)
 
-        # NOW do the slow ROS stuff — screen is already up
-        rclpy.init()
-        rosNode = BackendNode(backend)
+    rosTimer = QTimer()
+    rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
+    rosTimer.start(10)
 
-        rosTimer = QTimer()
-        rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
-        rosTimer.start(10)
+    exitCode = app.exec_()
 
-        exitCode = app.exec_()
+    if rclpy.ok():
+        rosNode.destroy_node()
+        rclpy.shutdown()
 
-        if rclpy.ok():
-            rosNode.destroy_node()
-            rclpy.shutdown()
-
-        sys.exit(exitCode)
+    sys.exit(exitCode)
 
 if __name__ == '__main__':
     main()
