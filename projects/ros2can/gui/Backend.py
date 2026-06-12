@@ -135,53 +135,43 @@ class BackendNode(Node):
         self.backend.camActive = (now - self.last_cam_time) < 1.5
 
 def main():
-    rclpy.init()
+    def main():
+        # GRAB THE DISPLAY FIRST — before ROS, before anything slow
+        app = QGuiApplication(sys.argv)
 
-    # ==========================================
-    # --- 3. THE PYTHON SPLASH ASSASSIN ---
-    # ==========================================
-    print("[Mochi Boot] Backend ready. Dropping Splash Screen...")
-    time.sleep(3)
+        # Qt now holds DRM master. Finish Plymouth cleanly.
+        import subprocess
+        subprocess.Popen(
+            ['plymouth', 'quit'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
-    for pid in os.listdir('/proc'):
-        if pid.isdigit():
-            try:
-                with open(f"/proc/{pid}/comm", 'r') as f:
-                    if f.read().strip() == 'plymouthd':
-                        os.kill(int(pid), signal.SIGTERM)
-                        print("[Mochi Boot] Sent SIGTERM to Plymouth.")
-                        break
-            except Exception:
-                pass
+        # Show UI immediately — backend starts in "no data" state,
+        # which your existing canActive/camActive flags already handle
+        backend = Backend()
+        engine = QQmlApplicationEngine()
+        engine.rootContext().setContextProperty("backend", backend)
+        engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
 
-    time.sleep(1.5)
+        if not engine.rootObjects():
+            sys.exit(-1)
 
-    # ==========================================
-    # --- 4. INSTANT UI LAUNCH ---
-    # ==========================================
-    app = QGuiApplication(sys.argv)
+        # NOW do the slow ROS stuff — screen is already up
+        rclpy.init()
+        rosNode = BackendNode(backend)
 
-    backend = Backend()
-    rosNode = BackendNode(backend)
+        rosTimer = QTimer()
+        rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
+        rosTimer.start(10)
 
-    rosTimer = QTimer()
-    rosTimer.timeout.connect(lambda: rclpy.spin_once(rosNode, timeout_sec=0))
-    rosTimer.start(10)
+        exitCode = app.exec_()
 
-    engine = QQmlApplicationEngine()
-    engine.rootContext().setContextProperty("backend", backend)
-    engine.load(QUrl.fromLocalFile('/ros2_ws/gui/Main.qml'))
+        if rclpy.ok():
+            rosNode.destroy_node()
+            rclpy.shutdown()
 
-    if not engine.rootObjects():
-        sys.exit(-1)
-
-    exitCode = app.exec_()
-
-    if rclpy.ok():
-        rosNode.destroy_node()
-        rclpy.shutdown()
-
-    sys.exit(exitCode)
+        sys.exit(exitCode)
 
 if __name__ == '__main__':
     main()
