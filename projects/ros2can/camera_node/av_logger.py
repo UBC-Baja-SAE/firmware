@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
-from audio_common_msgs.msg import AudioData
+from foxglove_msgs.msg import RawAudio
 import cv2
 import threading
 import subprocess
@@ -13,7 +13,7 @@ class AVLoggerNode(Node):
 
         # Standard Reliable QoS (Best Effort over websockets drops frames in Foxglove)
         self.video_pub = self.create_publisher(CompressedImage, '/image_raw/compressed', 10)
-        self.audio_pub = self.create_publisher(AudioData, '/audio/data', 10)
+        self.audio_pub = self.create_publisher(RawAudio, '/audio/data', 10)
 
         self.cam_thread = threading.Thread(target=self.video_loop, daemon=True)
         self.cam_thread.start()
@@ -70,8 +70,17 @@ class AVLoggerNode(Node):
             while rclpy.ok():
                 data = proc.stdout.read(1024)
                 if data:
-                    msg = AudioData()
-                    msg.data = list(data)
+                    msg = RawAudio()
+                    # Foxglove audio needs specific headers to playback properly
+                    msg.timestamp = self.get_clock().now().to_msg()
+                    msg.format = "pcm-s16"   # Strict Foxglove format matching your S16_LE
+                    msg.sample_rate = 16000  # Matching your arecord setting
+                    msg.number_of_channels = 1
+
+                    # Because data is read as bytes, and msg.data is a uint8[],
+                    # we can map it directly in ROS 2 Jazzy. No list conversion needed.
+                    msg.data = data
+
                     try:
                         self.audio_pub.publish(msg)
                         audio_count += 1

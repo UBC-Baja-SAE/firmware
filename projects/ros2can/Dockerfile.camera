@@ -2,24 +2,18 @@ FROM ros:jazzy-ros-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Install Python audio/video libraries, plus git and colcon to build from source
+# 1. Install Python audio/video libraries, plus foxglove-msgs natively
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-opencv \
     python3-pyaudio \
     alsa-utils \
-    git \
-    python3-colcon-common-extensions \
+    ros-jazzy-foxglove-msgs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros2_ws
 
-# 2. Clone the audio_common repository (ros2 branch) and build ONLY the message definitions
-RUN mkdir -p src \
-    && git clone -b ros2 https://github.com/ros-drivers/audio_common.git src/audio_common \
-    && /bin/bash -c "source /opt/ros/jazzy/setup.bash && colcon build --packages-select audio_common_msgs"
-
-# 3. Copy our Python node
+# 2. Copy our Python node
 COPY camera_node/ /ros2_ws/camera_node/
 
-# 4. Source both the global ROS 2 install AND our new local workspace before running
-CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && source /ros2_ws/install/setup.bash && python3 /ros2_ws/camera_node/av_logger.py"]
+# 3. Source the global ROS 2 install and run the Python script directly
+CMD ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && python3 /ros2_ws/camera_node/av_logger.py"]
