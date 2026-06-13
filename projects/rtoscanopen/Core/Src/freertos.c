@@ -51,6 +51,7 @@ extern CANopenNodeSTM32 canOpenNodeSTM32;
 extern volatile uint32_t speedometer_kmh;
 extern volatile uint32_t tach_raw_value;
 extern volatile uint64_t tim2_overflow_count;
+extern volatile uint64_t tim3_overflow_count;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -155,20 +156,25 @@ void canopen_task(void *argument)
   canOpenNodeSTM32.baudrate = 500;
   canopen_app_init(&canOpenNodeSTM32);
 
-
   /* Infinite loop */
   for(;;)
   {
-
-    if (tim2_overflow_count > 0) {
+    // Zero out speedometer if motion stops
+    if (tim2_overflow_count > 0) { // Consider making this > 0 for 32-bit
       speedometer_kmh = 0;
-      // speed_first_pulse = 1; // Optional: Reset the toggle if extern'd
+    }
+
+    // Zero out tachometer if engine/wheel stops.
+    // At 64MHz, a 16-bit timer overflows every ~1ms.
+    // Waiting for 5000 overflows = 5 second timeout.
+    if (tim3_overflow_count > 5000) {
+      tach_raw_value = 0;
     }
 
     OD_RAM.x2000_speedometer = speedometer_kmh;
 
-    //speedometer data bc no testbench
-    OD_RAM.x2001_tachometer  = speedometer_kmh*2;
+    // Send actual calculated tachometer data
+    OD_RAM.x2001_tachometer  = tach_raw_value;
 
     canopen_app_process();
     osDelay(1);

@@ -97,11 +97,16 @@ int main(void)
   MX_FDCAN1_Init();
   MX_TIM6_Init();
   MX_TIM2_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_4);
 
   HAL_TIM_Base_Start_IT(&htim2);
+
+  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_4);
+
+  HAL_TIM_Base_Start_IT(&htim3);
 
   /* USER CODE END 2 */
 
@@ -187,12 +192,19 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 /* ── tuneable constants ────────────────────────────────────────────── */
-#define TIM2_CLOCK_FREQ         64000000UL   // HSI @ 64 MHz, prescaler = 0
+#define TIM2_CLOCK_FREQ         64000000UL    // HSI @ 64 MHz, prescaler = 0
+#define TIM3_CLOCK_FREQ         64000000UL    // Make sure to define this!
 #define TIMER_PERIOD_TICKS      4294967296ULL // 2^32 for 32-bit TIM2
+#define TIM3_PERIOD_TICKS       65536ULL      // 2^16 for 16-bit TIM3
+
 #define MAGNET_DEBOUNCE_TIME_MS 5U
+#define SPARK_DEBOUNCE_TIME_MS  10U           // BRING THIS BACK
+#define PULSES_PER_REV          2.0f          // BRING THIS BACK
+
 #define SPEED_SMOOTHING         0.2f
 #define TIRE_CIRCUMFERENCE_KM   0.001963f
 #define MAX_SPEED_KMH           150U
+#define MAX_RPM_LIMIT           20000U        // BRING THIS BACK
 
 /* ── state (ISR-owned) ─────────────────────────────────────────────── */
 static volatile uint32_t previous_capture     = 0;
@@ -202,10 +214,17 @@ static volatile float    smoothed_speed_freq  = 0.0f;
 
 volatile uint32_t last_magnet_time     = 0;
 
+/* Tachometer specific state variables */
+volatile uint32_t last_spark_time      = 0;   // BRING THIS BACK
+static volatile uint32_t tach_previous_capture = 0;
+static volatile uint8_t  tach_first_pulse      = 1;
+volatile uint64_t tim3_overflow_count  = 0;
+static volatile float    tach_smoothed_freq    = 0.0f;
+
 /* ── speedometer output ────────────────────────────────── */
 volatile uint32_t speedometer_kmh = 0;
 
-/* ── lin pot output ────────────────────────────────── */
+/* ── lin pot / tach output ────────────────────────────────── */
 volatile uint32_t tach_raw_value = 0;
 
 /* Called from HAL_TIM_PeriodElapsedCallback in main.c */
@@ -216,6 +235,7 @@ void Speedometer_OverflowISR(void)
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
+  /* ---------------- SPEEDOMETER (TIM2) ---------------- */
   if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
   {
     uint32_t now = HAL_GetTick();
@@ -234,7 +254,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       return;
     }
 
-    // TIM2 is 32-bit so overflow is rare, but handled correctly
     uint64_t diff = (tim2_overflow_count * TIMER_PERIOD_TICKS)
                   + (uint64_t)cap
                   - (uint64_t)previous_capture;
@@ -256,8 +275,52 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       speedometer_kmh = (kmh > MAX_SPEED_KMH) ? MAX_SPEED_KMH : kmh;
     }
   }
-}
 
+  /* ---------------- TACHOMETER (TIM3) ---------------- */
+  /* ---------------- TACHOMETER (TIM3) ---------------- */
+  else if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
+  {
+    uint32_t now = HAL_GetTick();
+
+    // SOFTWARE DEBOUNCE: Ignores the BJT high-frequency ringing
+    if ((now - last_spark_time) < SPARK_DEBOUNCE_TIME_MS) {
+      return;
+    }
+    last_spark_time = now;
+
+    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
+
+    if (tach_first_pulse)
+    {
+      tach_previous_capture = cap;
+      tim3_overflow_count = 0;
+      tach_first_pulse = 0;
+      return;
+    }
+
+    // New safe multi-overflow math
+    uint64_t diff = (tim3_overflow_count * TIM3_PERIOD_TICKS)
+                  + (uint64_t)cap
+                  - (uint64_t)tach_previous_capture;
+
+    tach_previous_capture = cap;
+    tim3_overflow_count = 0;
+
+    if (diff > 0ULL)
+    {
+      float instant_freq = (float)TIM3_CLOCK_FREQ / (float)diff;
+
+      tach_smoothed_freq = (instant_freq * SPEED_SMOOTHING)
+                          + (tach_smoothed_freq * (1.0f - SPEED_SMOOTHING));
+
+      // Calculate true RPM using your old logic
+      uint32_t calculated_rpm = (uint32_t)((tach_smoothed_freq * 60.0f) / PULSES_PER_REV);
+
+      // Cap at max limit
+      tach_raw_value = (calculated_rpm > MAX_RPM_LIMIT) ? MAX_RPM_LIMIT : calculated_rpm;
+    }
+  }
+}
 /* USER CODE END 4 */
 
  /* MPU Configuration */
@@ -314,6 +377,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   // ADD THIS SO YOUR OVERFLOW TRACKING WORKS:
   if (htim->Instance == TIM2) {
     Speedometer_OverflowISR();
+  }
+
+  if (htim->Instance == TIM3) {
+    tim3_overflow_count++;
   }
   /* USER CODE END Callback 1 */
 }
