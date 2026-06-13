@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     ros-jazzy-canopen-master-driver \
     ros-jazzy-canopen-proxy-driver \
     ros-jazzy-foxglove-bridge \
+    ros-jazzy-foxglove-msgs \
     python3-colcon-common-extensions \
     can-utils \
     git \
