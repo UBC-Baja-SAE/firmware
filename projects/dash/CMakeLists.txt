@@ -47,7 +47,7 @@ qt_add_qml_module(${PROJECT_NAME}
         QML_FILES
             src/ui/main.qml
         RESOURCES
-            src/ui/assets/images/background.gif
+            "src/ui/assets/images/background.gif"
             "src/ui/assets/fonts/FOT-NewRodin Pro EB.otf"
 
 )
@@ -59,7 +59,7 @@ if (APPLE OR WIN32)
     target_sources(${PROJECT_NAME} PRIVATE src/core/can_dev.cpp)
 
 elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    message(STATUS "Configuring for Linux Target: Using SocketCAN")
+    message(STATUS "Configuring for Linux Build")
     target_compile_definitions(${PROJECT_NAME} PRIVATE RELEASE)
     target_sources(${PROJECT_NAME} PRIVATE src/core/can_socket.cpp)
 endif()
