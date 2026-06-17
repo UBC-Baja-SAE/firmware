@@ -1,15 +1,18 @@
-#include <QApplication>
-#include <QPushButton>
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 
-#include "canard.h"
+int main(int argc, char *argv[]) {
+    QGuiApplication app(argc, argv);
 
-#include "writer.hpp"
+    QQmlApplicationEngine engine;
 
-int main(int argc, char* argv[])
-{
-    QApplication a(argc, argv);
-    QPushButton button("Hello world!", nullptr);
-    button.resize(200, 100);
-    button.show();
-    return QApplication::exec();
+    const QUrl url(u"qrc:/qt/qml/Roxy/src/ui/main.qml"_qs);
+    engine.load(url);
+
+    if (engine.rootObjects().isEmpty()) {
+        return -1;
+    }
+
+    return app.exec();
 }
