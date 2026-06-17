@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 cmake_policy(SET CMP0135 NEW)
-project(dash VERSION 1.0.0 LANGUAGES CXX)
+project(dash VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
 
 # Set QT Resource format
 qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
 
 # Download Foxglove SDK for appropriate platform
 set(FOXGLOVE_SDK_VERSION "0.25.1")
@@ -23,6 +24,9 @@ if (APPLE AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
 elseif (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
     message(STATUS "Fetching Foxglove SDK for Linux (AArch64 / Pi 5)")
     set(FOXGLOVE_URL "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv${FOXGLOVE_SDK_VERSION}/foxglove-v${FOXGLOVE_SDK_VERSION}-cpp-aarch64-unknown-linux-gnu.zip")
+elseif (WIN32)
+    message(STATUS "Fetching Foxglove SDK for Windows")
+    set(FOXGLOVE_URL "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv${FOXGLOVE_SDK_VERSION}/foxglove-v${FOXGLOVE_SDK_VERSION}-cpp-x86_64-pc-windows-msvc.zip")
 endif()
 
 FetchContent_Declare(
