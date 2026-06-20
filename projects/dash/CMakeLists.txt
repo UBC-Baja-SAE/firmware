@@ -9,7 +9,7 @@ set(CMAKE_AUTOMOC ON)
 include(FetchContent)
 
 # Shared Dependencies
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets SerialBus)
 
 # Set QT Resource format
 qt_policy(SET QTP0001 NEW)
@@ -39,9 +39,30 @@ FetchContent_MakeAvailable(foxglove_sdk)
 find_package(foxglove-sdk CONFIG REQUIRED HINTS "${foxglove_sdk_SOURCE_DIR}")
 foxglove_sdk_add_cpp_library(foxglove_cpp TYPE STATIC)
 
+# libcanard
+add_library(canard STATIC
+        src/third_party/libcanard/libcanard/canard.c
+)
+target_include_directories(canard PUBLIC
+        src/third_party/libcanard/libcanard
+)
+set_target_properties(canard PROPERTIES
+        C_STANDARD 99
+        C_STANDARD_REQUIRED ON
+)
+
 # Entrypoint
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
+        src/core/can_socket.h
+)
+
+#EGLFS config
+qt_add_resources(${PROJECT_NAME} "app_config"
+        PREFIX "/"
+        BASE "src/config"
+        FILES
+        src/config/eglfs.json
 )
 
 # QML files
@@ -55,6 +76,8 @@ qt_add_qml_module(${PROJECT_NAME}
             "src/ui/assets/fonts/FOT-NewRodin Pro EB.otf"
 
 )
+
+
 
 # Cross Compilation for Mac or Linux
 if (APPLE OR WIN32)
@@ -75,5 +98,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Qml
         Qt6::Quick
         Qt6::Widgets
+        Qt6::SerialBus
         foxglove_cpp
+        canard
 )

@@ -13,6 +13,13 @@ Toolchain and cmake settings will be written for CLion, as that was what was use
 
 MacOS (Homebrew):
 ```bash
-  brew install nlohmann-json websocketpp asio qt6
+  brew install qt6
 ```
 Windows:
+```bash
+  
+```
+Pi:
+```bash
+  sudo apt install qt6-base-dev qt6-declarative-dev qt6-tools-dev qt6-tools-dev-tools cmake build-essential ninja-build pkg-config libgl1-mesa-dri libgles2-mesa libdrm2 libinput10 libegl1
+```
