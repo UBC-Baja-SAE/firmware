@@ -39,18 +39,6 @@ FetchContent_MakeAvailable(foxglove_sdk)
 find_package(foxglove-sdk CONFIG REQUIRED HINTS "${foxglove_sdk_SOURCE_DIR}")
 foxglove_sdk_add_cpp_library(foxglove_cpp TYPE STATIC)
 
-# libcanard
-add_library(canard STATIC
-        src/third_party/libcanard/libcanard/canard.c
-)
-target_include_directories(canard PUBLIC
-        src/third_party/libcanard/libcanard
-)
-set_target_properties(canard PROPERTIES
-        C_STANDARD 99
-        C_STANDARD_REQUIRED ON
-)
-
 # Entrypoint
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
@@ -100,5 +88,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Widgets
         Qt6::SerialBus
         foxglove_cpp
-        canard
 )

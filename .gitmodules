@@ -4,6 +4,3 @@
 [submodule "projects/rtoscanopen/Middlewares/CANopenNodeSTM32"]
 	path = projects/rtoscanopen/Middlewares/CANopenNodeSTM32
 	url = https://github.com/CANopenNode/CanOpenSTM32
-[submodule "projects/dash/src/third_party/libcanard"]
-	path = projects/dash/src/third_party/libcanard
-	url = https://github.com/OpenCyphal/libcanard.git
