@@ -8,22 +8,17 @@ ApplicationWindow {
     width: 1280
     height: 480
 
-    // Locks window to fixed 1280x480 on Mac (most WMs hide/disable
-    // the resize grip when min == max). Harmless on Linux since
-    // eglfs forces fullscreen regardless of these.
+    // Locks window to fixed 1280x480
     minimumWidth: 1280
     maximumWidth: 1280
     minimumHeight: 480
     maximumHeight: 480
 
     title: "Test"
-    color: "#193664"  // shows as letterbox bars if aspect ratio doesn't match screen
+    color: "#193664"
 
     visibility: Qt.platform.os === "linux" ? Window.FullScreen : Window.Windowed
 
-    // Fixed-resolution logical canvas — everything you design goes inside this,
-    // not directly inside root. Scaled+centered to fit whatever window/screen
-    // size actually exists, while always preserving exact 1280x480 aspect ratio.
     Item {
         id: content
         width: 1280
@@ -45,6 +40,31 @@ ApplicationWindow {
             source: "assets/fonts/FOT-NewRodin Pro EB.otf"
         }
 
-        // Put all your real UI/gauges/widgets inside `content`, not `root`
+        // --- Gauges ---
+        Row {
+            anchors.centerIn: parent
+            anchors.verticalCenterOffset: 20
+            spacing: 100
+
+            Gauge {
+                width: 450
+                height: 450
+                value: 32 // Static test value
+                minValue: 0
+                maxValue: 60
+                unitText: "KM/H"
+                gifSource: "assets/images/original.gif"
+            }
+
+            Gauge {
+                width: 450
+                height: 450
+                value: 2500 // Static test value
+                minValue: 0
+                maxValue: 4000
+                unitText: "RPM"
+                gifSource: "assets/images/original.gif"
+            }
+        }
     }
 }

@@ -59,8 +59,10 @@ qt_add_qml_module(${PROJECT_NAME}
         VERSION 1.0
         QML_FILES
             src/ui/main.qml
+            src/ui/Gauge.qml
         RESOURCES
             "src/ui/assets/images/background.gif"
+            "src/ui/assets/images/original.gif"
             "src/ui/assets/fonts/FOT-NewRodin Pro EB.otf"
 
 )
