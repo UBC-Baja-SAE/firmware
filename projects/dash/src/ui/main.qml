@@ -75,7 +75,6 @@ ApplicationWindow {
 
         MusicPlayer {
             id: music
-            // Funnels the main window's data into the separate file
             tabActiveColor: root.tabActiveColor
             customFontName: customFont.name
         }

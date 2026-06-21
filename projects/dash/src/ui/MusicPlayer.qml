@@ -47,6 +47,7 @@ Item {
         }
     }
 
+    //Song List Window
     FolderListModel {
         id: folderModel
         folder: musicFolderUrl
@@ -59,7 +60,6 @@ Item {
         anchors.verticalCenterOffset: -20
         spacing: 30
 
-        // 1. Playlist Sidebar
         Rectangle {
             width: 400
             height: 340
@@ -134,7 +134,7 @@ Item {
             }
         }
 
-        // 2. Main Player Area
+        //Player window
         Rectangle {
             id: playerbg
             width: 600
@@ -150,7 +150,6 @@ Item {
                 anchors.margins: 8
                 spacing: 15
 
-                // Track Title Main Ping-Pong Marquee
                 Item {
                     width: parent.width
                     height: 40
@@ -188,9 +187,7 @@ Item {
                     }
                 }
 
-                // Playback Slider Container
                 Item {
-                    // FIXED: Shrunk width by 16px and centered to create an exact 16px margin from the edges
                     width: parent.width - 16
                     anchors.horizontalCenter: parent.horizontalCenter
                     height: 40
@@ -208,8 +205,7 @@ Item {
 
                     Slider {
                         id: progressSlider
-                        z: 1 // FIXED: Forces the Nyan Cat GIF to render ON TOP of the text elements
-
+                        z: 1
                         anchors.left: currentTimeText.right
                         anchors.right: durationText.left
                         anchors.leftMargin: 15
