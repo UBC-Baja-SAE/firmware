@@ -19,7 +19,7 @@ ApplicationWindow {
     property color bgblue: "#193664"
     property color tabActiveColor: "#03101e"
 
-    title: "Test"
+    title: "Dash"
     color: bgblue
 
     visibility: Qt.platform.os === "linux" ? Window.FullScreen : Window.Windowed

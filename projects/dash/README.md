@@ -7,22 +7,41 @@ Cross compilation is possible thanks to CMake and fetch content configs for MacO
 
 ## Building
 
-Toolchain and cmake settings will be written for CLion, as that was what was used for initial build and it's the main IDE we use.
-
 ### Install Dependencies for build environment
 
 MacOS (Homebrew):
 ```bash
-  brew install qt6
+brew install cmake ninja qt
 ```
 Windows:
+
+Install Qt6 with Qt maintenance tool and pray (no good package managers for windows)
+
+Pi (or ARM64 linux):
 ```bash
-  
-```
-Pi:
-```bash
-  sudo apt install qt6-base-dev qt6-declarative-dev qt6-tools-dev qt6-tools-dev-tools cmake build-essential ninja-build pkg-config libgl1-mesa-dri libgles2-mesa libdrm2 libinput10 libegl1
+sudo apt update
+sudo apt install -y \
+  build-essential cmake ninja-build pkg-config \
+  qt6-base-dev qt6-declarative-dev qt6-multimedia-dev qt6-serialbus-dev \
+  qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtmultimedia \
+  libgl1-mesa-dev \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav
 ```
 
+### CMake config for Pi
+
+Setup pi as remote host, then add as environment variable:
+```bash
+QT_QPA_PLATFORM="eglfs QT_QPA_EGLFS_INTEGRATION=eglfs_kms QT_QPA_EGLFS_KMS_CONFIG=/home/ubcbaja/eglfs.json"
+```
+
+### CMake config for Windows
+
+Use Visual Studio (MSVC) toolchain rather than MinGW and add the following as environment variables:
+```bash
+-DCMAKE_PREFIX_PATH=<LOCAL QT PATH HERE> (eg: C:\Qt\6.11.1\msvc2022_64)
+-DCMAKE_C_FLAGS="-DCANARD_64_BIT=1"
+-DCMAKE_CXX_FLAGS="-DCANARD_64_BIT=1"
+```
 
 Icons used: https://www.svgrepo.com/collection/dazzle-line-icons
