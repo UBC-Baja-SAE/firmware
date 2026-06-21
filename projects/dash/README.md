@@ -43,5 +43,8 @@ Use Visual Studio (MSVC) toolchain rather than MinGW and add the following as en
 -DCMAKE_C_FLAGS="-DCANARD_64_BIT=1"
 -DCMAKE_CXX_FLAGS="-DCANARD_64_BIT=1"
 ```
+Foxglove currently has an issue building on windows in parameter.hpp (cmake-build-/_deps/foxglove_sdk-src/include/foxglove/parameter.hpp)
+to fix, add #ifndef FOXGLOVE_HIDE_TEMPLATES to line 466 and #endif at line 522
+this needs to be done everytime cmake build directory is reset/fetch content pulls foxglove sdk
 
 Icons used: https://www.svgrepo.com/collection/dazzle-line-icons

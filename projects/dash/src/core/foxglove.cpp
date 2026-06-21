@@ -1,3 +1,5 @@
+#define FOXGLOVE_HIDE_TEMPLATES
+
 #include "foxglove.h"
 #include <QDebug>
 #include <foxglove/websocket.hpp>

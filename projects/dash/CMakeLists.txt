@@ -115,3 +115,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::QuickControls2
         foxglove_cpp
 )
+
+#Foxglove windows build fix
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ntdll)
+endif()
