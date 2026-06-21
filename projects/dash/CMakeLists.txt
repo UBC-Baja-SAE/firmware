@@ -9,7 +9,7 @@ set(CMAKE_AUTOMOC ON)
 include(FetchContent)
 
 # Shared Dependencies
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets SerialBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets SerialBus Multimedia QuickControls2)
 
 # Set QT Resource format
 qt_policy(SET QTP0001 NEW)
@@ -58,26 +58,40 @@ qt_add_qml_module(${PROJECT_NAME}
         URI Roxy
         VERSION 1.0
         QML_FILES
-            src/ui/main.qml
-            src/ui/Gauge.qml
+        src/ui/main.qml
+        src/ui/Gauge.qml
+        src/ui/MusicPlayer.qml
         RESOURCES
-            "src/ui/assets/images/background.gif"
-            "src/ui/assets/images/original.gif"
-            "src/ui/assets/fonts/FOT-NewRodin Pro EB.otf"
+        "src/ui/assets/images/background.gif"
+        "src/ui/assets/images/original.gif"
+        "src/ui/assets/fonts/FOT-NewRodin Pro EB.otf"
+        "src/ui/assets/icons/gauge.svg"
+        "src/ui/assets/icons/music.svg"
+        "src/ui/assets/icons/video.svg"
+        "src/ui/assets/icons/map.svg"
+        "src/ui/assets/icons/play.svg"
+        "src/ui/assets/icons/pause.svg"
+        "src/ui/assets/icons/skip.svg"
 
 )
 
-
-
-# Cross Compilation for Mac or Linux
+# Cross Compilation
 if (APPLE OR WIN32)
     message(STATUS "Configuring for Desktop Build")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE DEVELOPMENT)
+    # ADDED: PROJECT_SOURCE_DIR for cross-platform music pathing
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+            DEVELOPMENT
+            PROJECT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
+    )
     target_sources(${PROJECT_NAME} PRIVATE src/core/can_dev.cpp)
 
 elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
     message(STATUS "Configuring for Linux Build")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE RELEASE)
+    # ADDED: PROJECT_SOURCE_DIR for cross-platform music pathing
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+            RELEASE
+            PROJECT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
+    )
     target_sources(${PROJECT_NAME} PRIVATE src/core/can_socket.cpp)
 endif()
 
@@ -89,5 +103,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Quick
         Qt6::Widgets
         Qt6::SerialBus
+        Qt6::Multimedia
+        Qt6::QuickControls2
         foxglove_cpp
 )
