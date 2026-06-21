@@ -2,19 +2,17 @@
 
 #include <QObject>
 #include <QThread>
+#include <QTimer>
 #include <QVariant>  // Fix: undefined type QVariant
 #include <QString>   // Fix: undefined type QString
-#include <QCanBusDevice>
-#include <QCanDbcFileParser>
-#include <QCanFrameProcessor>
 
 // No Foxglove includes here!
 
-class CanWorker : public QObject {
+class DebugWorker : public QObject {
     Q_OBJECT
 public:
-    explicit CanWorker(const QString& interfaceName, QObject* parent = nullptr);
-    ~CanWorker();
+    explicit DebugWorker(QObject* parent = nullptr);
+    ~DebugWorker();
 
 public slots:
     void start();
@@ -25,20 +23,18 @@ public slots:
     void foxglovePayloadReady(const QByteArray& payload); // Emits raw JSON
 
 private slots:
-    void processFrames();
+    void generateMockData();
 
 private:
-    QString m_interfaceName;
-    QCanBusDevice* m_device = nullptr;
-    QCanDbcFileParser m_dbcParser;
-    QCanFrameProcessor m_frameProcessor;
+    QTimer* m_timer = nullptr;
+    double m_mockRpm = 0.0;
 };
 
-class CanSocket : public QObject {
+class DebugSocket : public QObject {
     Q_OBJECT
 public:
-    explicit CanSocket(QObject* parent = nullptr);
-    ~CanSocket();
+    explicit DebugSocket(QObject* parent = nullptr);
+    ~DebugSocket();
 
     Q_INVOKABLE void connectToDevice(const QString& interfaceName);
 
@@ -48,5 +44,5 @@ public:
 
 private:
     QThread m_workerThread;
-    CanWorker* m_worker = nullptr;
+    DebugWorker* m_worker = nullptr;
 };

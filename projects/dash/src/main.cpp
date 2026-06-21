@@ -5,11 +5,20 @@
 #include <QQuickStyle>
 #include <QDir>
 #include <QUrl>
-#include "src/core/can_socket.h"
+#include "src/core/foxglove.h"
 
-// fallback for music path
+//Fallback for music path
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
+#endif
+
+//Backend logic
+#ifdef RELEASE
+#include "src/core/can_socket.h"
+using CanBackend = CanSocket;
+#else
+#include "src/core/debug_socket.h"
+using CanBackend = DebugSocket;
 #endif
 
 int main(int argc, char *argv[]) {
@@ -23,13 +32,17 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     QQuickStyle::setStyle("Basic");
 
-    CanSocket canAdapter;
+    CanBackend canAdapter;
     canAdapter.connectToDevice("can0");
 
     QQmlApplicationEngine engine;
-
-
     engine.rootContext()->setContextProperty("CanAdapter", &canAdapter);
+
+    FoxgloveServer telemetryServer;
+    telemetryServer.start();
+
+    QObject::connect(&canAdapter, &CanBackend::foxglovePayloadReady,
+                     &telemetryServer, &FoxgloveServer::broadcastCanFrame);
 
     //Finds music in source folder
     QString musicPath = QDir(PROJECT_SOURCE_DIR).filePath("src/ui/assets/music");

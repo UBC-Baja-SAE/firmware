@@ -1,63 +1,96 @@
 #include "can_socket.h"
-#include <QtCore/qstringliteral.h>
-#include <QVariant>
+#include <QCanBus>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QDebug>
 
-using namespace Qt::StringLiterals;
+// --- CanWorker ---
 
-CanSocket::CanSocket(QObject *parent) : QObject(parent) {}
+CanWorker::CanWorker(const QString& interfaceName, QObject* parent)
+    : QObject(parent), m_interfaceName(interfaceName) {}
+
+CanWorker::~CanWorker() {
+    stop();
+}
+
+void CanWorker::start() {
+    // 1. Load DBC File
+    if (m_dbcParser.parse("network.dbc")) {
+        m_frameProcessor.setMessageDescriptions(m_dbcParser.messageDescriptions());
+        m_frameProcessor.setUniqueIdDescription(QCanDbcFileParser::uniqueIdDescription());
+    } else {
+        qWarning() << "Failed to parse DBC:" << m_dbcParser.errorString();
+    }
+
+    // 2. Connect to SocketCAN
+    QString errorString;
+    m_device = QCanBus::instance()->createDevice("socketcan", m_interfaceName, &errorString);
+    if (!m_device) {
+        qWarning() << "Error creating CAN device:" << errorString;
+        return;
+    }
+
+    m_device->setConfigurationParameter(QCanBusDevice::CanFdKey, true);
+    connect(m_device, &QCanBusDevice::framesReceived, this, &CanWorker::processFrames);
+
+    if (m_device->connectDevice()) {
+        qInfo() << "Connected to" << m_interfaceName << "with CAN FD enabled.";
+    } else {
+        qWarning() << "Failed to connect to CAN device.";
+    }
+}
+
+void CanWorker::processFrames() {
+    if (!m_device) return;
+
+    while (m_device->framesAvailable()) {
+        QCanBusFrame frame = m_device->readFrame();
+        auto result = m_frameProcessor.parseFrame(frame);
+
+        if (result.signalValues.isEmpty()) continue;
+
+        QJsonObject json;
+        json["canId"] = static_cast<qint64>(result.uniqueId);
+
+        for (auto it = result.signalValues.constBegin(); it != result.signalValues.constEnd(); ++it) {
+            json[it.key()] = QJsonValue::fromVariant(it.value());
+            emit uiDataUpdated(it.key(), it.value());
+        }
+
+        // Serialize and emit cleanly to the ether
+        QByteArray payload = QJsonDocument(json).toJson(QJsonDocument::Compact);
+        emit foxglovePayloadReady(payload);
+    }
+}
+
+void CanWorker::stop() {
+    if (m_device) {
+        m_device->disconnectDevice();
+        delete m_device;
+        m_device = nullptr;
+    }
+}
+
+// --- CanSocket ---
+
+CanSocket::CanSocket(QObject* parent) : QObject(parent) {}
 
 CanSocket::~CanSocket() {
-    if (m_canDevice) {
-        m_canDevice->disconnectDevice();
-        delete m_canDevice;
+    if (m_workerThread.isRunning()) {
+        m_workerThread.quit();
+        m_workerThread.wait();
     }
 }
 
-bool CanSocket::connectToDevice(const QString &interfaceName) {
-    if (!QCanBus::instance()->plugins().contains(u"socketcan"_s)) {
-        qCritical() << "SocketCAN plugin is not available in this Qt build.";
-        return false;
-    }
+void CanSocket::connectToDevice(const QString& interfaceName) {
+    m_worker = new CanWorker(interfaceName);
+    m_worker->moveToThread(&m_workerThread);
 
-    QString errorString;
-    m_canDevice = QCanBus::instance()->createDevice(u"socketcan"_s, interfaceName, &errorString);
+    connect(m_worker, &CanWorker::uiDataUpdated, this, &CanSocket::uiDataUpdated);
+    connect(m_worker, &CanWorker::foxglovePayloadReady, this, &CanSocket::foxglovePayloadReady);
 
-    if (!m_canDevice) {
-        qCritical() << "Error creating CAN device:" << errorString;
-        return false;
-    }
+    connect(&m_workerThread, &QThread::started, m_worker, &CanWorker::start);
+    connect(&m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
 
-    // Explicitly enable CAN FD
-    m_canDevice->setConfigurationParameter(QCanBusDevice::CanFdKey, QVariant(true));
-
-    connect(m_canDevice, &QCanBusDevice::framesReceived, this, &CanSocket::processReceivedFrames);
-    connect(m_canDevice, &QCanBusDevice::errorOccurred, this, &CanSocket::handleDeviceError);
-
-    if (!m_canDevice->connectDevice()) {
-        qCritical() << "CAN connection error:" << m_canDevice->errorString();
-        delete m_canDevice;
-        m_canDevice = nullptr;
-        return false;
-    }
-
-    qDebug() << "Successfully connected to" << interfaceName << "with CAN FD enabled.";
-    return true;
-}
-
-void CanSocket::processReceivedFrames() {
-    if (!m_canDevice) return;
-
-    while (m_canDevice->framesAvailable()) {
-        QCanBusFrame frame = m_canDevice->readFrame();
-
-        if (frame.frameType() == QCanBusFrame::DataFrame) {
-            // TODO: process frames
-            emit frameReceived(frame.frameId(), frame.payload());
-
-        }
-    }
-}
-
-void CanSocket::handleDeviceError(QCanBusDevice::CanBusError error) {
-    qWarning() << "QCanBus Error:" << error << m_canDevice->errorString();
+    m_workerThread.start();
 }

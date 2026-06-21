@@ -16,7 +16,7 @@ qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
 # Download Foxglove SDK for appropriate platform
-set(FOXGLOVE_SDK_VERSION "0.25.1")
+set(FOXGLOVE_SDK_VERSION "0.25.2")
 
 if (APPLE AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
     message(STATUS "Fetching Foxglove SDK for macOS")
@@ -42,7 +42,8 @@ foxglove_sdk_add_cpp_library(foxglove_cpp TYPE STATIC)
 # Entrypoint
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
-        src/core/can_socket.h
+        src/core/foxglove.cpp
+        src/core/foxglove.h
 )
 
 #EGLFS config
@@ -78,21 +79,28 @@ qt_add_qml_module(${PROJECT_NAME}
 # Cross Compilation
 if (APPLE OR WIN32)
     message(STATUS "Configuring for Desktop Build")
-    # ADDED: PROJECT_SOURCE_DIR for cross-platform music pathing
     target_compile_definitions(${PROJECT_NAME} PRIVATE
             DEVELOPMENT
+            QT_QML_DEBUG
             PROJECT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
     )
-    target_sources(${PROJECT_NAME} PRIVATE src/core/can_dev.cpp)
+    # Replaced can_dev with debug_socket (both cpp and h)
+    target_sources(${PROJECT_NAME} PRIVATE
+            src/core/debug_socket.cpp
+            src/core/debug_socket.h
+    )
 
 elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
     message(STATUS "Configuring for Linux Build")
-    # ADDED: PROJECT_SOURCE_DIR for cross-platform music pathing
     target_compile_definitions(${PROJECT_NAME} PRIVATE
             RELEASE
             PROJECT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
     )
-    target_sources(${PROJECT_NAME} PRIVATE src/core/can_socket.cpp)
+    # Added can_socket.h for AUTOMOC processing
+    target_sources(${PROJECT_NAME} PRIVATE
+            src/core/can_socket.cpp
+            src/core/can_socket.h
+    )
 endif()
 
 # Link Libraries
