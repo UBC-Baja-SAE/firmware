@@ -11,11 +11,11 @@ Cross compilation is possible thanks to CMake and fetch content configs for MacO
 
 MacOS (Homebrew):
 ```bash
-brew install cmake ninja qt
+brew install cmake ninja qt hidapi
 ```
 Windows:
 
-Install Qt6 with Qt maintenance tool and pray (no good package managers for windows)
+Install Qt6 with Qt maintenance tool and pray (no good package managers for windows) also hidapi for wii remote compatibility
 
 Pi (or ARM64 linux):
 ```bash

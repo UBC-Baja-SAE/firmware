@@ -38,6 +38,23 @@ ApplicationWindow {
         }
     }
 
+    //Wii remote controls
+    Shortcut {
+        sequence: "Left"
+        onActivated: {
+            if (swipeView.currentIndex > 0)
+                swipeView.currentIndex--
+        }
+    }
+
+    Shortcut {
+        sequence: "Right"
+        onActivated: {
+            if (swipeView.currentIndex < swipeView.count - 1)
+                swipeView.currentIndex++
+        }
+    }
+
     FontLoader {
         id: customFont
         source: "assets/fonts/FOT-NewRodin Pro EB.otf"

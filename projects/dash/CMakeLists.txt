@@ -11,6 +11,9 @@ include(FetchContent)
 # Shared Dependencies
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets SerialBus Multimedia QuickControls2)
 
+#HID Controller driver
+find_package(hidapi REQUIRED)
+
 # Set QT Resource format
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -104,6 +107,8 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
     target_sources(${PROJECT_NAME} PRIVATE
             src/core/can_socket.cpp
             src/core/can_socket.h
+            src/core/controls.cpp
+            src/core/controls.h
     )
 endif()
 
@@ -117,6 +122,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::SerialBus
         Qt6::Multimedia
         Qt6::QuickControls2
+        hidapi::hidapi
         foxglove_cpp
 )
 

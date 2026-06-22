@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QUrl>
 #include "src/core/foxglove.h"
+#include "src/core/controls.h"
 
 //Fallback for music path
 #ifndef PROJECT_SOURCE_DIR
@@ -35,6 +36,8 @@ int main(int argc, char *argv[]) {
     CanBackend canAdapter;
     canAdapter.connectToDevice("can0");
 
+    Controls wiimote;
+
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("CanAdapter", &canAdapter);
 
@@ -42,6 +45,9 @@ int main(int argc, char *argv[]) {
     telemetryServer.start();
 
     QObject::connect(&canAdapter, &CanBackend::foxglovePayloadReady,
+                     &telemetryServer, &FoxgloveServer::broadcastCanFrame);
+
+    QObject::connect(&wiimote, &Controls::foxglovePayloadReady,
                      &telemetryServer, &FoxgloveServer::broadcastCanFrame);
 
     //Finds music in source folder
