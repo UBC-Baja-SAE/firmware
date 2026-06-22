@@ -19,6 +19,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "fdcan.h"
+#include "tim.h"
+#include "gpio.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -89,7 +93,17 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_FDCAN1_Init();
+  MX_TIM2_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_4);
+
+  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_4);
 
   /* USER CODE END 2 */
 
@@ -128,7 +142,7 @@ void SystemClock_Config(void)
 
   /** Configure the main internal regulator output voltage
   */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
@@ -141,7 +155,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 30;
+  RCC_OscInitStruct.PLL.PLLN = 12;
   RCC_OscInitStruct.PLL.PLLP = 1;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
@@ -160,13 +174,13 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -174,6 +188,135 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+#define TIM2_CLOCK_FREQ         192000000UL   // APB1 Timer Clock @192MHz
+#define TIM3_CLOCK_FREQ         1000000UL   // APB1 Timer Clock @1MHz
+#define TIMER_PERIOD_TICKS      4294967296ULL // 2^32 for 32-bit TIM2
+#define TIM3_PERIOD_TICKS       65536ULL      // 2^16 for 16-bit TIM3
+
+#define MAGNET_DEBOUNCE_TIME_MS 5U
+#define SPARK_DEBOUNCE_TIME_MS  10U
+#define PULSES_PER_REV          2.0f
+
+#define SPEED_SMOOTHING         0.2f
+#define TIRE_CIRCUMFERENCE_KM   0.001963f
+#define MAX_SPEED_KMH           150U
+#define MAX_RPM_LIMIT           20000U
+
+static volatile uint32_t previous_capture     = 0;
+static volatile uint8_t  speed_first_pulse    = 1;
+volatile uint64_t tim2_overflow_count  = 0;
+static volatile float    smoothed_speed_freq  = 0.0f;
+
+volatile uint32_t last_magnet_time     = 0;
+volatile uint32_t last_spark_time      = 0;
+
+static volatile uint32_t tach_previous_capture = 0;
+static volatile uint8_t  tach_first_pulse      = 1;
+volatile uint64_t tim3_overflow_count  = 0;
+static volatile float    tach_smoothed_freq    = 0.0f;
+
+// Outputs
+volatile uint32_t speedometer_kmh = 0;
+volatile uint32_t tachometer_rpm = 0;
+
+void Speedometer_OverflowISR(void)
+{
+  tim2_overflow_count++;
+}
+
+void Tachometer_OverflowISR(void)
+{
+  tim3_overflow_count++;
+}
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  /* ---------------- SPEEDOMETER (TIM2) ---------------- */
+  if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
+  {
+    uint32_t now = HAL_GetTick();
+
+    if ((now - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS)
+      return;
+    last_magnet_time = now;
+
+    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
+
+    if (speed_first_pulse)
+    {
+      previous_capture    = cap;
+      tim2_overflow_count = 0;
+      speed_first_pulse   = 0;
+      return;
+    }
+
+    uint64_t diff = (tim2_overflow_count * TIMER_PERIOD_TICKS)
+                  + (uint64_t)cap
+                  - (uint64_t)previous_capture;
+
+    previous_capture    = cap;
+    tim2_overflow_count = 0;
+
+    if (diff > 0ULL)
+    {
+      float instant_freq = (float)TIM2_CLOCK_FREQ / (float)diff;
+
+      smoothed_speed_freq = (instant_freq * SPEED_SMOOTHING)
+                          + (smoothed_speed_freq * (1.0f - SPEED_SMOOTHING));
+
+      uint32_t kmh = (uint32_t)(smoothed_speed_freq
+                               * TIRE_CIRCUMFERENCE_KM
+                               * 3600.0f);
+
+      speedometer_kmh = (kmh > MAX_SPEED_KMH) ? MAX_SPEED_KMH : kmh;
+    }
+  }
+
+  /* ---------------- TACHOMETER (TIM3) ---------------- */
+  /* ---------------- TACHOMETER (TIM3) ---------------- */
+  else if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
+  {
+    uint32_t now = HAL_GetTick();
+
+    // SOFTWARE DEBOUNCE: Ignores the BJT high-frequency ringing
+    if ((now - last_spark_time) < SPARK_DEBOUNCE_TIME_MS) {
+      return;
+    }
+    last_spark_time = now;
+
+    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
+
+    if (tach_first_pulse)
+    {
+      tach_previous_capture = cap;
+      tim3_overflow_count = 0;
+      tach_first_pulse = 0;
+      return;
+    }
+
+    // New safe multi-overflow math
+    uint64_t diff = (tim3_overflow_count * TIM3_PERIOD_TICKS)
+                  + (uint64_t)cap
+                  - (uint64_t)tach_previous_capture;
+
+    tach_previous_capture = cap;
+    tim3_overflow_count = 0;
+
+    if (diff > 0ULL)
+    {
+      float instant_freq = (float)TIM3_CLOCK_FREQ / (float)diff;
+
+      tach_smoothed_freq = (instant_freq * SPEED_SMOOTHING)
+                          + (tach_smoothed_freq * (1.0f - SPEED_SMOOTHING));
+
+      // Calculate true RPM using your old logic
+      uint32_t calculated_rpm = (uint32_t)((tach_smoothed_freq * 60.0f) / PULSES_PER_REV);
+
+      // Cap at max limit
+      tachometer_rpm = (calculated_rpm > MAX_RPM_LIMIT) ? MAX_RPM_LIMIT : calculated_rpm;
+    }
+  }
+}
 /* USER CODE END 4 */
 
  /* MPU Configuration */
@@ -223,6 +366,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  if (htim->Instance == TIM2)
+  {
+    Speedometer_OverflowISR();
+  }
+  if (htim->Instance == TIM3)
+  {
+    Tachometer_OverflowISR();
+  }
 
   /* USER CODE END Callback 1 */
 }

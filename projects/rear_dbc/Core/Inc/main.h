@@ -57,6 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SPEEDOMETER_Pin GPIO_PIN_3
+#define SPEEDOMETER_GPIO_Port GPIOA
+#define TACHOMETER_Pin GPIO_PIN_9
+#define TACHOMETER_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
 

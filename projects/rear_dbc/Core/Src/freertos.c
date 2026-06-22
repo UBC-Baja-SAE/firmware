@@ -25,7 +25,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "fdcan.h"
+#include "mochi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +46,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+
+extern volatile uint32_t speedometer_kmh;
+extern volatile uint32_t tachometer_rpm;
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -106,18 +110,49 @@ void MX_FREERTOS_Init(void) {
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
+  * @brief  Gemini Slop
   */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+
+  FDCAN_TxHeaderTypeDef TxHeader;
+  uint8_t TxData[8] = {0}; // mochi_rear_ecu_status requires 4 bytes
+  struct mochi_rear_ecu_status_t rear_ecu_msg;
+
+  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  TxHeader.Identifier = MOCHI_REAR_ECU_STATUS_FRAME_ID; // Resolves to 0x500
+  TxHeader.IdType = FDCAN_STANDARD_ID;
+  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
+  TxHeader.DataLength = FDCAN_DLC_BYTES_4;
+  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+  TxHeader.FDFormat = FDCAN_FD_CAN;
+  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+  TxHeader.MessageMarker = 0;
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    rear_ecu_msg.speedometer = (uint16_t)speedometer_kmh;
+    rear_ecu_msg.tachometer  = (uint16_t)tachometer_rpm;
+
+    if (mochi_rear_ecu_status_pack(TxData, &rear_ecu_msg, 4) > 0)
+    {
+      if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0)
+      {
+        if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData) != HAL_OK)
+        {
+        }
+      }
+    }
+
+    osDelay(10);
   }
   /* USER CODE END StartDefaultTask */
 }
