@@ -139,8 +139,8 @@ ApplicationWindow {
                     model: [
                         { icon: "assets/icons/gauge.svg", index: 0 },
                         { icon: "assets/icons/music.svg", index: 1 },
-                        { icon: "assets/icons/video.svg", index: 2 },
-                        { icon: "assets/icons/map.svg", index: 3 }
+                        { icon: "assets/icons/map.svg", index: 2 },
+                        { icon: "assets/icons/video.svg", index: 3 }
                     ]
 
                     delegate: Rectangle {

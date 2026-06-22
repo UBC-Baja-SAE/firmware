@@ -28,23 +28,19 @@ void DebugWorker::generateMockData() {
 
     double mockSpeed = m_mockRpm * 0.015;
 
+    // 1. Keep UI emissions separate for your QML frontend
     emit uiDataUpdated("tachometer", m_mockRpm);
-
-    QJsonObject tachJson;
-    tachJson["tachometer"] = m_mockRpm;
-    tachJson["canId"] = 0x500; // 0x500 maps to "rear_ecu"
-
-    QByteArray tachPayload = QJsonDocument(tachJson).toJson(QJsonDocument::Compact);
-    emit foxglovePayloadReady("/rear_ecu.tachometer", tachPayload);
-
     emit uiDataUpdated("speedometer", mockSpeed);
 
-    QJsonObject speedJson;
-    speedJson["speedometer"] = mockSpeed;
-    speedJson["canId"] = 0x500; // 0x500 maps to "rear_ecu"
+    // 2. Combine the data into a single JSON payload for Foxglove
+    QJsonObject ecuJson;
+    ecuJson["tachometer"] = m_mockRpm;
+    ecuJson["speedometer"] = mockSpeed;
+    ecuJson["canId"] = 0x500; // 0x500 maps to "rear_ecu"
 
-    QByteArray speedPayload = QJsonDocument(speedJson).toJson(QJsonDocument::Compact);
-    emit foxglovePayloadReady("/rear_ecu.speedometer", speedPayload);
+    // 3. Emit exactly once to the root ECU topic
+    QByteArray payload = QJsonDocument(ecuJson).toJson(QJsonDocument::Compact);
+    emit foxglovePayloadReady("/rear_ecu", payload);
 }
 
 void DebugWorker::stop() {
