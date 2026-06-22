@@ -18,27 +18,37 @@ void DebugWorker::start() {
 }
 
 void DebugWorker::generateMockData() {
+    // Independent targets
     static double targetRpm = 0.0;
+    static double targetSpeed = 0.0;
 
-    m_mockRpm += (targetRpm - m_mockRpm) * 0.05;
+    // Independent speed tracker (m_mockRpm is already tracked in your class)
+    static double currentSpeed = 0.0;
+
+    // --- 1. TACHOMETER LOGIC (0-4000 RPM) ---
+    m_mockRpm += (targetRpm - m_mockRpm) * 0.05; // Snappy engine response
 
     if (std::abs(targetRpm - m_mockRpm) < 50.0) {
         targetRpm = static_cast<double>(std::rand() % 4001);
     }
 
-    double mockSpeed = m_mockRpm * 0.015;
+    // --- 2. SPEEDOMETER LOGIC (0-60 km/h) ---
+    currentSpeed += (targetSpeed - currentSpeed) * 0.03; // Slower, heavier vehicle inertia
 
-    // 1. Keep UI emissions separate for your QML frontend
+    if (std::abs(targetSpeed - currentSpeed) < 1.0) {
+        targetSpeed = static_cast<double>(std::rand() % 61);
+    }
+
+    // --- 3. QML UI EMISSIONS ---
     emit uiDataUpdated("tachometer", m_mockRpm);
-    emit uiDataUpdated("speedometer", mockSpeed);
+    emit uiDataUpdated("speedometer", currentSpeed);
 
-    // 2. Combine the data into a single JSON payload for Foxglove
+    // --- 4. FOXGLOVE JSON PAYLOAD ---
     QJsonObject ecuJson;
     ecuJson["tachometer"] = m_mockRpm;
-    ecuJson["speedometer"] = mockSpeed;
+    ecuJson["speedometer"] = currentSpeed;
     ecuJson["canId"] = 0x500; // 0x500 maps to "rear_ecu"
 
-    // 3. Emit exactly once to the root ECU topic
     QByteArray payload = QJsonDocument(ecuJson).toJson(QJsonDocument::Compact);
     emit foxglovePayloadReady("/rear_ecu", payload);
 }
