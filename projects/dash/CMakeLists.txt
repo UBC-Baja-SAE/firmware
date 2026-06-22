@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
+
+# Suppress errors from older third-party libraries (like hidapi)
+# that use outdated cmake_minimum_required() declarations.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 cmake_policy(SET CMP0135 NEW)
 project(dash VERSION 1.0.0 LANGUAGES C CXX)
 
@@ -11,12 +16,18 @@ include(FetchContent)
 # Shared Dependencies
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets SerialBus Multimedia QuickControls2)
 
-#HID Controller driver
-find_package(hidapi REQUIRED)
-
 # Set QT Resource format
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
+
+# Fetch HIDAPI from source
+message(STATUS "Fetching HIDAPI")
+FetchContent_Declare(
+        hidapi
+        GIT_REPOSITORY https://github.com/libusb/hidapi.git
+        GIT_TAG        hidapi-0.14.0 # Latest stable release
+)
+FetchContent_MakeAvailable(hidapi)
 
 # Download Foxglove SDK for appropriate platform
 set(FOXGLOVE_SDK_VERSION "0.25.2")
@@ -42,11 +53,13 @@ FetchContent_MakeAvailable(foxglove_sdk)
 find_package(foxglove-sdk CONFIG REQUIRED HINTS "${foxglove_sdk_SOURCE_DIR}")
 foxglove_sdk_add_cpp_library(foxglove_cpp TYPE STATIC)
 
-# Entrypoint
+# Entrypoint (Moved controls.cpp and controls.h here so they compile on all platforms)
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
         src/core/foxglove.cpp
         src/core/foxglove.h
+        src/core/controls.cpp
+        src/core/controls.h
 )
 
 #EGLFS config
@@ -107,8 +120,6 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
     target_sources(${PROJECT_NAME} PRIVATE
             src/core/can_socket.cpp
             src/core/can_socket.h
-            src/core/controls.cpp
-            src/core/controls.h
     )
 endif()
 

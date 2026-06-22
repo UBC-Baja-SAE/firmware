@@ -5,7 +5,7 @@
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QWindow>
-#include <hidapi/hidapi.h>
+#include <hidapi.h>
 
 // Nintendo Vendor ID
 #define VENDOR_ID 0x057e

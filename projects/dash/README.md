@@ -11,11 +11,13 @@ Cross compilation is possible thanks to CMake and fetch content configs for MacO
 
 MacOS (Homebrew):
 ```bash
-brew install cmake ninja qt hidapi
+brew install cmake ninja qt
 ```
 Windows:
 
-Install Qt6 with Qt maintenance tool and pray (no good package managers for windows) also hidapi for wii remote compatibility
+Install Qt6 with Qt maintenance tool and pray (no good package managers for windows)
+
+
 
 Pi (or ARM64 linux):
 ```bash
@@ -25,7 +27,7 @@ sudo apt install -y \
   qt6-base-dev qt6-declarative-dev qt6-multimedia-dev qt6-serialbus-dev \
   qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtmultimedia \
   libgl1-mesa-dev \
-  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav libhidapi-dev
 ```
 
 ### CMake config for Pi

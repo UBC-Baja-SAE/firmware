@@ -25,11 +25,11 @@ void FoxgloveServer::start() {
     options.port = 8765;
     auto serverResult = foxglove::WebSocketServer::create(std::move(options));
     if (!serverResult.has_value()) {
-        qWarning() << "Failed to start Foxglove Server";
+        qWarning() << "[Foxglove] Failed to start Foxglove Server";
         return;
     }
     m_server = std::make_unique<foxglove::WebSocketServer>(std::move(serverResult.value()));
-    qInfo() << "Foxglove Server started on ws://0.0.0.0:8765";
+    qInfo() << "[Foxglove] Server started on ws://0.0.0.0:8765";
 
     // MCAP logging setup
     const QString logDir = "/home/ubcbaja/firmware/logs";
@@ -50,16 +50,16 @@ void FoxgloveServer::start() {
 
     auto writerResult = foxglove::McapWriter::create(mcapOptions);
     if (!writerResult.has_value()) {
-        qWarning() << "Failed to start MCAP writer at" << QString::fromStdString(safePath);
+        qWarning() << "[Foxglove] Failed to start MCAP writer at" << QString::fromStdString(safePath);
 
         if (errno != 0) {
-            qWarning() << "Real system error:" << strerror(errno);
+            qWarning() << "[Foxglove] Real system error:" << strerror(errno);
         } else {
-            qWarning() << "Library error:" << foxglove::strerror(writerResult.error());
+            qWarning() << "[Foxglove] Library error:" << foxglove::strerror(writerResult.error());
         }
     } else {
         m_mcapWriter = std::make_unique<foxglove::McapWriter>(std::move(writerResult.value()));
-        qInfo() << "MCAP logging to" << QString::fromStdString(safePath);
+        qInfo() << "[Foxglove] MCAP logging to" << QString::fromStdString(safePath);
     }
 }
 
@@ -87,13 +87,13 @@ void FoxgloveServer::broadcastCanFrame(const QString& topic, const QByteArray& j
 
         auto channelResult = foxglove::RawChannel::create(topic.toStdString(), "json", schema);
         if (!channelResult.has_value()) {
-            qWarning() << "Failed to create Foxglove channel for topic" << topic;
+            qWarning() << "[Foxglove] Failed to create Foxglove channel for topic" << topic;
             return;
         }
 
         auto emplaceResult = m_channels.emplace(topic, std::make_unique<foxglove::RawChannel>(std::move(channelResult.value())));
         it = emplaceResult.first;
-        qInfo() << "Created Foxglove channel:" << topic;
+        qInfo() << "[Foxglove] Created Foxglove channel:" << topic;
     }
     it->second->log(reinterpret_cast<const std::byte*>(jsonPayload.constData()), jsonPayload.size());
 }
