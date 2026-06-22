@@ -2,13 +2,14 @@
 
 #include <QObject>
 #include <QThread>
-#include <QVariant>  // Fix: undefined type QVariant
-#include <QString>   // Fix: undefined type QString
+#include <QVariant>
+#include <QString>
+#include <QHash>
 #include <QCanBusDevice>
 #include <QCanDbcFileParser>
 #include <QCanFrameProcessor>
-
-// No Foxglove includes here!
+#include <QtSerialBus/QCanMessageDescription>
+#include <QtSerialBus/QCanUniqueIdDescription>
 
 class CanWorker : public QObject {
     Q_OBJECT
@@ -22,7 +23,7 @@ public slots:
 
     signals:
         void uiDataUpdated(const QString& signalName, QVariant value);
-    void foxglovePayloadReady(const QByteArray& payload); // Emits raw JSON
+    void foxglovePayloadReady(const QString& topic, const QByteArray& payload);
 
 private slots:
     void processFrames();
@@ -44,7 +45,7 @@ public:
 
     signals:
         void uiDataUpdated(const QString& signalName, QVariant value);
-    void foxglovePayloadReady(const QByteArray& payload); // Forwards out of thread
+    void foxglovePayloadReady(const QString& topic, const QByteArray& payload);
 
 private:
     QThread m_workerThread;

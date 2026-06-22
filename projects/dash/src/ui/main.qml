@@ -24,6 +24,19 @@ ApplicationWindow {
 
     visibility: Qt.platform.os === "linux" ? Window.FullScreen : Window.Windowed
 
+    property real speedometerValue: 0
+    property real tachometerValue: 0
+
+    Connections {
+        target: CanAdapter
+        function onUiDataUpdated(key, value) {
+            if (key === "speedometer")
+                speedometerValue = value
+            else if (key === "tachometer")
+                tachometerValue = value
+        }
+    }
+
     FontLoader {
         id: customFont
         source: "assets/fonts/FOT-NewRodin Pro EB.otf"
@@ -54,7 +67,7 @@ ApplicationWindow {
                 Gauge {
                     width: 450
                     height: 450
-                    value: 60 // Static test value
+                    value: root.speedometerValue
                     minValue: 0
                     maxValue: 60
                     unitText: "KM/H"
@@ -64,7 +77,7 @@ ApplicationWindow {
                 Gauge {
                     width: 450
                     height: 450
-                    value: 200 // Static test value
+                    value: root.tachometerValue
                     minValue: 0
                     maxValue: 4000
                     unitText: "RPM"

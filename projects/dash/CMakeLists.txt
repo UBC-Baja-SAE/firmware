@@ -52,6 +52,8 @@ qt_add_resources(${PROJECT_NAME} "app_config"
         BASE "src/config"
         FILES
         src/config/eglfs.json
+        src/config/mochi.dbc
+        src/config/roxy.dbc
 )
 
 # QML files

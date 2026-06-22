@@ -4,7 +4,27 @@
 #include <QJsonDocument>
 #include <QDebug>
 
-// --- CanWorker ---
+
+//TODO: update topics based on dbc
+namespace {
+    const QHash<QString, QString> kSignalTopicMap = {
+        {"speedometer",      "/speed"},
+        {"tachometer",         "/rpm"},
+        {"travel",  "/travel"},
+        {"accelX", "/imu/accel"}, {"accelY", "/imu/accel"}, {"accelZ", "/imu/accel"},
+        {"gyroX",  "/imu/gyro"},  {"gyroY",  "/imu/gyro"},  {"=gyroZ",  "/imu/gyro"},
+    };
+}
+
+namespace {
+    const QHash<quint32, QString> kEcuPrefixMap = {
+        {0x100, "rr_ecu"},  {0x101, "rr_ecu"},
+        {0x200, "rl_ecu"},  {0x201, "rl_ecu"},
+        {0x300, "fr_ecu"},  {0x301, "fr_ecu"},
+        {0x400, "fl_ecu"},  {0x401, "fl_ecu"},
+        {0x500, "rear_ecu"},
+    };
+}
 
 CanWorker::CanWorker(const QString& interfaceName, QObject* parent)
     : QObject(parent), m_interfaceName(interfaceName) {}
@@ -14,15 +34,14 @@ CanWorker::~CanWorker() {
 }
 
 void CanWorker::start() {
-    // 1. Load DBC File
-    if (m_dbcParser.parse("network.dbc")) {
+    if (m_dbcParser.parse(":/mochi.dbc")) {
         m_frameProcessor.setMessageDescriptions(m_dbcParser.messageDescriptions());
         m_frameProcessor.setUniqueIdDescription(QCanDbcFileParser::uniqueIdDescription());
+        qInfo() << "DBC parsed OK," << m_dbcParser.messageDescriptions().size() << "message(s) loaded";
     } else {
         qWarning() << "Failed to parse DBC:" << m_dbcParser.errorString();
     }
 
-    // 2. Connect to SocketCAN
     QString errorString;
     m_device = QCanBus::instance()->createDevice("socketcan", m_interfaceName, &errorString);
     if (!m_device) {
@@ -49,17 +68,22 @@ void CanWorker::processFrames() {
 
         if (result.signalValues.isEmpty()) continue;
 
-        QJsonObject json;
-        json["canId"] = static_cast<qint64>(result.uniqueId);
+        const QString ecuPrefix = kEcuPrefixMap.value(frame.frameId(), QStringLiteral("unknown_ecu"));
 
         for (auto it = result.signalValues.constBegin(); it != result.signalValues.constEnd(); ++it) {
-            json[it.key()] = QJsonValue::fromVariant(it.value());
             emit uiDataUpdated(it.key(), it.value());
-        }
 
-        // Serialize and emit cleanly to the ether
-        QByteArray payload = QJsonDocument(json).toJson(QJsonDocument::Compact);
-        emit foxglovePayloadReady(payload);
+            const QString topic = (it.key().startsWith("accel") || it.key().startsWith("gyro"))
+                ? "/" + ecuPrefix + "/imu." + it.key()
+                : "/" + ecuPrefix + "." + it.key();
+
+            QJsonObject json;
+            json[it.key()] = QJsonValue::fromVariant(it.value());
+            json["canId"] = static_cast<qint64>(result.uniqueId);
+
+            QByteArray payload = QJsonDocument(json).toJson(QJsonDocument::Compact);
+            emit foxglovePayloadReady(topic, payload);
+        }
     }
 }
 
@@ -70,8 +94,6 @@ void CanWorker::stop() {
         m_device = nullptr;
     }
 }
-
-// --- CanSocket ---
 
 CanSocket::CanSocket(QObject* parent) : QObject(parent) {}
 

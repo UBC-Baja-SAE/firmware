@@ -3,10 +3,9 @@
 #include <QObject>
 #include <QThread>
 #include <QTimer>
-#include <QVariant>  // Fix: undefined type QVariant
-#include <QString>   // Fix: undefined type QString
+#include <QVariant>
+#include <QString>
 
-// No Foxglove includes here!
 
 class DebugWorker : public QObject {
     Q_OBJECT
@@ -40,7 +39,7 @@ public:
 
     signals:
         void uiDataUpdated(const QString& signalName, QVariant value);
-    void foxglovePayloadReady(const QByteArray& payload); // Forwards out of thread
+    void foxglovePayloadReady(const QByteArray& payload);
 
 private:
     QThread m_workerThread;

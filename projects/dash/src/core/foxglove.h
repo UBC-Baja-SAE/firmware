@@ -2,13 +2,14 @@
 
 #include <QObject>
 #include <QByteArray>
+#include <QString>
+#include <map>
 #include <memory>
 
-// Forward declarations hide the Foxglove headers from Qt's MOC,
-// completely bypassing the MSVC 'explicit specialization' compiler bug.
 namespace foxglove {
     class WebSocketServer;
     class RawChannel;
+    class McapWriter;
 }
 
 class FoxgloveServer : public QObject {
@@ -21,9 +22,10 @@ public:
     void stop();
 
 public slots:
-    void broadcastCanFrame(const QByteArray& jsonPayload);
+    void broadcastCanFrame(const QString& topic, const QByteArray& jsonPayload);
 
 private:
     std::unique_ptr<foxglove::WebSocketServer> m_server;
-    std::unique_ptr<foxglove::RawChannel> m_channel;
+    std::unique_ptr<foxglove::McapWriter> m_mcapWriter;
+    std::map<QString, std::unique_ptr<foxglove::RawChannel>> m_channels;
 };
