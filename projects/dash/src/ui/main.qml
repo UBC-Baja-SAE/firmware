@@ -7,14 +7,15 @@ import Qt.labs.folderlistmodel
 ApplicationWindow {
     id: root
     visible: true
-    width: 1280
-    height: 480
 
-    // Locks window to fixed 1280x480
-    minimumWidth: 1280
-    maximumWidth: 1280
-    minimumHeight: 480
-    maximumHeight: 480
+    readonly property bool isLinux: Qt.platform.os === "linux"
+    width: isLinux ? 480 : 1280
+    height: isLinux ? 1280 : 480
+
+    minimumWidth: width
+    maximumWidth: width
+    minimumHeight: height
+    maximumHeight: height
 
     property color bgblue: "#193664"
     property color tabActiveColor: "#03101e"
@@ -22,7 +23,7 @@ ApplicationWindow {
     title: "Dash"
     color: bgblue
 
-    visibility: Qt.platform.os === "linux" ? Window.FullScreen : Window.Windowed
+    visibility: isLinux ? Window.FullScreen : Window.Windowed
 
     property real speedometerValue: 0
     property real tachometerValue: 0
@@ -42,127 +43,139 @@ ApplicationWindow {
         source: "assets/fonts/FOT-NewRodin Pro EB.otf"
     }
 
-    // Background gif fills the entire window
-    AnimatedImage {
-        id: backgroundAnimation
-        anchors.fill: parent
-        source: "assets/images/background.gif"
-        playing: true
-        fillMode: Image.PreserveAspectCrop
-    }
+    Item {
+        id: rotatedContentCanvas
+        width: 1280
+        height: 480
 
-    SwipeView {
-        id: swipeView
-        anchors.fill: parent
-        orientation: Qt.Horizontal
+        // Rotate 90 degrees clockwise for shitty dashboard screen
+        rotation: root.isLinux ? 90 : 0
+        transformOrigin: Item.TopLeft
+        x: root.isLinux ? 480 : 0
+        y: 0
 
-        Item {
-            id: main
+        // Background gif fills the entire canvas
+        AnimatedImage {
+            id: backgroundAnimation
+            anchors.fill: parent
+            source: "assets/images/background.gif"
+            playing: true
+            fillMode: Image.PreserveAspectCrop
+        }
 
-            Row {
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: 20
-                spacing: 100
+        SwipeView {
+            id: swipeView
+            anchors.fill: parent
+            orientation: Qt.Horizontal
 
-                Gauge {
-                    width: 450
-                    height: 450
-                    value: root.speedometerValue
-                    minValue: 0
-                    maxValue: 60
-                    unitText: "KM/H"
-                    gifSource: "assets/images/original.gif"
+            Item {
+                id: main
+
+                Row {
+                    anchors.centerIn: parent
+                    anchors.verticalCenterOffset: 20
+                    spacing: 100
+
+                    Gauge {
+                        width: 450
+                        height: 450
+                        value: root.speedometerValue
+                        minValue: 0
+                        maxValue: 60
+                        unitText: "KM/H"
+                        gifSource: "assets/images/original.gif"
+                    }
+
+                    Gauge {
+                        width: 450
+                        height: 450
+                        value: root.tachometerValue
+                        minValue: 0
+                        maxValue: 4000
+                        unitText: "RPM"
+                        gifSource: "assets/images/original.gif"
+                    }
                 }
+            }
 
-                Gauge {
-                    width: 450
-                    height: 450
-                    value: root.tachometerValue
-                    minValue: 0
-                    maxValue: 4000
-                    unitText: "RPM"
-                    gifSource: "assets/images/original.gif"
+            MusicPlayer {
+                id: music
+                tabActiveColor: root.tabActiveColor
+                customFontName: customFont.name
+            }
+
+            Item {
+                id: map
+
+                Text {
+                    anchors.centerIn: parent
+                    font.pointSize: 25
+                    text: "work in progress"
+                }
+            }
+
+            Item {
+                id: cam
+
+                Text {
+                    anchors.centerIn: parent
+                    font.pointSize: 25
+                    text: "work in progress"
                 }
             }
         }
-
-        MusicPlayer {
-            id: music
-            tabActiveColor: root.tabActiveColor
-            customFontName: customFont.name
-        }
-
-        Item {
-            id: map
-
-            Text {
-                anchors.centerIn: parent
-                font.pointSize: 25
-                text: "map"
-            }
-        }
-
-        Item {
-            id: cam
-
-            Text {
-                anchors.centerIn: parent
-                font.pointSize: 25
-                text: "camera"
-            }
-        }
-    }
-
-    Rectangle {
-        id: footerBar
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        height: 70
-        color: "transparent"
 
         Rectangle {
-            id: dockBackground
-            anchors.centerIn: parent
-            anchors.verticalCenterOffset: -8
-            width: navRow.implicitWidth + 16
-            height: navRow.implicitHeight + 16
-            radius: 12 // Smooth pill-like corners
-            color: Qt.rgba(root.tabActiveColor.r, root.tabActiveColor.g, root.tabActiveColor.b, 0.2)
+            id: footerBar
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 70
+            color: "transparent"
 
-            Row {
-                id: navRow
+            Rectangle {
+                id: dockBackground
                 anchors.centerIn: parent
-                spacing: 40
+                anchors.verticalCenterOffset: -8
+                width: navRow.implicitWidth + 16
+                height: navRow.implicitHeight + 16
+                radius: 12
+                color: Qt.rgba(root.tabActiveColor.r, root.tabActiveColor.g, root.tabActiveColor.b, 0.2)
 
-                Repeater {
-                    model: [
-                        { icon: "assets/icons/gauge.svg", index: 0 },
-                        { icon: "assets/icons/music.svg", index: 1 },
-                        { icon: "assets/icons/map.svg", index: 2 },
-                        { icon: "assets/icons/video.svg", index: 3 }
-                    ]
+                Row {
+                    id: navRow
+                    anchors.centerIn: parent
+                    spacing: 40
 
-                    delegate: Rectangle {
-                        width: 50
-                        height: 50
-                        radius: 8
-                        color: swipeView.currentIndex === modelData.index
-                            ? Qt.rgba(root.tabActiveColor.r, root.tabActiveColor.g, root.tabActiveColor.b, 0.2)
-                            : "transparent"
+                    Repeater {
+                        model: [
+                            { icon: "assets/icons/gauge.svg", index: 0 },
+                            { icon: "assets/icons/music.svg", index: 1 },
+                            { icon: "assets/icons/map.svg", index: 2 },
+                            { icon: "assets/icons/video.svg", index: 3 }
+                        ]
 
-                        Image {
-                            anchors.centerIn: parent
-                            width: 35
-                            height: 35
-                            source: modelData.icon
-                            fillMode: Image.PreserveAspectFit
-                            smooth: true
-                        }
+                        delegate: Rectangle {
+                            width: 50
+                            height: 50
+                            radius: 8
+                            color: swipeView.currentIndex === modelData.index
+                                ? Qt.rgba(root.tabActiveColor.r, root.tabActiveColor.g, root.tabActiveColor.b, 0.2)
+                                : "transparent"
 
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: swipeView.currentIndex = modelData.index
+                            Image {
+                                anchors.centerIn: parent
+                                width: 35
+                                height: 35
+                                source: modelData.icon
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: swipeView.currentIndex = modelData.index
+                            }
                         }
                     }
                 }

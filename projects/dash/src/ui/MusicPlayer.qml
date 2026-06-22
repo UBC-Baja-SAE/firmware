@@ -286,6 +286,61 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 40
 
+                    // Volume Down Button
+                    Rectangle {
+                        width: 50
+                        height: 50
+                        radius: 8
+                        color: volDownArea.pressed
+                            ? Qt.rgba(music.tabActiveColor.r, music.tabActiveColor.g, music.tabActiveColor.b, 0.2)
+                            : "transparent"
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 35
+                            height: 35
+                            source: "assets/icons/minus.svg"
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                        }
+
+                        MouseArea {
+                            id: volDownArea
+                            anchors.fill: parent
+                            onClicked: {
+                                mediaPlayer.audioOutput.volume = Math.max(0.0, mediaPlayer.audioOutput.volume - 0.1)
+                            }
+                        }
+                    }
+
+                    // Volume Up Button
+                    Rectangle {
+                        width: 50
+                        height: 50
+                        radius: 8
+                        color: volUpArea.pressed
+                            ? Qt.rgba(music.tabActiveColor.r, music.tabActiveColor.g, music.tabActiveColor.b, 0.2)
+                            : "transparent"
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 35
+                            height: 35
+                            source: "assets/icons/plus.svg"
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                        }
+
+                        MouseArea {
+                            id: volUpArea
+                            anchors.fill: parent
+                            onClicked: {
+                                mediaPlayer.audioOutput.volume = Math.min(1.0, mediaPlayer.audioOutput.volume + 0.1)
+                            }
+                        }
+                    }
+
+                    // Play/Pause Button
                     Rectangle {
                         width: 50
                         height: 50
@@ -321,6 +376,7 @@ Item {
                         }
                     }
 
+                    // Skip Button
                     Rectangle {
                         width: 50
                         height: 50

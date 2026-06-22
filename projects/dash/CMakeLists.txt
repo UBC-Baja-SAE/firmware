@@ -75,6 +75,8 @@ qt_add_qml_module(${PROJECT_NAME}
         "src/ui/assets/icons/play.svg"
         "src/ui/assets/icons/pause.svg"
         "src/ui/assets/icons/skip.svg"
+        "src/ui/assets/icons/plus.svg"
+        "src/ui/assets/icons/minus.svg"
 
 )
 
