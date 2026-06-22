@@ -19,7 +19,7 @@ public slots:
 
     signals:
         void uiDataUpdated(const QString& signalName, QVariant value);
-    void foxglovePayloadReady(const QByteArray& payload); // Emits raw JSON
+    void foxglovePayloadReady(const QString& topic, const QByteArray& payload);
 
 private slots:
     void generateMockData();
@@ -38,8 +38,8 @@ public:
     Q_INVOKABLE void connectToDevice(const QString& interfaceName);
 
     signals:
-        void uiDataUpdated(const QString& signalName, QVariant value);
-    void foxglovePayloadReady(const QByteArray& payload);
+    void uiDataUpdated(const QString& name, QVariant value);
+    void foxglovePayloadReady(const QString& topic, const QByteArray& payload);
 
 private:
     QThread m_workerThread;

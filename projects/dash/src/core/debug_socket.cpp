@@ -2,6 +2,8 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QDebug>
+#include <cstdlib>
+#include <cmath>
 
 DebugWorker::DebugWorker(QObject* parent) : QObject(parent) {}
 
@@ -16,19 +18,33 @@ void DebugWorker::start() {
 }
 
 void DebugWorker::generateMockData() {
-    m_mockRpm += 10.5;
-    if (m_mockRpm > 8000.0) m_mockRpm = 0.0;
+    static double targetRpm = 0.0;
 
-    QJsonObject json;
-    json["canId"] = 0x100;
-    json["RPM"] = m_mockRpm;
-    json["Speed"] = m_mockRpm * 0.015;
+    m_mockRpm += (targetRpm - m_mockRpm) * 0.05;
 
-    emit uiDataUpdated("RPM", m_mockRpm);
-    emit uiDataUpdated("Speed", json["Speed"].toDouble());
+    if (std::abs(targetRpm - m_mockRpm) < 50.0) {
+        targetRpm = static_cast<double>(std::rand() % 4001);
+    }
 
-    QByteArray payload = QJsonDocument(json).toJson(QJsonDocument::Compact);
-    emit foxglovePayloadReady(payload);
+    double mockSpeed = m_mockRpm * 0.015;
+
+    emit uiDataUpdated("tachometer", m_mockRpm);
+
+    QJsonObject tachJson;
+    tachJson["tachometer"] = m_mockRpm;
+    tachJson["canId"] = 0x500; // 0x500 maps to "rear_ecu"
+
+    QByteArray tachPayload = QJsonDocument(tachJson).toJson(QJsonDocument::Compact);
+    emit foxglovePayloadReady("/rear_ecu.tachometer", tachPayload);
+
+    emit uiDataUpdated("speedometer", mockSpeed);
+
+    QJsonObject speedJson;
+    speedJson["speedometer"] = mockSpeed;
+    speedJson["canId"] = 0x500; // 0x500 maps to "rear_ecu"
+
+    QByteArray speedPayload = QJsonDocument(speedJson).toJson(QJsonDocument::Compact);
+    emit foxglovePayloadReady("/rear_ecu.speedometer", speedPayload);
 }
 
 void DebugWorker::stop() {
