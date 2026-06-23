@@ -6,20 +6,13 @@
 #include <QUrl>
 #include "src/core/foxglove.h"
 #include "src/core/controls.h"
+#include "src/core/can_socket.h"
 
 //Fallback for music path
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
 #endif
 
-//Backend logic
-#ifdef RELEASE
-#include "src/core/can_socket.h"
-using CanBackend = CanSocket;
-#else
-#include "src/core/debug_socket.h"
-using CanBackend = DebugSocket;
-#endif
 
 int main(int argc, char *argv[]) {
 //EGLFS backend when running on linux
@@ -32,7 +25,7 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     QQuickStyle::setStyle("Basic");
 
-    CanBackend canAdapter;
+    CanSocket canAdapter;
     canAdapter.connectToDevice("can0");
 
     Controls wiimote;
@@ -43,7 +36,7 @@ int main(int argc, char *argv[]) {
     FoxgloveServer telemetryServer;
     telemetryServer.start();
 
-    QObject::connect(&canAdapter, &CanBackend::foxglovePayloadReady,
+    QObject::connect(&canAdapter, &CanSocket::foxglovePayloadReady,
                      &telemetryServer, &FoxgloveServer::broadcastCanFrame);
 
     QObject::connect(&wiimote, &Controls::foxglovePayloadReady,

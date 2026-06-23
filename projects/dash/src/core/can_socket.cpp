@@ -42,8 +42,17 @@ void CanWorker::start() {
         qWarning() << "Failed to parse DBC:" << m_dbcParser.errorString();
     }
 
+
+#ifdef Q_OS_LINUX
+    const QString pluginName = QStringLiteral("socketcan");
+    qInfo() << "[Can] Using socketcan plugin.";
+#else
+    const QString pluginName = QStringLiteral("virtualcan");
+    qInfo() << "[VCan] Using virtualcan plugin.";
+#endif
+
     QString errorString;
-    m_device = QCanBus::instance()->createDevice("socketcan", m_interfaceName, &errorString);
+    m_device = QCanBus::instance()->createDevice(pluginName, m_interfaceName, &errorString);
     if (!m_device) {
         qWarning() << "Error creating CAN device:" << errorString;
         return;

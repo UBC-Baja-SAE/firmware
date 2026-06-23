@@ -58,6 +58,8 @@ qt_add_executable(${PROJECT_NAME}
         src/main.cpp
         src/core/foxglove.cpp
         src/core/foxglove.h
+        src/core/can_socket.cpp
+        src/core/can_socket.h
         src/core/controls.cpp
         src/core/controls.h
 )
@@ -104,11 +106,6 @@ if (APPLE OR WIN32)
             QT_QML_DEBUG
             PROJECT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
     )
-    # Replaced can_dev with debug_socket (both cpp and h)
-    target_sources(${PROJECT_NAME} PRIVATE
-            src/core/debug_socket.cpp
-            src/core/debug_socket.h
-    )
 
 elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
     message(STATUS "Configuring for Linux Build")
@@ -116,11 +113,7 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
             RELEASE
             PROJECT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
     )
-    # Added can_socket.h for AUTOMOC processing
-    target_sources(${PROJECT_NAME} PRIVATE
-            src/core/can_socket.cpp
-            src/core/can_socket.h
-    )
+
 endif()
 
 # Link Libraries
