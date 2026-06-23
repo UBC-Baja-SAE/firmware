@@ -2,6 +2,8 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QDebug>
+#include <QCanBus>
+#include <QCanBusDevice>
 #include <cstdlib>
 #include <cmath>
 
@@ -11,7 +13,54 @@ DebugWorker::~DebugWorker() {
     stop();
 }
 
-void DebugWorker::start() {
+void DebugWorker::start(const QString& channelName) {
+    if (!QCanBus::instance()->plugins().contains(QStringLiteral("virtualcan"))) {
+        qWarning() << "[VCan] virtualcan plugin not available in this Qt build - falling back to mock data";
+        startMockGenerator();
+        return;
+    }
+
+    QString errorString;
+    m_canDevice = QCanBus::instance()->createDevice(
+        QStringLiteral("virtualcan"), channelName, &errorString);
+
+    if (!m_canDevice) {
+        qWarning() << "[VCan] Failed to create virtualcan device:" << errorString
+                    << "- falling back to mock data";
+        startMockGenerator();
+        return;
+    }
+
+    connect(m_canDevice, &QCanBusDevice::framesReceived, this, &DebugWorker::handleFrames);
+    connect(m_canDevice, &QCanBusDevice::errorOccurred, this, [this](QCanBusDevice::CanBusError) {
+        qWarning() << "[VCan] virtualcan error:" << m_canDevice->errorString();
+    });
+
+    if (!m_canDevice->connectDevice()) {
+        qWarning() << "[VCan] virtualcan connectDevice() failed:" << m_canDevice->errorString()
+                    << "- falling back to mock data";
+        startMockGenerator();
+        return;
+    }
+
+    qInfo() << "[VCan] Listening for real CAN frames on virtualcan channel" << channelName
+             << "(maps to numeric channel 0')";
+}
+
+void DebugWorker::handleFrames() {
+    while (m_canDevice && m_canDevice->framesAvailable()) {
+        const QCanBusFrame frame = m_canDevice->readFrame();
+        // TODO: route this through your existing QCanFrameProcessor / mochi.dbc
+        // decode path instead of re-emitting raw, e.g.:
+        //   m_frameProcessor->processFrame(frame);
+        qDebug() << "[VCan] RX frame  id:" << Qt::hex << frame.frameId()
+                 << "payload:" << frame.payload().toHex();
+
+        emit uiDataUpdated("rawFrameId", frame.frameId());
+    }
+}
+
+void DebugWorker::startMockGenerator() {
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &DebugWorker::generateMockData);
     m_timer->start(50); // 20Hz mock data
@@ -57,6 +106,11 @@ void DebugWorker::stop() {
     if (m_timer) {
         m_timer->stop();
     }
+    if (m_canDevice) {
+        m_canDevice->disconnectDevice();
+        m_canDevice->deleteLater();
+        m_canDevice = nullptr;
+    }
 }
 
 DebugSocket::DebugSocket(QObject* parent) : QObject(parent) {}
@@ -69,15 +123,17 @@ DebugSocket::~DebugSocket() {
 }
 
 void DebugSocket::connectToDevice(const QString& interfaceName) {
-    Q_UNUSED(interfaceName);
+    const QString channel = interfaceName.isEmpty() ? QStringLiteral("can0") : interfaceName;
 
     m_worker = new DebugWorker();
     m_worker->moveToThread(&m_workerThread);
 
     connect(m_worker, &DebugWorker::uiDataUpdated, this, &DebugSocket::uiDataUpdated);
     connect(m_worker, &DebugWorker::foxglovePayloadReady, this, &DebugSocket::foxglovePayloadReady);
-    
-    connect(&m_workerThread, &QThread::started, m_worker, &DebugWorker::start);
+
+    connect(&m_workerThread, &QThread::started, m_worker, [this, channel]() {
+        m_worker->start(channel);
+    });
     connect(&m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
 
     m_workerThread.start();

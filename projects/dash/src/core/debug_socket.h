@@ -6,6 +6,7 @@
 #include <QVariant>
 #include <QString>
 
+class QCanBusDevice;
 
 class DebugWorker : public QObject {
     Q_OBJECT
@@ -14,7 +15,7 @@ public:
     ~DebugWorker();
 
 public slots:
-    void start();
+    void start(const QString& channelName);
     void stop();
 
     signals:
@@ -23,10 +24,14 @@ public slots:
 
 private slots:
     void generateMockData();
+    void handleFrames();
 
 private:
+    void startMockGenerator();
+
     QTimer* m_timer = nullptr;
     double m_mockRpm = 0.0;
+    QCanBusDevice* m_canDevice = nullptr;
 };
 
 class DebugSocket : public QObject {
@@ -38,7 +43,7 @@ public:
     Q_INVOKABLE void connectToDevice(const QString& interfaceName);
 
     signals:
-    void uiDataUpdated(const QString& name, QVariant value);
+        void uiDataUpdated(const QString& name, QVariant value);
     void foxglovePayloadReady(const QString& topic, const QByteArray& payload);
 
 private:

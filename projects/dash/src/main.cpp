@@ -1,7 +1,6 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <QCanBusDevice>
 #include <QQuickStyle>
 #include <QDir>
 #include <QUrl>
