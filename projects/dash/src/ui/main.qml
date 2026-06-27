@@ -58,6 +58,15 @@ ApplicationWindow {
         }
     }
 
+    Shortcut {
+        sequence: "Escape"
+        context: Qt.ApplicationShortcut
+        onActivated: {
+            console.log("Quit requested via keyboard.");
+            Qt.quit();
+        }
+    }
+
     FontLoader {
         id: customFont
         source: "assets/fonts/FOT-NewRodin Pro EB.otf"
@@ -139,8 +148,6 @@ ApplicationWindow {
                     height: parent.height * 0.7
                     radius: 12
                     color: Qt.rgba(root.tabActiveColor.r, root.tabActiveColor.g, root.tabActiveColor.b, 0.4)
-                    border.color: Qt.rgba(255, 255, 255, 0.1)
-                    border.width: 1
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -148,25 +155,19 @@ ApplicationWindow {
                         spacing: 10
 
                         Text {
-                            text: "CAN0 Traffic Monitor"
+                            text: "CAN0 Monitor"
                             color: "white"
                             font.family: customFont.name
-                            font.pointSize: 18
+                            font.pointSize: 16
                             Layout.alignment: Qt.AlignHCenter
                         }
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: "white"
-                            opacity: 0.2
-                        }
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "TIME"; color: "gray"; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 100 }
-                            Text { text: "ID (HEX)"; color: "gray"; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 80 }
-                            Text { text: "PAYLOAD (HEX)"; color: "gray"; font.bold: true; font.family: "monospace"; Layout.fillWidth: true }
+                            Text { text: "Time"; color: "white"; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 100 }
+                            Text { text: "Id"; color: "white"; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 80 }
+                            Text { text: "Payload"; color: "white"; font.bold: true; font.family: "monospace"; Layout.fillWidth: true }
                         }
 
                         ListView {
@@ -189,7 +190,6 @@ ApplicationWindow {
                 }
             }
 
-            // --- UPDATED WEBCAM UI ---
             Item {
                 id: cam
 
@@ -199,13 +199,11 @@ ApplicationWindow {
                     width: parent.width * 0.8
                     height: parent.height * 0.7
                     radius: 12
-                    color: "black" // Solid black background for video
-                    border.color: Qt.rgba(255, 255, 255, 0.1)
-                    border.width: 1
-                    clip: true // Prevents video from spilling out of rounded corners
+                    color: Qt.rgba(root.tabActiveColor.r, root.tabActiveColor.g, root.tabActiveColor.b, 0.4)
+                    clip: true
 
                     VideoOutput {
-                        objectName: "dashVideoOutput" // C++ will search for this name!
+                        objectName: "dashVideoOutput"
                         anchors.fill: parent
                         anchors.margins: 2
                         fillMode: VideoOutput.PreserveAspectCrop
@@ -215,12 +213,10 @@ ApplicationWindow {
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.margins: 15
-                        text: "LIVE DASHCAM"
+                        text: "Dashcam"
                         color: "white"
                         font.family: customFont.name
                         font.pointSize: 16
-                        style: Text.Outline
-                        styleColor: "black"
                     }
                 }
             }
