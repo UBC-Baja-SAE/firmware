@@ -111,16 +111,15 @@ void CanWorker::processFrames() {
 
     while (m_device->framesAvailable()) {
         QCanBusFrame frame = m_device->readFrame();
-
         // --- CANopen Auto-Wakeup (Self-Healing) ---
         // Heartbeat COB-IDs are 0x700 + NodeID. If payload is 0x7F, it's Pre-Operational.
         if (frame.frameId() >= 0x701 && frame.frameId() <= 0x77F) {
             if (!frame.payload().isEmpty() && frame.payload().at(0) == 0x7F) {
-                quint8 nodeId = frame.frameId() - 0x700;
-                qInfo() << "[CANopen] Auto-waking Node" << nodeId << "from Pre-Operational state";
-                sendNmtOperational(nodeId);
+                qInfo() << "[CANopen] Detected Pre-Operational state. Broadcasting NMT Wakeup.";
+                sendNmtOperational(0x00); // 0x00 = Broadcast to all nodes
             }
         }
+        // ------------------------------------------
         // ------------------------------------------
 
         // --- Emit Raw Frame for the Sniffer UI ---
