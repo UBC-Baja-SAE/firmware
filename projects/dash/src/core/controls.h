@@ -7,7 +7,6 @@
 // Forward declaration for hid_device so we don't need to include hidapi.h here
 struct hid_device_;
 typedef struct hid_device_ hid_device;
-QTimer *m_reconnectTimer;
 
 class Controls : public QObject {
     Q_OBJECT
