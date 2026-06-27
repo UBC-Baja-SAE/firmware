@@ -64,6 +64,8 @@ qt_add_executable(${PROJECT_NAME}
         src/core/controls.h
         src/core/webcam.cpp
         src/core/webcam.h
+        src/core/microphone.cpp
+        src/core/microphone.h
 )
 
 #EGLFS config

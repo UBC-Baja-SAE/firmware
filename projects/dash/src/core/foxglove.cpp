@@ -162,3 +162,55 @@ void FoxgloveServer::broadcastImage(const QString& topic, const QImage& image) {
 
     it->second->log(reinterpret_cast<const std::byte*>(jsonPayload.constData()), jsonPayload.size());
 }
+
+void FoxgloveServer::broadcastAudio(const QString& topic, const QByteArray& pcmData, int sampleRate, int channels) {
+    auto it = m_channels.find(topic);
+    if (it == m_channels.end()) {
+        static const std::string schemaStr = R"({
+            "title": "foxglove.RawAudio",
+            "type": "object",
+            "properties": {
+                "timestamp": {"type": "object", "properties": {"sec": {"type": "integer"}, "nsec": {"type": "integer"}}},
+                "data": {"type": "string", "contentEncoding": "base64"},
+                "format": {"type": "string"},
+                "sample_rate": {"type": "integer"},
+                "number_of_channels": {"type": "integer"}
+            }
+        })";
+
+        foxglove::Schema schema;
+        schema.name = "foxglove.RawAudio";
+        schema.encoding = "jsonschema";
+        schema.data = reinterpret_cast<const std::byte*>(schemaStr.data());
+        schema.data_len = schemaStr.size();
+
+        auto channelResult = foxglove::RawChannel::create(topic.toStdString(), "json", schema);
+        if (!channelResult.has_value()) return;
+
+        auto emplaceResult = m_channels.emplace(topic, std::make_unique<foxglove::RawChannel>(std::move(channelResult.value())));
+        it = emplaceResult.first;
+        qInfo() << "[Foxglove] Created Audio channel:" << topic;
+    }
+
+    // 1. Get accurate timestamp
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    auto sec = std::chrono::duration_cast<std::chrono::seconds>(now).count();
+    auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count() % 1000000000;
+
+    // 2. Build JSON Payload
+    QJsonObject jsonObj;
+    QJsonObject timestampObj;
+    timestampObj["sec"] = static_cast<qint64>(sec);
+    timestampObj["nsec"] = static_cast<qint64>(nsec);
+
+    jsonObj["timestamp"] = timestampObj;
+    jsonObj["format"] = "pcm-s16"; // 16-bit PCM Audio
+    jsonObj["sample_rate"] = sampleRate;
+    jsonObj["number_of_channels"] = channels;
+
+    // Foxglove expects the raw audio bytes as a Base64 string
+    jsonObj["data"] = QString::fromLatin1(pcmData.toBase64());
+
+    QByteArray jsonPayload = QJsonDocument(jsonObj).toJson(QJsonDocument::Compact);
+    it->second->log(reinterpret_cast<const std::byte*>(jsonPayload.constData()), jsonPayload.size());
+}

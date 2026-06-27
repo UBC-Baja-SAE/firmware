@@ -24,9 +24,9 @@ public:
 
 public slots:
     void broadcastCanFrame(const QString& topic, const QByteArray& jsonPayload);
-
-    // <-- ADDED: Slot to receive frames from the Webcam
     void broadcastImage(const QString& topic, const QImage& image);
+
+    void broadcastAudio(const QString& topic, const QByteArray& pcmData, int sampleRate, int channels);
 
 private:
     std::unique_ptr<foxglove::WebSocketServer> m_server;

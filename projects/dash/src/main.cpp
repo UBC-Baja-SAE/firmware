@@ -8,6 +8,7 @@
 #include "src/core/controls.h"
 #include "src/core/can_socket.h"
 #include "src/core/webcam.h"
+#include "src/core/microphone.h"
 
 //Fallback for music path
 #ifndef PROJECT_SOURCE_DIR
@@ -46,6 +47,11 @@ int main(int argc, char *argv[]) {
     Webcam dashCam;
     dashCam.start();
     QObject::connect(&dashCam, &Webcam::frameReady, &telemetryServer, &FoxgloveServer::broadcastImage);
+
+    // Set up Microphone
+    Microphone dashMic;
+    dashMic.start();
+    QObject::connect(&dashMic, &Microphone::audioReady, &telemetryServer, &FoxgloveServer::broadcastAudio);
 
     //Finds music in source folder
     QString musicPath = QDir(PROJECT_SOURCE_DIR).filePath("src/ui/assets/music");
