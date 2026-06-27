@@ -23,7 +23,8 @@ private slots:
     void delayedInit();
 
 private:
-    QTimer* m_timer;
+    QTimer* m_timer = nullptr;
+    QTimer* m_reconnectTimer = nullptr; // <-- ADDED THIS LINE
     hid_device* m_device = nullptr;
     uint16_t m_lastButtons = 0;
 
@@ -33,7 +34,5 @@ private:
     void sendKeyEvent(int qtKey, bool pressed);
     void handleButtonChange(uint16_t currentButtons, uint16_t mask, int qtKey);
 };
-
-
 
 #endif // CONTROLS_H
