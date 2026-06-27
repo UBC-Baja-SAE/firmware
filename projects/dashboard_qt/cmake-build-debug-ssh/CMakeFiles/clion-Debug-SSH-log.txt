@@ -1,4 +1,1 @@
-/usr/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_FOXGLOVE_SDK=OFF -G "Unix Makefiles" -S /tmp/tmp.6YissVhpyO/dashboard_qt -B /tmp/tmp.6YissVhpyO/dashboard_qt/cmake-build-debug-ssh
--- Configuring done (0.0s)
--- Generating done (0.0s)
--- Build files have been written to: /tmp/tmp.6YissVhpyO/dashboard_qt/cmake-build-debug-ssh
+com.intellij.ssh.SshException: Unknown host: ubcbaja

@@ -203,6 +203,8 @@ void SystemClock_Config(void)
 #define MAX_SPEED_KMH           150U
 #define MAX_RPM_LIMIT           20000U
 
+#define SENSOR_TIMEOUT_MS 5000U
+
 static volatile uint32_t previous_capture     = 0;
 static volatile uint8_t  speed_first_pulse    = 1;
 volatile uint64_t tim1_overflow_count  = 0;
@@ -316,6 +318,27 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       // Cap at max limit
       tachometer_rpm = (calculated_rpm > MAX_RPM_LIMIT) ? MAX_RPM_LIMIT : calculated_rpm;
     }
+  }
+}
+
+void Check_Sensor_Timeouts(void)
+{
+  uint32_t now = HAL_GetTick();
+
+  /* Check Speedometer Timeout */
+  if ((now - last_magnet_time) > SENSOR_TIMEOUT_MS)
+  {
+    speedometer_kmh = 0;
+    smoothed_speed_freq = 0.0f;
+    speed_first_pulse = 1; // Crucial: Resets state so the next movement doesn't calculate a massive time gap
+  }
+
+  /* Check Tachometer Timeout */
+  if ((now - last_spark_time) > SENSOR_TIMEOUT_MS)
+  {
+    tachometer_rpm = 0;
+    tach_smoothed_freq = 0.0f;
+    tach_first_pulse = 1;
   }
 }
 /* USER CODE END 4 */

@@ -50,6 +50,8 @@
 extern volatile uint32_t speedometer_kmh;
 extern volatile uint32_t tachometer_rpm;
 
+extern void Check_Sensor_Timeouts(void);
+
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -139,6 +141,8 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+    Check_Sensor_Timeouts();
+
     rear_ecu_msg.speedometer = (uint16_t)speedometer_kmh;
     rear_ecu_msg.tachometer  = (uint16_t)tachometer_rpm;
 
