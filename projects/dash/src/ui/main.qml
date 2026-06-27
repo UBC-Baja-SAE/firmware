@@ -37,14 +37,11 @@ ApplicationWindow {
                 tachometerValue = value
         }
 
-        // ADD THIS SIGNAL TO YOUR C++ CanAdapter to feed the sniffer
-        // emit rawFrameReceived(timestampString, hexIdString, hexDataString)
         function onRawFrameReceived(time, canId, data) {
             canSniffer.updateFrame(time, canId, data)
         }
     }
 
-    //Wii remote controls
     Shortcut {
         sequence: "Left"
         onActivated: {
@@ -71,13 +68,11 @@ ApplicationWindow {
         width: 1280
         height: 480
 
-        // Rotate 90 degrees clockwise for shitty dashboard screen
         rotation: root.isLinux ? 90 : 0
         transformOrigin: Item.TopLeft
         x: root.isLinux ? 480 : 0
         y: 0
 
-        // Background gif fills the entire canvas
         AnimatedImage {
             id: backgroundAnimation
             anchors.fill: parent
@@ -130,12 +125,8 @@ ApplicationWindow {
             Item {
                 id: canSniffer
 
-                // Candump-style scrolling log
                 function updateFrame(time, canId, data) {
-                    // Insert the newest frame at the top (index 0)
                     frameModel.insert(0, { "time": time, "canId": canId, "data": data })
-
-                    // Cap the list at 100 items to prevent the UI from freezing/crashing
                     if (frameModel.count > 100) {
                         frameModel.remove(100, 1)
                     }
@@ -171,7 +162,6 @@ ApplicationWindow {
                             opacity: 0.2
                         }
 
-                        // Header Row
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: "TIME"; color: "gray"; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 100 }
@@ -188,7 +178,7 @@ ApplicationWindow {
 
                             delegate: RowLayout {
                                 width: snifferList.width
-                                height: implicitHeight // Added this to ensure rows don't visually overlap
+                                height: implicitHeight
 
                                 Text { text: model.time; color: "lightgray"; font.family: "monospace"; font.pointSize: 14; Layout.preferredWidth: 100 }
                                 Text { text: model.canId; color: "#4facf7"; font.family: "monospace"; font.pointSize: 14; font.bold: true; Layout.preferredWidth: 80 }
@@ -199,13 +189,39 @@ ApplicationWindow {
                 }
             }
 
+            // --- UPDATED WEBCAM UI ---
             Item {
                 id: cam
 
-                Text {
+                Rectangle {
                     anchors.centerIn: parent
-                    font.pointSize: 25
-                    text: "work in progress"
+                    anchors.verticalCenterOffset: -10
+                    width: parent.width * 0.8
+                    height: parent.height * 0.7
+                    radius: 12
+                    color: "black" // Solid black background for video
+                    border.color: Qt.rgba(255, 255, 255, 0.1)
+                    border.width: 1
+                    clip: true // Prevents video from spilling out of rounded corners
+
+                    VideoOutput {
+                        objectName: "dashVideoOutput" // C++ will search for this name!
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        fillMode: VideoOutput.PreserveAspectCrop
+                    }
+
+                    Text {
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.margins: 15
+                        text: "LIVE DASHCAM"
+                        color: "white"
+                        font.family: customFont.name
+                        font.pointSize: 16
+                        style: Text.Outline
+                        styleColor: "black"
+                    }
                 }
             }
         }
@@ -236,7 +252,7 @@ ApplicationWindow {
                         model: [
                             { icon: "assets/icons/gauge.svg", index: 0 },
                             { icon: "assets/icons/music.svg", index: 1 },
-                            { icon: "assets/icons/map.svg", index: 2 },
+                            { icon: "assets/icons/terminal.svg", index: 2 },
                             { icon: "assets/icons/video.svg", index: 3 }
                         ]
 

@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QByteArray>
 #include <QString>
+#include <QImage> // <-- ADDED for Webcam
 #include <map>
 #include <memory>
 
@@ -23,6 +24,9 @@ public:
 
 public slots:
     void broadcastCanFrame(const QString& topic, const QByteArray& jsonPayload);
+
+    // <-- ADDED: Slot to receive frames from the Webcam
+    void broadcastImage(const QString& topic, const QImage& image);
 
 private:
     std::unique_ptr<foxglove::WebSocketServer> m_server;
