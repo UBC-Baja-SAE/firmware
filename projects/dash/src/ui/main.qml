@@ -130,17 +130,15 @@ ApplicationWindow {
             Item {
                 id: canSniffer
 
-                // Dictionary-style update to prevent UI lag on high-speed busses
+                // Candump-style scrolling log
                 function updateFrame(time, canId, data) {
-                    for (var i = 0; i < frameModel.count; i++) {
-                        if (frameModel.get(i).canId === canId) {
-                            frameModel.setProperty(i, "data", data)
-                            frameModel.setProperty(i, "time", time)
-                            return
-                        }
+                    // Insert the newest frame at the top (index 0)
+                    frameModel.insert(0, { "time": time, "canId": canId, "data": data })
+
+                    // Cap the list at 100 items to prevent the UI from freezing/crashing
+                    if (frameModel.count > 100) {
+                        frameModel.remove(100, 1)
                     }
-                    // If ID doesn't exist, append it
-                    frameModel.append({ "time": time, "canId": canId, "data": data })
                 }
 
                 Rectangle {
@@ -190,6 +188,8 @@ ApplicationWindow {
 
                             delegate: RowLayout {
                                 width: snifferList.width
+                                height: implicitHeight // Added this to ensure rows don't visually overlap
+
                                 Text { text: model.time; color: "lightgray"; font.family: "monospace"; font.pointSize: 14; Layout.preferredWidth: 100 }
                                 Text { text: model.canId; color: "#4facf7"; font.family: "monospace"; font.pointSize: 14; font.bold: true; Layout.preferredWidth: 80 }
                                 Text { text: model.data; color: "white"; font.family: "monospace"; font.pointSize: 14; Layout.fillWidth: true }
@@ -236,8 +236,7 @@ ApplicationWindow {
                         model: [
                             { icon: "assets/icons/gauge.svg", index: 0 },
                             { icon: "assets/icons/music.svg", index: 1 },
-                            // Update this to a terminal or list icon for the sniffer
-                            { icon: "assets/icons/terminal.svg", index: 2 },
+                            { icon: "assets/icons/map.svg", index: 2 },
                             { icon: "assets/icons/video.svg", index: 3 }
                         ]
 
