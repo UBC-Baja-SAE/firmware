@@ -132,7 +132,7 @@ void StartDefaultTask(void *argument)
   TxHeader.DataLength = FDCAN_DLC_BYTES_4;
   TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
   TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
-  TxHeader.FDFormat = FDCAN_FD_CAN;
+  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
   TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
   TxHeader.MessageMarker = 0;
 
@@ -144,15 +144,29 @@ void StartDefaultTask(void *argument)
 
     if (mochi_rear_ecu_status_pack(TxData, &rear_ecu_msg, 4) > 0)
     {
-      if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0)
+      // If the hardware TX FIFO is full of stale, failed frames, flush them completely
+      if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0)
       {
-        if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData) != HAL_OK)
+        /* On STM32H7, resetting the Tx FIFO requires pulling the pending requests
+           out of the peripheral execution register directly. */
+        uint32_t active_buffers = hfdcan1.Instance->TXBRP; // Get all requested buffers
+        if (active_buffers != 0)
         {
+          HAL_FDCAN_AbortTxRequest(&hfdcan1, active_buffers);
+
+          // Wait briefly for the hardware cancellation to finalize in silicon
+          while ((hfdcan1.Instance->TXBRP & active_buffers) != 0);
         }
+      }
+
+      // Now confidently add your new message to the queue
+      if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData) != HAL_OK)
+      {
+        // Handled silently: If a frame fails to append, the next loop cycle recovers it
       }
     }
 
-    osDelay(10);
+    osDelay(100);
   }
   /* USER CODE END StartDefaultTask */
 }
