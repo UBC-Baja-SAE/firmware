@@ -1,7 +1,6 @@
 VERSION ""
 
 NS_ :
-    SIG_VALTYPE_
 
 BS_:
 
@@ -88,32 +87,3 @@ BO_ 1795 FR_Heartbeat: 1 FR_ECU
 
 BO_ 1796 FL_Heartbeat: 1 FL_ECU
  SG_ state : 0|8@1+ (1,0) [0|127] "" Dash
-
-
-SIG_VALTYPE_ 385 accelX : 1;
-SIG_VALTYPE_ 385 gyroX : 1;
-SIG_VALTYPE_ 641 accelY : 1;
-SIG_VALTYPE_ 641 gyroY : 1;
-SIG_VALTYPE_ 897 accelZ : 1;
-SIG_VALTYPE_ 897 gyroZ : 1;
-
-SIG_VALTYPE_ 386 accelX : 1;
-SIG_VALTYPE_ 386 gyroX : 1;
-SIG_VALTYPE_ 642 accelY : 1;
-SIG_VALTYPE_ 642 gyroY : 1;
-SIG_VALTYPE_ 898 accelZ : 1;
-SIG_VALTYPE_ 898 gyroZ : 1;
-
-SIG_VALTYPE_ 387 accelX : 1;
-SIG_VALTYPE_ 387 gyroX : 1;
-SIG_VALTYPE_ 643 accelY : 1;
-SIG_VALTYPE_ 643 gyroY : 1;
-SIG_VALTYPE_ 899 accelZ : 1;
-SIG_VALTYPE_ 899 gyroZ : 1;
-
-SIG_VALTYPE_ 388 accelX : 1;
-SIG_VALTYPE_ 388 gyroX : 1;
-SIG_VALTYPE_ 644 accelY : 1;
-SIG_VALTYPE_ 644 gyroY : 1;
-SIG_VALTYPE_ 900 accelZ : 1;
-SIG_VALTYPE_ 900 gyroZ : 1;
