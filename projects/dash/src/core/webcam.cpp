@@ -2,7 +2,7 @@
 #include <QDebug>
 
 Webcam::Webcam(QObject* parent) : QObject(parent) {
-    m_camera = new QCamera(QCameraDevice::DefaultVideoDevice, this);
+    m_camera = new QCamera(this);
     m_session = new QMediaCaptureSession(this);
     m_videoSink = new QVideoSink(this);
 
