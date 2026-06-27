@@ -20,10 +20,14 @@ public:
 public slots:
     void start();
     void stop();
+    void sendNmtOperational(quint8 nodeId = 0x00);
 
     signals:
         void uiDataUpdated(const QString& signalName, QVariant value);
     void foxglovePayloadReady(const QString& topic, const QByteArray& payload);
+
+    // NEW: Signal to send raw sniffer data
+    void rawFrameReceived(const QString& time, const QString& canId, const QString& data);
 
 private slots:
     void processFrames();
@@ -46,6 +50,9 @@ public:
     signals:
         void uiDataUpdated(const QString& signalName, QVariant value);
     void foxglovePayloadReady(const QString& topic, const QByteArray& payload);
+
+    // NEW: Signal exposed to QML
+    void rawFrameReceived(const QString& time, const QString& canId, const QString& data);
 
 private:
     QThread m_workerThread;

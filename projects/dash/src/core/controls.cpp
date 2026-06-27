@@ -32,12 +32,33 @@ Controls::Controls(QObject *parent) : QObject(parent), m_device(nullptr), m_last
         return;
     }
 
+    struct hid_device_info *devs, *cur_dev;
+    devs = hid_enumerate(0x0, 0x0);
+    cur_dev = devs;
+    while (cur_dev) {
+        qDebug() << "[HID Scan] Found Device ->"
+                 << "VID:" << Qt::hex << cur_dev->vendor_id
+                 << "PID:" << Qt::hex << cur_dev->product_id
+                 << "Path:" << cur_dev->path
+                 << "Manuf:" << QString::fromWCharArray(cur_dev->manufacturer_string)
+                 << "Product:" << QString::fromWCharArray(cur_dev->product_string);
+        cur_dev = cur_dev->next;
+    }
+    hid_free_enumeration(devs);
+
     connectToWiimote();
 
     // Setup polling timer to fetch HID packets at ~60Hz
     m_timer = new QTimer(this);
+
     connect(m_timer, &QTimer::timeout, this, &Controls::pollEvents);
     m_timer->start(16);
+
+    m_reconnectTimer = new QTimer(this);
+    connect(m_reconnectTimer, &QTimer::timeout, this, [this]() {
+        if (!m_device) connectToWiimote();
+    });
+    m_reconnectTimer->start(2000);
 }
 
 Controls::~Controls() {
@@ -46,6 +67,9 @@ Controls::~Controls() {
     }
     hid_exit();
 }
+
+
+
 
 void Controls::connectToWiimote() {
     // Try Wiimote with built-in MotionPlus first

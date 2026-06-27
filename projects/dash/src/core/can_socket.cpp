@@ -3,6 +3,7 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QDebug>
+#include <QTime> // NEW: Required for sniffer timestamps
 
 
 //TODO: update topics based on dbc
@@ -63,8 +64,35 @@ void CanWorker::start() {
 
     if (m_device->connectDevice()) {
         qInfo() << "Connected to" << m_interfaceName << "with CAN FD enabled.";
+
+        // AUTO-BOOT NMT COMMAND: Broadcast 'Set Operational' to all nodes (0x00)
+        sendNmtOperational(0x00);
+
     } else {
         qWarning() << "Failed to connect to CAN device.";
+    }
+}
+
+void CanWorker::sendNmtOperational(quint8 nodeId) {
+    if (!m_device || m_device->state() != QCanBusDevice::ConnectedState) {
+        qWarning() << "Cannot send NMT: CAN device not connected.";
+        return;
+    }
+
+    QCanBusFrame frame;
+    frame.setFrameId(0x000); // NMT COB-ID is always 0x000
+    frame.setExtendedFrameFormat(false); // Standard 11-bit ID
+
+    QByteArray payload;
+    payload.append(static_cast<char>(0x01)); // CS: 0x01 = Start / Set Operational
+    payload.append(static_cast<char>(nodeId)); // Node ID (0x00 = broadcast to all)
+
+    frame.setPayload(payload);
+
+    if (!m_device->writeFrame(frame)) {
+        qWarning() << "Failed to send NMT Operational frame:" << m_device->errorString();
+    } else {
+        qInfo() << "Sent NMT Operational command to Node:" << nodeId;
     }
 }
 
@@ -73,6 +101,16 @@ void CanWorker::processFrames() {
 
     while (m_device->framesAvailable()) {
         QCanBusFrame frame = m_device->readFrame();
+
+        // --- NEW: Emit Raw Frame for the Sniffer UI ---
+        // Format time as HH:mm:ss.zzz, ID as zero-padded Hex, and Payload as space-separated Hex
+        QString timeStr = QTime::currentTime().toString("HH:mm:ss.zzz");
+        QString idStr = QString::number(frame.frameId(), 16).toUpper().rightJustified(3, '0');
+        QString dataStr = frame.payload().toHex(' ').toUpper();
+
+        emit rawFrameReceived(timeStr, idStr, dataStr);
+        // ----------------------------------------------
+
         auto result = m_frameProcessor.parseFrame(frame);
 
         if (result.signalValues.isEmpty()) continue;
@@ -119,6 +157,9 @@ void CanSocket::connectToDevice(const QString& interfaceName) {
 
     connect(m_worker, &CanWorker::uiDataUpdated, this, &CanSocket::uiDataUpdated);
     connect(m_worker, &CanWorker::foxglovePayloadReady, this, &CanSocket::foxglovePayloadReady);
+
+    // NEW: Route the sniffer signal from the worker thread to the main thread
+    connect(m_worker, &CanWorker::rawFrameReceived, this, &CanSocket::rawFrameReceived);
 
     connect(&m_workerThread, &QThread::started, m_worker, &CanWorker::start);
     connect(&m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);

@@ -36,6 +36,12 @@ ApplicationWindow {
             else if (key === "tachometer")
                 tachometerValue = value
         }
+
+        // ADD THIS SIGNAL TO YOUR C++ CanAdapter to feed the sniffer
+        // emit rawFrameReceived(timestampString, hexIdString, hexDataString)
+        function onRawFrameReceived(time, canId, data) {
+            canSniffer.updateFrame(time, canId, data)
+        }
     }
 
     //Wii remote controls
@@ -122,12 +128,74 @@ ApplicationWindow {
             }
 
             Item {
-                id: map
+                id: canSniffer
 
-                Text {
+                // Dictionary-style update to prevent UI lag on high-speed busses
+                function updateFrame(time, canId, data) {
+                    for (var i = 0; i < frameModel.count; i++) {
+                        if (frameModel.get(i).canId === canId) {
+                            frameModel.setProperty(i, "data", data)
+                            frameModel.setProperty(i, "time", time)
+                            return
+                        }
+                    }
+                    // If ID doesn't exist, append it
+                    frameModel.append({ "time": time, "canId": canId, "data": data })
+                }
+
+                Rectangle {
                     anchors.centerIn: parent
-                    font.pointSize: 25
-                    text: "work in progress"
+                    anchors.verticalCenterOffset: -10
+                    width: parent.width * 0.8
+                    height: parent.height * 0.7
+                    radius: 12
+                    color: Qt.rgba(root.tabActiveColor.r, root.tabActiveColor.g, root.tabActiveColor.b, 0.4)
+                    border.color: Qt.rgba(255, 255, 255, 0.1)
+                    border.width: 1
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 20
+                        spacing: 10
+
+                        Text {
+                            text: "CAN0 Traffic Monitor"
+                            color: "white"
+                            font.family: customFont.name
+                            font.pointSize: 18
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "white"
+                            opacity: 0.2
+                        }
+
+                        // Header Row
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "TIME"; color: "gray"; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 100 }
+                            Text { text: "ID (HEX)"; color: "gray"; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 80 }
+                            Text { text: "PAYLOAD (HEX)"; color: "gray"; font.bold: true; font.family: "monospace"; Layout.fillWidth: true }
+                        }
+
+                        ListView {
+                            id: snifferList
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            model: ListModel { id: frameModel }
+
+                            delegate: RowLayout {
+                                width: snifferList.width
+                                Text { text: model.time; color: "lightgray"; font.family: "monospace"; font.pointSize: 14; Layout.preferredWidth: 100 }
+                                Text { text: model.canId; color: "#4facf7"; font.family: "monospace"; font.pointSize: 14; font.bold: true; Layout.preferredWidth: 80 }
+                                Text { text: model.data; color: "white"; font.family: "monospace"; font.pointSize: 14; Layout.fillWidth: true }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -168,7 +236,8 @@ ApplicationWindow {
                         model: [
                             { icon: "assets/icons/gauge.svg", index: 0 },
                             { icon: "assets/icons/music.svg", index: 1 },
-                            { icon: "assets/icons/map.svg", index: 2 },
+                            // Update this to a terminal or list icon for the sniffer
+                            { icon: "assets/icons/terminal.svg", index: 2 },
                             { icon: "assets/icons/video.svg", index: 3 }
                         ]
 

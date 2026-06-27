@@ -7,6 +7,7 @@
 // Forward declaration for hid_device so we don't need to include hidapi.h here
 struct hid_device_;
 typedef struct hid_device_ hid_device;
+QTimer *m_reconnectTimer;
 
 class Controls : public QObject {
     Q_OBJECT
@@ -33,5 +34,7 @@ private:
     void sendKeyEvent(int qtKey, bool pressed);
     void handleButtonChange(uint16_t currentButtons, uint16_t mask, int qtKey);
 };
+
+
 
 #endif // CONTROLS_H
