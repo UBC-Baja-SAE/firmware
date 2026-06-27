@@ -62,6 +62,8 @@ qt_add_executable(${PROJECT_NAME}
         src/core/can_socket.h
         src/core/controls.cpp
         src/core/controls.h
+        src/core/webcam.cpp
+        src/core/webcam.h
 )
 
 #EGLFS config
