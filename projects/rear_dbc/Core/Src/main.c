@@ -70,7 +70,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
   /* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
@@ -95,15 +95,16 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_FDCAN1_Init();
-  MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_TIM_Base_Start_IT(&htim2);
-  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_4);
+
+  HAL_TIM_Base_Start_IT(&htim1);
+  HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_2);
 
   HAL_TIM_Base_Start_IT(&htim3);
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_4);
+  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
 
   /* USER CODE END 2 */
 
@@ -188,9 +189,9 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-#define TIM2_CLOCK_FREQ         192000000UL   // APB1 Timer Clock @192MHz
-#define TIM3_CLOCK_FREQ         1000000UL   // APB1 Timer Clock @1MHz
-#define TIMER_PERIOD_TICKS      4294967296ULL // 2^32 for 32-bit TIM2
+#define TIM1_CLOCK_FREQ         192000000UL   // APB1 Timer Clock @192MHz
+#define TIM3_CLOCK_FREQ         192000000UL   // APB1 Timer Clock @1MHz
+#define TIM1_PERIOD_TICKS       65536ULL      // 2^16 for 16-bit TIM1
 #define TIM3_PERIOD_TICKS       65536ULL      // 2^16 for 16-bit TIM3
 
 #define MAGNET_DEBOUNCE_TIME_MS 5U
@@ -204,7 +205,7 @@ void SystemClock_Config(void)
 
 static volatile uint32_t previous_capture     = 0;
 static volatile uint8_t  speed_first_pulse    = 1;
-volatile uint64_t tim2_overflow_count  = 0;
+volatile uint64_t tim1_overflow_count  = 0;
 static volatile float    smoothed_speed_freq  = 0.0f;
 
 volatile uint32_t last_magnet_time     = 0;
@@ -221,7 +222,7 @@ volatile uint32_t tachometer_rpm = 0;
 
 void Speedometer_OverflowISR(void)
 {
-  tim2_overflow_count++;
+  tim1_overflow_count++;
 }
 
 void Tachometer_OverflowISR(void)
@@ -231,8 +232,8 @@ void Tachometer_OverflowISR(void)
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-  /* ---------------- SPEEDOMETER (TIM2) ---------------- */
-  if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
+  /* ---------------- SPEEDOMETER (TIM1) ---------------- */
+  if (htim->Instance == TIM1 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
   {
     uint32_t now = HAL_GetTick();
 
@@ -240,26 +241,26 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
       return;
     last_magnet_time = now;
 
-    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
+    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
 
     if (speed_first_pulse)
     {
       previous_capture    = cap;
-      tim2_overflow_count = 0;
+      tim1_overflow_count = 0;
       speed_first_pulse   = 0;
       return;
     }
 
-    uint64_t diff = (tim2_overflow_count * TIMER_PERIOD_TICKS)
+    uint64_t diff = (tim1_overflow_count * TIM1_PERIOD_TICKS)
                   + (uint64_t)cap
                   - (uint64_t)previous_capture;
 
     previous_capture    = cap;
-    tim2_overflow_count = 0;
+    tim1_overflow_count = 0;
 
     if (diff > 0ULL)
     {
-      float instant_freq = (float)TIM2_CLOCK_FREQ / (float)diff;
+      float instant_freq = (float)TIM1_CLOCK_FREQ / (float)diff;
 
       smoothed_speed_freq = (instant_freq * SPEED_SMOOTHING)
                           + (smoothed_speed_freq * (1.0f - SPEED_SMOOTHING));
@@ -274,7 +275,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 
   /* ---------------- TACHOMETER (TIM3) ---------------- */
   /* ---------------- TACHOMETER (TIM3) ---------------- */
-  else if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
+  else if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
   {
     uint32_t now = HAL_GetTick();
 
@@ -284,7 +285,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     }
     last_spark_time = now;
 
-    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
+    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
 
     if (tach_first_pulse)
     {
@@ -350,7 +351,7 @@ void MPU_Config(void)
 
 /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM1 interrupt took place, inside
+  * @note   This function is called  when TIM6 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -361,12 +362,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM1)
+  if (htim->Instance == TIM6)
   {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM2)
+  if (htim->Instance == TIM1)
   {
     Speedometer_OverflowISR();
   }
