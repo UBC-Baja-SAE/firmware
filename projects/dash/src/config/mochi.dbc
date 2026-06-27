@@ -1,55 +1,119 @@
 VERSION ""
 
 NS_ :
+    SIG_VALTYPE_
 
 BS_:
 
 BU_: RearECU RR_ECU RL_ECU FR_ECU FL_ECU Dash
 
-BO_ 256 RR_IMU: 12 RR_ECU
- SG_ accelX : 0|16@1- (1,0) [-32768|32767] "" Dash
- SG_ accelY : 16|16@1- (1,0) [-32768|32767] "" Dash
- SG_ accelZ : 32|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroX : 48|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroY : 64|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroZ : 80|16@1- (1,0) [-32768|32767] "" Dash
 
-BO_ 257 RR_Suspension: 1 RR_ECU
- SG_ travel : 0|8@1+ (1,0) [0|255] "" Dash
+BO_ 385 RR_TPDO1: 8 RR_ECU
+ SG_ accelX : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroX : 32|32@1- (1,0) [0|0] "" Dash
 
-BO_ 512 RL_IMU: 12 RL_ECU
- SG_ accelX : 0|16@1- (1,0) [-32768|32767] "" Dash
- SG_ accelY : 16|16@1- (1,0) [-32768|32767] "" Dash
- SG_ accelZ : 32|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroX : 48|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroY : 64|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroZ : 80|16@1- (1,0) [-32768|32767] "" Dash
+BO_ 641 RR_TPDO2: 8 RR_ECU
+ SG_ accelY : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroY : 32|32@1- (1,0) [0|0] "" Dash
 
-BO_ 513 RL_Suspension: 1 RL_ECU
- SG_ travel : 0|8@1+ (1,0) [0|255] "" Dash
+BO_ 897 RR_TPDO3: 8 RR_ECU
+ SG_ accelZ : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroZ : 32|32@1- (1,0) [0|0] "" Dash
 
-BO_ 768 FR_IMU: 12 FR_ECU
- SG_ accelX : 0|16@1- (1,0) [-32768|32767] "" Dash
- SG_ accelY : 16|16@1- (1,0) [-32768|32767] "" Dash
- SG_ accelZ : 32|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroX : 48|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroY : 64|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroZ : 80|16@1- (1,0) [-32768|32767] "" Dash
+BO_ 1153 RR_TPDO4: 4 RR_ECU
+ SG_ travel : 0|32@1+ (1,0) [0|0] "" Dash
 
-BO_ 769 FR_Suspension: 1 FR_ECU
- SG_ travel : 0|8@1+ (1,0) [0|255] "" Dash
 
-BO_ 1024 FL_IMU: 12 FL_ECU
- SG_ accelX : 0|16@1- (1,0) [-32768|32767] "" Dash
- SG_ accelY : 16|16@1- (1,0) [-32768|32767] "" Dash
- SG_ accelZ : 32|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroX : 48|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroY : 64|16@1- (1,0) [-32768|32767] "" Dash
- SG_ gyroZ : 80|16@1- (1,0) [-32768|32767] "" Dash
+BO_ 386 RL_TPDO1: 8 RL_ECU
+ SG_ accelX : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroX : 32|32@1- (1,0) [0|0] "" Dash
 
-BO_ 1025 FL_Suspension: 1 FL_ECU
- SG_ travel : 0|8@1+ (1,0) [0|255] "" Dash
+BO_ 642 RL_TPDO2: 8 RL_ECU
+ SG_ accelY : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroY : 32|32@1- (1,0) [0|0] "" Dash
+
+BO_ 898 RL_TPDO3: 8 RL_ECU
+ SG_ accelZ : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroZ : 32|32@1- (1,0) [0|0] "" Dash
+
+BO_ 1154 RL_TPDO4: 4 RL_ECU
+ SG_ travel : 0|32@1+ (1,0) [0|0] "" Dash
+
+
+BO_ 387 FR_TPDO1: 8 FR_ECU
+ SG_ accelX : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroX : 32|32@1- (1,0) [0|0] "" Dash
+
+BO_ 643 FR_TPDO2: 8 FR_ECU
+ SG_ accelY : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroY : 32|32@1- (1,0) [0|0] "" Dash
+
+BO_ 899 FR_TPDO3: 8 FR_ECU
+ SG_ accelZ : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroZ : 32|32@1- (1,0) [0|0] "" Dash
+
+BO_ 1155 FR_TPDO4: 4 FR_ECU
+ SG_ travel : 0|32@1+ (1,0) [0|0] "" Dash
+
+
+BO_ 388 FL_TPDO1: 8 FL_ECU
+ SG_ accelX : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroX : 32|32@1- (1,0) [0|0] "" Dash
+
+BO_ 644 FL_TPDO2: 8 FL_ECU
+ SG_ accelY : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroY : 32|32@1- (1,0) [0|0] "" Dash
+
+BO_ 900 FL_TPDO3: 8 FL_ECU
+ SG_ accelZ : 0|32@1- (1,0) [0|0] "" Dash
+ SG_ gyroZ : 32|32@1- (1,0) [0|0] "" Dash
+
+BO_ 1156 FL_TPDO4: 4 FL_ECU
+ SG_ travel : 0|32@1+ (1,0) [0|0] "" Dash
+
 
 BO_ 1280 RearECU_Status: 4 RearECU
  SG_ speedometer : 0|16@1+ (1,0) [0|65535] "" Dash
  SG_ tachometer : 16|16@1+ (1,0) [0|65535] "" Dash
+
+
+BO_ 1793 RR_Heartbeat: 1 RR_ECU
+ SG_ state : 0|8@1+ (1,0) [0|127] "" Dash
+
+BO_ 1794 RL_Heartbeat: 1 RL_ECU
+ SG_ state : 0|8@1+ (1,0) [0|127] "" Dash
+
+BO_ 1795 FR_Heartbeat: 1 FR_ECU
+ SG_ state : 0|8@1+ (1,0) [0|127] "" Dash
+
+BO_ 1796 FL_Heartbeat: 1 FL_ECU
+ SG_ state : 0|8@1+ (1,0) [0|127] "" Dash
+
+
+SIG_VALTYPE_ 385 accelX : 1;
+SIG_VALTYPE_ 385 gyroX : 1;
+SIG_VALTYPE_ 641 accelY : 1;
+SIG_VALTYPE_ 641 gyroY : 1;
+SIG_VALTYPE_ 897 accelZ : 1;
+SIG_VALTYPE_ 897 gyroZ : 1;
+
+SIG_VALTYPE_ 386 accelX : 1;
+SIG_VALTYPE_ 386 gyroX : 1;
+SIG_VALTYPE_ 642 accelY : 1;
+SIG_VALTYPE_ 642 gyroY : 1;
+SIG_VALTYPE_ 898 accelZ : 1;
+SIG_VALTYPE_ 898 gyroZ : 1;
+
+SIG_VALTYPE_ 387 accelX : 1;
+SIG_VALTYPE_ 387 gyroX : 1;
+SIG_VALTYPE_ 643 accelY : 1;
+SIG_VALTYPE_ 643 gyroY : 1;
+SIG_VALTYPE_ 899 accelZ : 1;
+SIG_VALTYPE_ 899 gyroZ : 1;
+
+SIG_VALTYPE_ 388 accelX : 1;
+SIG_VALTYPE_ 388 gyroX : 1;
+SIG_VALTYPE_ 644 accelY : 1;
+SIG_VALTYPE_ 644 gyroY : 1;
+SIG_VALTYPE_ 900 accelZ : 1;
+SIG_VALTYPE_ 900 gyroZ : 1;
