@@ -134,3 +134,44 @@ void CanWorker::processFrames() {
                 : "/" + ecuPrefix + "." + it.key();
 
             QJsonObject json;
+            json[it.key()] = QJsonValue::fromVariant(it.value());
+            json["canId"] = static_cast<qint64>(result.uniqueId);
+
+            QByteArray payload = QJsonDocument(json).toJson(QJsonDocument::Compact);
+            emit foxglovePayloadReady(topic, payload);
+        }
+    }
+}
+
+void CanWorker::stop() {
+    if (m_device) {
+        m_device->disconnectDevice();
+        delete m_device;
+        m_device = nullptr;
+    }
+}
+
+CanSocket::CanSocket(QObject* parent) : QObject(parent) {}
+
+CanSocket::~CanSocket() {
+    if (m_workerThread.isRunning()) {
+        m_workerThread.quit();
+        m_workerThread.wait();
+    }
+}
+
+void CanSocket::connectToDevice(const QString& interfaceName) {
+    m_worker = new CanWorker(interfaceName);
+    m_worker->moveToThread(&m_workerThread);
+
+    connect(m_worker, &CanWorker::uiDataUpdated, this, &CanSocket::uiDataUpdated);
+    connect(m_worker, &CanWorker::foxglovePayloadReady, this, &CanSocket::foxglovePayloadReady);
+
+    // Route the sniffer signal from the worker thread to the main thread
+    connect(m_worker, &CanWorker::rawFrameReceived, this, &CanSocket::rawFrameReceived);
+
+    connect(&m_workerThread, &QThread::started, m_worker, &CanWorker::start);
+    connect(&m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
+
+    m_workerThread.start();
+}
