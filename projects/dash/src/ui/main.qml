@@ -125,10 +125,22 @@ ApplicationWindow {
                 }
             }
 
-            MusicPlayer {
-                id: music
-                tabActiveColor: root.tabActiveColor
-                customFontName: customFont.name
+            MediaPlayer {
+                id: mediaPlayer
+                audioOutput: AudioOutput {
+                    id: audioOut
+                    volume: 1
+                    Component.onCompleted: console.log("Audio device:", audioOut.device.description, "| id:", audioOut.device.id)
+                }
+                onErrorOccurred: (error, errorString) => console.log("MediaPlayer error:", error, errorString)
+                onHasAudioChanged: console.log("hasAudio:", hasAudio)
+                onPlaybackStateChanged: console.log("playbackState:", playbackState)
+                onMediaStatusChanged: {
+                    console.log("mediaStatus:", mediaStatus)
+                    if (mediaStatus === MediaPlayer.EndOfMedia) {
+                        music.playNext();
+                    }
+                }
             }
 
             Item {
