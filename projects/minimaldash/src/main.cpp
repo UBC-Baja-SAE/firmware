@@ -1,5 +1,6 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include "core/cansocket.h"
 
 int main(int argc, char *argv[]) {
 
@@ -14,6 +15,9 @@ int main(int argc, char *argv[]) {
         Qt::QueuedConnection);
 
     engine.load("qrc:/qt/qml/app/src/ui/main.qml");
+
+    CanSocket canSocket;
+    canSocket.connectDevice();
 
     return app.exec();
 }
