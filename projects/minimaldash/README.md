@@ -29,12 +29,10 @@ brew install qt6 qtserialbus
 
 Windows devices (and/or MacOS devices without Homebrew) can instead use the [Qt Maintenance Tool](https://doc.qt.io/qt-6/get-and-install-qt.html):
 
-- Qt for Development
-  - Qt
-    - Qt 6.11.1
-      - MSVC 2022 64-bit / ARM64 (based on system architecture, Windows only)
-      - Additional Libraries
-        - Qt Serial Bus
+- Qt 6.11.1
+  - MSVC 2022 64-bit / ARM64 (based on system architecture, Windows only)
+  - Additional Libraries
+    - Qt Serial Bus
 ## Building
 
 
