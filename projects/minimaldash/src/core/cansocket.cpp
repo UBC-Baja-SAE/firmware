@@ -39,7 +39,6 @@ void CanSocket::onFramesReceived()
 {
     while (m_device->framesAvailable() > 0) {
         const QCanBusFrame frame = m_device->readFrame();
-        qDebug() << "id:" << Qt::hex << frame.frameId()
-                  << "payload:" << frame.payload().toHex();
+        emit rawFrameReceived(frame);
     }
 }

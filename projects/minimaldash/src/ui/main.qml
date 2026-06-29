@@ -6,6 +6,6 @@ Window {
     visible: true
         Text  {
             anchors.centerIn: parent
-            text: "test2"
+            text: "test"
         }
 }
