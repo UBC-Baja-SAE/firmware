@@ -1,4 +1,4 @@
-# Workaround for an explicit-specialization ordering bug in foxglove-sdk's
+# Gemini Slop workaround for an explicit-specialization ordering bug in foxglove-sdk's
 # parameter.hpp. Two inline member templates, ParameterView::isArray<T>()
 # and ParameterView::isDict<T>(), call this->get<ParameterValueView::Array>()
 # / this->get<ParameterValueView::Dict>() with a fixed (non-dependent) type.
