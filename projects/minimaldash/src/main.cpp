@@ -36,8 +36,7 @@ int main(int argc, char *argv[]) {
     QObject::connect(foxgloveSink, &FoxgloveSink::serverStarted, dbcParser, [dbcParser]() {
         dbcParser->loadDbcFiles({":/test.dbc"});
     });
-
-    QObject::connect(foxgloveThread, &QThread::started, foxgloveSink, [foxgloveSink]() {
+   QObject::connect(foxgloveThread, &QThread::started, foxgloveSink, [foxgloveSink]() {
         foxgloveSink->startServer(8765);
         foxgloveSink->startMcapRecording("/Users/bfrzn/git/firmware/projects/minimaldash/logs");
     });
