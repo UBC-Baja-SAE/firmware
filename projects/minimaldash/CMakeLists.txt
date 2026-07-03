@@ -20,8 +20,6 @@ qt_policy(SET QTP0004 NEW)
 
 
 
-
-
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
         src/core/cansocket.cpp
@@ -30,6 +28,7 @@ qt_add_executable(${PROJECT_NAME}
         src/core/dbcparser.h
         src/core/foxglove.cpp
         src/core/foxglove.h
+        src/core/settings.h
 )
 
 file(GLOB DBC_FILES "assets/dbc/*.dbc")
@@ -63,7 +62,11 @@ endif()
 FetchContent_Declare(
         foxglove_sdk
         URL ${FOXGLOVE_URL}
+        PATCH_COMMAND ${CMAKE_COMMAND}
+        -DFILE=<SOURCE_DIR>/include/foxglove/parameter.hpp
+        -P ${CMAKE_SOURCE_DIR}/cmake/patch_foxglove_parameter.cmake
 )
+
 FetchContent_MakeAvailable(foxglove_sdk)
 
 find_package(foxglove-sdk CONFIG REQUIRED HINTS "${foxglove_sdk_SOURCE_DIR}")
@@ -76,3 +79,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::SerialBus
         foxglove_cpp
 )
+
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ntdll)
+endif()

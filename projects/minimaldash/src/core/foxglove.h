@@ -20,19 +20,24 @@ public:
 
 public slots:
     void startServer(uint16_t port = 8765);
-
     void startMcapRecording(const QString &logDirectory);
-
     void registerTopics(const QJsonObject &schemas);
-
     void broadcastPayload(const QString &topicName, const QJsonObject &payload);
 
+    void toggleServer(bool enable);
+    void toggleLogging(bool enable);
+
     signals:
-    void serverStarted();
+        void serverStarted();
 
 private:
+    void stopServer();
+    void stopMcapRecording();
+
     std::shared_ptr<foxglove::WebSocketServer> m_server;
     std::shared_ptr<foxglove::McapWriter> m_writer;
+
+    QJsonObject m_cachedSchemas;
 
     QHash<QString, std::shared_ptr<foxglove::RawChannel>> m_channels;
 };

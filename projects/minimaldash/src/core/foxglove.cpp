@@ -1,7 +1,8 @@
 #include "foxglove.h"
-#include <foxglove/server.hpp>
+#include <foxglove/websocket.hpp>
 #include <foxglove/channel.hpp>
 #include <foxglove/mcap.hpp>
+#include <QCoreApplication>
 #include <QJsonDocument>
 #include <QDebug>
 #include <QDir>
@@ -21,12 +22,12 @@ void FoxgloveSink::startServer(uint16_t port) {
 
     auto serverResult = foxglove::WebSocketServer::create(std::move(options));
     if (!serverResult.has_value()) {
-        qWarning() << "Failed to start Foxglove Server:" << QString::fromStdString(foxglove::strerror(serverResult.error()));
+        qWarning() << "Failed to start Websocket:" << QString::fromStdString(foxglove::strerror(serverResult.error()));
         return;
     }
 
     m_server = std::make_shared<foxglove::WebSocketServer>(std::move(serverResult.value()));
-    qInfo() << "Foxglove WebSocket server listening on port" << port;
+    qInfo() << "WebSocket server listening on port" << port;
 
     emit serverStarted();
 }
@@ -58,8 +59,9 @@ void FoxgloveSink::startMcapRecording(const QString &logDirectory) {
 }
 
 void FoxgloveSink::registerTopics(const QJsonObject &schemas) {
-    if (!m_server) {
-        qWarning() << "Cannot register topics: Server is not initialized!";
+    m_cachedSchemas = schemas;
+    if (!m_server && !m_writer) {
+        qWarning() << "Cannot register topics: Neither Server nor Logger is initialized!";
         return;
     }
 
@@ -104,4 +106,39 @@ void FoxgloveSink::broadcastPayload(const QString &topicName, const QJsonObject 
     auto channel = m_channels.value(topicName);
 
     channel->log(reinterpret_cast<const std::byte*>(payloadBytes.constData()), payloadBytes.size());
+}
+
+void FoxgloveSink::toggleServer(bool enable) {
+    if (enable && !m_server) {
+        startServer(8765);
+        if (!m_cachedSchemas.isEmpty()) {
+            registerTopics(m_cachedSchemas); // Restore topics
+        }
+    } else if (!enable && m_server) {
+        stopServer();
+    }
+}
+
+void FoxgloveSink::toggleLogging(bool enable) {
+    if (enable && !m_writer) {
+        QString logDir = QCoreApplication::applicationDirPath() + "/logs";
+        startMcapRecording(logDir);
+        if (!m_cachedSchemas.isEmpty()) {
+            registerTopics(m_cachedSchemas); // Restore topics
+        }
+    } else if (!enable && m_writer) {
+        stopMcapRecording();
+    }
+}
+
+void FoxgloveSink::stopServer() {
+    m_channels.clear(); // Clear old channels tied to this instance
+    m_server.reset();   // Destroys the server
+    qInfo() << "WebSocket server stopped.";
+}
+
+void FoxgloveSink::stopMcapRecording() {
+    m_channels.clear();
+    m_writer.reset();   // Destroys the writer and flushes the file
+    qInfo() << "MCAP recording stopped.";
 }
