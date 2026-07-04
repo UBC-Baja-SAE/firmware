@@ -9,6 +9,7 @@
 #include "src/core/can_socket.h"
 #include "src/core/webcam.h"
 #include "src/core/microphone.h"
+#include "src/core/wheel.h"
 
 //Fallback for music path
 #ifndef PROJECT_SOURCE_DIR
@@ -42,6 +43,11 @@ int main(int argc, char *argv[]) {
                      &telemetryServer, &FoxgloveServer::broadcastCanFrame);
 
     QObject::connect(&wiimote, &Controls::foxglovePayloadReady,
+                     &telemetryServer, &FoxgloveServer::broadcastCanFrame);
+
+    Wheel wheel(24, 23, 600);
+    wheel.start();
+    QObject::connect(&wheel, &Wheel::foxglovePayloadReady,
                      &telemetryServer, &FoxgloveServer::broadcastCanFrame);
 
     Webcam dashCam;

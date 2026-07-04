@@ -53,6 +53,11 @@ FetchContent_MakeAvailable(foxglove_sdk)
 find_package(foxglove-sdk CONFIG REQUIRED HINTS "${foxglove_sdk_SOURCE_DIR}")
 foxglove_sdk_add_cpp_library(foxglove_cpp TYPE STATIC)
 
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GPIOD REQUIRED IMPORTED_TARGET libgpiod)
+endif()
+
 # Entrypoint (Moved controls.cpp and controls.h here so they compile on all platforms)
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
@@ -66,6 +71,8 @@ qt_add_executable(${PROJECT_NAME}
         src/core/webcam.h
         src/core/microphone.cpp
         src/core/microphone.h
+        src/core/wheel.cpp
+        src/core/wheel.h
 )
 
 #EGLFS config
@@ -118,7 +125,9 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
             PROJECT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
     )
 
+
 endif()
+
 
 # Link Libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -132,6 +141,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::QuickControls2
         hidapi::hidapi
         foxglove_cpp
+        $<$<PLATFORM_ID:Linux>:PkgConfig::GPIOD>
 )
 
 #Foxglove windows build fix

@@ -50,3 +50,11 @@ to fix, add #ifndef FOXGLOVE_HIDE_TEMPLATES to line 466 and #endif at line 522
 this needs to be done everytime cmake build directory is reset/fetch content pulls foxglove sdk
 
 Icons used: https://www.svgrepo.com/collection/dazzle-line-icons at 1.5 stroke and FFFFFF stroke-color
+
+### For building on our pi:
+```bash
+cd ~/firmware/projects/dash
+rm -rf build/
+cmake -B build -S .
+cmake --build build -j$(nproc)
+```
