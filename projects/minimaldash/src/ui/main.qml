@@ -2,36 +2,29 @@ import QtQuick
 import QtQuick.Controls
 
 Window {
-    width: 640
+    width: 1280
     height: 480
     visible: true
+    color: "black"
 
-    Column {
+    minimumWidth: width
+    maximumWidth: width
+    minimumHeight: height
+    maximumHeight: height
+
+    FontLoader {
+        id: customFont
+        source: "qrc:/qt/qml/app/assets/fonts/microgramma.ttf"
+    }
+
+    Text {
         anchors.centerIn: parent
-        spacing: 20
+        text: "UBC Baja 234km/hr 80 50 90 "
+        color: "white"
 
-        Row {
-            spacing: 15
-            Label {
-                text: "WebSocket"
-                anchors.verticalCenter: parent.verticalCenter
-            }
-            Switch {
-                checked: AppSettings.websocketEnabled
-                onCheckedChanged: AppSettings.websocketEnabled = checked
-            }
-        }
+        // 2. Apply the loaded font's family name
+        font.family: customFont.name
 
-        Row {
-            spacing: 15
-            Label {
-                text: "Mcap Logging"
-                anchors.verticalCenter: parent.verticalCenter
-            }
-            Switch {
-                checked: AppSettings.mcapEnabled
-                onCheckedChanged: AppSettings.mcapEnabled = checked
-            }
-        }
+        font.pixelSize: 48
     }
 }

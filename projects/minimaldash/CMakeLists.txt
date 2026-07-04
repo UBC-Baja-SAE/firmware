@@ -39,10 +39,16 @@ qt_add_resources(${PROJECT_NAME} "dbc_resources"
         FILES ${DBC_FILES}
 )
 
+
+
+
 qt_add_qml_module(${PROJECT_NAME}
         URI app
         QML_FILES
         src/ui/main.qml
+        RESOURCES
+        "assets/icons/gear.svg"
+        "assets/fonts/microgramma.ttf"
 )
 
 set(FOXGLOVE_SDK_VERSION "0.25.2")
