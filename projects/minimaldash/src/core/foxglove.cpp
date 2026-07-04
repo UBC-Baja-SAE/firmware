@@ -19,6 +19,7 @@ FoxgloveSink::~FoxgloveSink() {
 void FoxgloveSink::startServer(uint16_t port) {
     foxglove::WebSocketServerOptions options;
     options.port = port;
+    options.host = "0.0.0.0";
 
     auto serverResult = foxglove::WebSocketServer::create(std::move(options));
     if (!serverResult.has_value()) {
