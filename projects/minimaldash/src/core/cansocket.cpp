@@ -24,8 +24,7 @@ bool CanSocket::connectDevice(int baudRate)
         return false;
     }
 
-    // --- NEW: Set the baudrate ---
-    m_device->setConfigurationParameter(QCanBusDevice::BitRateKey, baudRate);
+    //m_device->setConfigurationParameter(QCanBusDevice::BitRateKey, baudRate);
 
     connect(m_device, &QCanBusDevice::framesReceived, this, &CanSocket::onFramesReceived);
 
