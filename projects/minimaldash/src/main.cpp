@@ -16,7 +16,16 @@ int main(int argc, char *argv[]) {
 #ifdef LINUX
     qputenv("QT_QPA_PLATFORM", "eglfs");
 
-    qputenv("QT_QPA_EGLFS_KMS_CONFIG", "qrc:/qt/qml/app/assets/eglfs/eglfs.json");
+    QString tempKmsPath = "/tmp/eglfs.json";
+
+    QFile::remove(tempKmsPath);
+
+    if (QFile::copy(":/qt/qml/app/assets/eglfs/eglfs.json", tempKmsPath)) {
+        qputenv("QT_QPA_EGLFS_KMS_CONFIG", tempKmsPath.toLocal8Bit());
+    } else {
+        qCritical() << "Failed to extract EGLFS KMS config to /tmp";
+    }
+
 #endif
 
     QGuiApplication app(argc, argv);
