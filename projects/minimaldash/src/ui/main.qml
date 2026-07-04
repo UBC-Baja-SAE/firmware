@@ -2,8 +2,10 @@ import QtQuick
 import QtQuick.Controls
 
 Window {
-    width: 1280
-    height: 480
+    id: root
+
+    width: Qt.platform.os === "linux" ? 480 : 1280
+    height: Qt.platform.os === "linux" ? 1280 : 480
     visible: true
     color: "black"
 
@@ -17,14 +19,21 @@ Window {
         source: "qrc:/qt/qml/app/assets/fonts/microgramma.ttf"
     }
 
-    Text {
+    Item {
+        id: dashContainer
+
+        width: 1280
+        height: 480
         anchors.centerIn: parent
-        text: "UBC Baja 234km/hr 80 50 90 "
-        color: "white"
 
-        // 2. Apply the loaded font's family name
-        font.family: customFont.name
+        rotation: Qt.platform.os === "linux" ? 90 : 0
 
-        font.pixelSize: 48
+        Text {
+            anchors.centerIn: parent
+            text: "UBC Baja 234km/hr 80 50 90 "
+            color: "white"
+            font.family: customFont.name
+            font.pixelSize: 48
+        }
     }
 }

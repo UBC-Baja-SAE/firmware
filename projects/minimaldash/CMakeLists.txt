@@ -47,6 +47,7 @@ qt_add_qml_module(${PROJECT_NAME}
         QML_FILES
         src/ui/main.qml
         RESOURCES
+        "assets/eglfs/eglfs.json"
         "assets/icons/gear.svg"
         "assets/fonts/microgramma.ttf"
 )

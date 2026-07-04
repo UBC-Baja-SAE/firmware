@@ -13,6 +13,12 @@
 
 int main(int argc, char *argv[]) {
 
+#ifdef LINUX
+    qputenv("QT_QPA_PLATFORM", "eglfs");
+
+    qputenv("QT_QPA_EGLFS_KMS_CONFIG", "qrc:/qt/qml/app/assets/eglfs/eglfs.json");
+#endif
+
     QGuiApplication app(argc, argv);
 
     QString configPath = QCoreApplication::applicationDirPath() + "/config.ini";
