@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     });
 
     QObject::connect(parserThread, &QThread::started, dbcParser, [dbcParser]() {
-        dbcParser->loadDbcFiles({":/test.dbc"});
+        dbcParser->loadDbcFiles({":/wheel.dbc"});
     });
 
     QObject::connect(foxgloveThread, &QThread::started, foxgloveSink, [foxgloveSink, enableWebsocket, enableMcap]() {
