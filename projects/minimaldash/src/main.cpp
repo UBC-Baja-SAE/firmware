@@ -26,6 +26,13 @@ int main(int argc, char *argv[]) {
         qCritical() << "Failed to extract EGLFS KMS config to /tmp";
     }
 
+    QString tempDbcPath = "/tmp/wheel.dbc";
+    QFile::remove(tempDbcPath);
+
+    if (!QFile::copy(":/wheel.dbc", tempDbcPath)) {
+        qCritical() << "Failed to extract wheel.dbc to /tmp";
+    }
+
 #endif
 
     QGuiApplication app(argc, argv);
