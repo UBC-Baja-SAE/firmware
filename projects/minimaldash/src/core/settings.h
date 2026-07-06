@@ -7,7 +7,6 @@
 class AppSettings : public QObject {
     Q_OBJECT
 
-    // Define QML-accessible properties
     Q_PROPERTY(bool websocketEnabled READ websocketEnabled WRITE setWebsocketEnabled NOTIFY websocketEnabledChanged)
     Q_PROPERTY(bool mcapEnabled READ mcapEnabled WRITE setMcapEnabled NOTIFY mcapEnabledChanged)
 
@@ -23,7 +22,6 @@ public:
         if (m_websocketEnabled == val) return;
         m_websocketEnabled = val;
 
-        // Save to INI file instantly
         QSettings settings(QCoreApplication::applicationDirPath() + "/config.ini", QSettings::IniFormat);
         settings.setValue("Foxglove/EnableWebsocket", val);
 
