@@ -22,6 +22,10 @@
 #include "stm32h7xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
+#include "freertos.h"
+#include "semphr.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +62,8 @@
 extern TIM_HandleTypeDef htim1;
 
 /* USER CODE BEGIN EV */
+
+extern SemaphoreHandle_t IMU_DataReady_Sem;
 
 /* USER CODE END EV */
 
@@ -202,5 +208,18 @@ void TIM1_UP_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+  if (GPIO_Pin == GPIO_PIN_4) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    // Unblock the FreeRTOS task instantly
+    xSemaphoreGiveFromISR(IMU_DataReady_Sem, &xHigherPriorityTaskWoken);
+
+    // Force a context switch if the unblocked sensor task is higher priority
+    // than whatever was running when the interrupt fired
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  }
+}
 
 /* USER CODE END 1 */

@@ -22,6 +22,7 @@
 #include "cmsis_os2.h"
 #include "fdcan.h"
 #include "i2c.h"
+#include "tim.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -97,6 +98,7 @@ int main(void)
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   MX_I2C1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   /* Set CAN_STBY Low */
@@ -104,6 +106,12 @@ int main(void)
 
   /* Initialize IMU with correct settings */
   IMU_Init();
+
+  /* Start CAN Peripheral */
+  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
 
   /* USER CODE END 2 */
