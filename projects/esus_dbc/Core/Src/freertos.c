@@ -26,9 +26,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+
 #include "semphr.h"
 #include "fdcan.h"
 #include "mochi.h"
+#include "i2c.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,8 +64,6 @@ extern FDCAN_HandleTypeDef hfdcan1;
 
 QueueHandle_t CAN_Tx_Queue;
 SemaphoreHandle_t IMU_DataReady_Sem;
-
-
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -174,44 +175,62 @@ void StartDefaultTask(void *argument)
 void ReadSensorsTask(void *argument)
 {
   /* USER CODE BEGIN ReadSensorsTask */
-  uint8_t rawData[14];
+
+  if (IMU_Init() != HAL_OK)
+  {
+    vTaskSuspend(NULL);
+  }
+
+  uint8_t rawData[12]; // Sized to match the 12-byte read
   struct mochi_fr_accel_t accel_msg;
   struct mochi_fr_gyro_t gyro_msg;
   CAN_Queue_Msg_t txMsg;
 
+  // ---> FORCE RESET THE LATCH RIGHT BEFORE WE START WAITING <---
+  HAL_I2C_Mem_Read(&hi2c1, ICM42670_I2C_ADDR, REG_ACCEL_DATA_X1, I2C_MEMADD_SIZE_8BIT, rawData, 12, 100);
+
   /* Infinite loop */
   for(;;)
   {
-    // Wait forever until the EXTI interrupt gives the semaphore
+    // Wait for the EXTI interrupt
     if (xSemaphoreTake(IMU_DataReady_Sem, portMAX_DELAY) == pdTRUE)
     {
-      // Read 14 bytes from the IMU starting at the Accel X register
+      // Read 12 bytes starting at Accel X
       if (HAL_I2C_Mem_Read(&hi2c1, ICM42670_I2C_ADDR, REG_ACCEL_DATA_X1,
-                           I2C_MEMADD_SIZE_8BIT, rawData, 14, 100) == HAL_OK)
+                                 I2C_MEMADD_SIZE_8BIT, rawData, 12, 100) == HAL_OK)
       {
+        // --- 1. Clear the message struct before each use ---
+        memset(&txMsg, 0, sizeof(txMsg));
+
+        // --- 2. Process Accelerometer ---
         accel_msg.accel_x = (int16_t)((rawData[0] << 8) | rawData[1]);
         accel_msg.accel_y = (int16_t)((rawData[2] << 8) | rawData[3]);
         accel_msg.accel_z = (int16_t)((rawData[4] << 8) | rawData[5]);
 
         mochi_fr_accel_pack(txMsg.Payload, &accel_msg, sizeof(txMsg.Payload));
-
         txMsg.Identifier = MOCHI_FR_ACCEL_FRAME_ID;
-        txMsg.DataLength = FDCAN_DLC_BYTES_6;
-
-        // Push to queue (wait up to 10 ticks if full)
+        txMsg.DataLength = 6; // Explicitly set to 6
         xQueueSend(CAN_Tx_Queue, &txMsg, pdMS_TO_TICKS(10));
 
-        gyro_msg.gyro_x = (int16_t)((rawData[8] << 8)  | rawData[9]);
-        gyro_msg.gyro_y = (int16_t)((rawData[10] << 8) | rawData[11]);
-        gyro_msg.gyro_z = (int16_t)((rawData[12] << 8) | rawData[13]);
+        // --- 3. Process Gyroscope ---
+        memset(&txMsg, 0, sizeof(txMsg)); // Clear again
+        gyro_msg.gyro_x = (int16_t)((rawData[6] << 8)  | rawData[7]);
+        gyro_msg.gyro_y = (int16_t)((rawData[8] << 8)  | rawData[9]);
+        gyro_msg.gyro_z = (int16_t)((rawData[10] << 8) | rawData[11]);
 
         mochi_fr_gyro_pack(txMsg.Payload, &gyro_msg, sizeof(txMsg.Payload));
-
         txMsg.Identifier = MOCHI_FR_GYRO_FRAME_ID;
-        txMsg.DataLength = FDCAN_DLC_BYTES_6;
-
-        // Push to queue
+        txMsg.DataLength = 6; // Explicitly set to 6
         xQueueSend(CAN_Tx_Queue, &txMsg, pdMS_TO_TICKS(10));
+      }
+      else
+      {
+        // --- AUTO-RECOVERY ---
+        // If the bus glitches and the read fails, reset the hardware exactly
+        // like the old polling architecture did to clear the fault.
+        HAL_I2C_DeInit(&hi2c1);
+        vTaskDelay(pdMS_TO_TICKS(5));
+        MX_I2C1_Init();
       }
     }
   }
@@ -266,4 +285,3 @@ void CANTxTask(void *argument)
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
-

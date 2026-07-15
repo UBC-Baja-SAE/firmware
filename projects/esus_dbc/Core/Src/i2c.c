@@ -26,11 +26,13 @@
 #define ICM42670_I2C_ADDR           (0x68 << 1) // 0xD0
 
 /* IMU Register Map */
+#define REG_ACCEL_DATA_X1           0x0B
 #define REG_PWR_MGMT0               0x1F
 #define REG_COMBINED_CONFIG         0x20 // Gyro and Accel FSR/ODR configuration
 #define REG_GYRO_ACCEL_FILT         0x28 // Digital Low-Pass Filter configuration
 #define REG_INT_CONFIG              0x14 // Interrupt pin configuration
 #define REG_INT_SOURCE0             0x65 // Interrupt source routing
+#define INT1_OPEN_DRAIN_ACTIVE_LOW  0x04
 
 /* IMU Configuration Bitmasks */
 #define PWR_LN_MODE                 0x0F // Accel and Gyro Low Noise Mode
@@ -157,34 +159,84 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
 HAL_StatusTypeDef IMU_Init(void) {
   HAL_StatusTypeDef status;
   uint8_t tx_data;
+  uint8_t who_am_i = 0;
 
-  // 1. Power Management: Wake up and enter Low Noise Mode
-  tx_data = PWR_LN_MODE;
-  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, REG_PWR_MGMT0, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  // 0. Bus recovery: toggle SCL 9 times to unstick SDA
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitStruct.Pin   = GPIO_PIN_6 | GPIO_PIN_7;
+  GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull  = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+
+  for (int i = 0; i < 9; i++) {
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+    HAL_Delay(1);
+  }
+
+  // STOP condition
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_Delay(1);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+  HAL_Delay(1);
+
+  HAL_I2C_DeInit(&hi2c1);
+
+  // Re-init restores PB6/PB7 to AF mode
+  MX_I2C1_Init();
+  HAL_Delay(5);
+
+  // 1. Verify the IMU is present and responding
+  status = HAL_I2C_Mem_Read(&hi2c1, ICM42670_I2C_ADDR, 0x75, I2C_MEMADD_SIZE_8BIT, &who_am_i, 1, 100);
+  if (status != HAL_OK || who_am_i != 0x67) return HAL_ERROR;
+
+  // 2. Power Management: Wake up and enter Low Noise Mode
+  tx_data = 0x0F;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x1F, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
   if (status != HAL_OK) return status;
 
-  // Give the MEMS structure time to stabilize after powering on
-  HAL_Delay(2);
+  HAL_Delay(10);
 
-  // 2. Set Ranges and ODR: Pack both Accel and Gyro settings into the specific config register
-  tx_data = CONFIG_16G_2000DPS_1KHZ;
-  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, REG_COMBINED_CONFIG, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  // 3. Gyro Config
+  tx_data = 0x04;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x20, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
   if (status != HAL_OK) return status;
 
-  // 3. Hardware Filtering: Apply the 25 Hz DLPF to block engine/CVT vibration
-  tx_data = FILT_BW_25HZ;
-  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, REG_GYRO_ACCEL_FILT, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  // 4. Accel Config
+  tx_data = 0x24;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x21, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
   if (status != HAL_OK) return status;
 
-  // 4. Interrupt Configuration: Set INT1 as push-pull, active high
-  tx_data = INT1_PUSH_PULL_ACTIVE_HIGH;
-  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, REG_INT_CONFIG, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  // 5. Interrupt Configuration: Latched, Open-Drain, Active Low
+  tx_data = 0x00;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x14, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
   if (status != HAL_OK) return status;
 
-  // 5. Interrupt Routing: Route the Data Ready (DRDY) signal to INT1 for the FreeRTOS semaphore
-  tx_data = INT_SOURCE_DRDY;
-  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, REG_INT_SOURCE0, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  // 6. Interrupt Routing: INT_SOURCE0 (0x65) is in MREG1, requires indirect write
+  // Step A: Select MREG1 bank
+  tx_data = 0x00;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x7C, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
   if (status != HAL_OK) return status;
+
+  // Step B: Set target register address
+  tx_data = 0x65;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x7D, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  if (status != HAL_OK) return status;
+
+  // Step C: Write DRDY_INT1_EN
+  tx_data = 0x08;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x7E, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  if (status != HAL_OK) return status;
+
+  HAL_Delay(1);
+
+  // 7. Dummy read to clear any pending interrupt and arm the latch
+  uint8_t dummy[12];
+  HAL_I2C_Mem_Read(&hi2c1, ICM42670_I2C_ADDR, REG_ACCEL_DATA_X1, I2C_MEMADD_SIZE_8BIT, dummy, 12, 100);
 
   return HAL_OK;
 }

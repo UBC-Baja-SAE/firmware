@@ -104,9 +104,6 @@ int main(void)
   /* Set CAN_STBY Low */
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
 
-  /* Initialize IMU with correct settings */
-  IMU_Init();
-
   /* Start CAN Peripheral */
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
   {

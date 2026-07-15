@@ -180,20 +180,6 @@ void EXTI4_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles EXTI line[9:5] interrupts.
-  */
-void EXTI9_5_IRQHandler(void)
-{
-  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
-
-  /* USER CODE END EXTI9_5_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
-  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
-
-  /* USER CODE END EXTI9_5_IRQn 1 */
-}
-
-/**
   * @brief This function handles TIM1 update interrupt.
   */
 void TIM1_UP_IRQHandler(void)
@@ -211,14 +197,14 @@ void TIM1_UP_IRQHandler(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (GPIO_Pin == GPIO_PIN_4) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    // Only give the semaphore if FreeRTOS has actually created it!
+    if (IMU_DataReady_Sem != NULL) {
+      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+      xSemaphoreGiveFromISR(IMU_DataReady_Sem, &xHigherPriorityTaskWoken);
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 
-    // Unblock the FreeRTOS task instantly
-    xSemaphoreGiveFromISR(IMU_DataReady_Sem, &xHigherPriorityTaskWoken);
 
-    // Force a context switch if the unblocked sensor task is higher priority
-    // than whatever was running when the interrupt fired
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
   }
 }
 
