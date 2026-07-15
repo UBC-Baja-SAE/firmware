@@ -1,12 +1,10 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QThread>
-#include <QSettings>
 #include <QFile>
 #include <QDir>
 #include <QDebug>
 #include <QQmlContext>
-#include "core/settings.h"
 #include "core/cansocket.h"
 #include "core/dbcparser.h"
 #include "core/foxglove.h"
@@ -17,7 +15,6 @@ int main(int argc, char *argv[]) {
     qputenv("QT_QPA_PLATFORM", "eglfs");
 
     QString tempKmsPath = "/tmp/eglfs.json";
-
     QFile::remove(tempKmsPath);
 
     if (QFile::copy(":/qt/qml/app/assets/eglfs/eglfs.json", tempKmsPath)) {
@@ -26,36 +23,29 @@ int main(int argc, char *argv[]) {
         qCritical() << "Failed to extract EGLFS KMS config to /tmp";
     }
 
-    QString tempDbcPath = "/tmp/wheel.dbc";
+    QString tempDbcPath = "/tmp/mochi.dbc";
     QFile::remove(tempDbcPath);
 
-    if (!QFile::copy(":/wheel.dbc", tempDbcPath)) {
-        qCritical() << "Failed to extract wheel.dbc to /tmp";
+    if (!QFile::copy(":/mochi.dbc", tempDbcPath)) {
+        qCritical() << "Failed to extract dbc to /tmp";
     }
-
 #endif
 
     QGuiApplication app(argc, argv);
-
-    QString configPath = QCoreApplication::applicationDirPath() + "/config.ini";
-    QSettings settings(configPath, QSettings::IniFormat);
-
-    bool enableWebsocket = settings.value("Foxglove/EnableWebsocket", true).toBool();
-    bool enableMcap = settings.value("Foxglove/EnableMcap", false).toBool();
-    int canBaudRate = settings.value("CAN/BaudRate", 500000).toInt();
-
-    if (!QFile::exists(configPath)) {
-        settings.setValue("Foxglove/EnableWebsocket", enableWebsocket);
-        settings.setValue("Foxglove/EnableMcap", enableMcap);
-        settings.setValue("CAN/BaudRate", canBaudRate);
-        settings.sync();
-        qInfo() << "Created default configuration file at:" << configPath;
-    }
-
     QQmlApplicationEngine engine;
 
-    AppSettings* appSettings = new AppSettings();
-    engine.rootContext()->setContextProperty("AppSettings", appSettings);
+#ifdef ENV_RELEASE
+    engine.rootContext()->setContextProperty("IsReleaseBuild", true);
+    bool enableMcap = true;
+#else
+    engine.rootContext()->setContextProperty("IsReleaseBuild", false);
+    bool enableMcap = false;
+#endif
+
+    // Websocket is always enabled on both Debug and Release
+    bool enableWebsocket = true;
+
+    // REMOVED: int canBaudRate = 500000;
 
     QObject::connect(
         &engine,
@@ -78,12 +68,13 @@ int main(int argc, char *argv[]) {
     dbcParser->moveToThread(parserThread);
     foxgloveSink->moveToThread(foxgloveThread);
 
-    QObject::connect(canThread, &QThread::started, canSocket, [canSocket, canBaudRate]() {
-        canSocket->connectDevice(canBaudRate);
+    // UPDATED: Removed canBaudRate from the lambda capture and function call
+    QObject::connect(canThread, &QThread::started, canSocket, [canSocket]() {
+        canSocket->connectDevice();
     });
 
     QObject::connect(parserThread, &QThread::started, dbcParser, [dbcParser]() {
-        dbcParser->loadDbcFiles({":/wheel.dbc"});
+        dbcParser->loadDbcFiles({":/mochi.dbc"});
     });
 
     QObject::connect(foxgloveThread, &QThread::started, foxgloveSink, [foxgloveSink, enableWebsocket, enableMcap]() {
@@ -104,12 +95,6 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(dbcParser, &DbcParser::frameParsed,
                      foxgloveSink, &FoxgloveSink::broadcastPayload);
-
-    QObject::connect(appSettings, &AppSettings::websocketEnabledChanged,
-                     foxgloveSink, &FoxgloveSink::toggleServer);
-
-    QObject::connect(appSettings, &AppSettings::mcapEnabledChanged,
-                     foxgloveSink, &FoxgloveSink::toggleLogging);
 
     foxgloveThread->start();
     parserThread->start();

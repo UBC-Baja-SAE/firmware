@@ -8,7 +8,7 @@ CanSocket::CanSocket(QObject *parent)
 {
 }
 
-bool CanSocket::connectDevice(int baudRate)
+bool CanSocket::connectDevice()
 {
 #ifdef LINUX
     const QString deviceName = QStringLiteral("socketcan");
@@ -23,9 +23,7 @@ bool CanSocket::connectDevice(int baudRate)
         qWarning() << "createDevice failed:" << errorMsg;
         return false;
     }
-
-    //m_device->setConfigurationParameter(QCanBusDevice::BitRateKey, baudRate);
-
+    
     connect(m_device, &QCanBusDevice::framesReceived, this, &CanSocket::onFramesReceived);
 
     if (!m_device->connectDevice()) {

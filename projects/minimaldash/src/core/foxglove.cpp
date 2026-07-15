@@ -80,9 +80,9 @@ void FoxgloveSink::registerTopics(const QJsonObject &schemas) {
         channelSchema.data_len = schemaStr.size();
 
         auto channelResult = foxglove::RawChannel::create(
-            topicName.toStdString(),          // Topic Name
-            "json",                           // Message Encoding format
-            channelSchema                     // Schema object
+            topicName.toStdString(),
+            "json",
+            channelSchema
         );
 
         if (channelResult.has_value()) {
@@ -113,7 +113,7 @@ void FoxgloveSink::toggleServer(bool enable) {
     if (enable && !m_server) {
         startServer(8765);
         if (!m_cachedSchemas.isEmpty()) {
-            registerTopics(m_cachedSchemas); // Restore topics
+            registerTopics(m_cachedSchemas);
         }
     } else if (!enable && m_server) {
         stopServer();
@@ -125,7 +125,7 @@ void FoxgloveSink::toggleLogging(bool enable) {
         QString logDir = QCoreApplication::applicationDirPath() + "/logs";
         startMcapRecording(logDir);
         if (!m_cachedSchemas.isEmpty()) {
-            registerTopics(m_cachedSchemas); // Restore topics
+            registerTopics(m_cachedSchemas);
         }
     } else if (!enable && m_writer) {
         stopMcapRecording();
@@ -133,13 +133,13 @@ void FoxgloveSink::toggleLogging(bool enable) {
 }
 
 void FoxgloveSink::stopServer() {
-    m_channels.clear(); // Clear old channels tied to this instance
-    m_server.reset();   // Destroys the server
+    m_channels.clear();
+    m_server.reset();
     qInfo() << "WebSocket server stopped.";
 }
 
 void FoxgloveSink::stopMcapRecording() {
     m_channels.clear();
-    m_writer.reset();   // Destroys the writer and flushes the file
+    m_writer.reset();
     qInfo() << "MCAP recording stopped.";
 }

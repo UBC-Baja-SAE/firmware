@@ -4,8 +4,8 @@ import QtQuick.Controls
 Window {
     id: root
 
-    width: Qt.platform.os === "linux" ? 480 : 1280
-    height: Qt.platform.os === "linux" ? 1280 : 480
+    width: IsReleaseBuild ? 480 : 1280
+    height: IsReleaseBuild ? 1280 : 480
     visible: true
     color: "black"
 
@@ -20,20 +20,30 @@ Window {
     }
 
     Item {
-        id: dashContainer
+        id: dash
 
         width: 1280
         height: 480
         anchors.centerIn: parent
 
-        rotation: Qt.platform.os === "linux" ? 90 : 0
+        rotation: IsReleaseBuild ? 90 : 0
 
-        Text {
+        Row {
             anchors.centerIn: parent
-            text: "UBC Baja 234km/hr 80 50 90 "
-            color: "white"
-            font.family: customFont.name
-            font.pixelSize: 48
+            anchors.verticalCenterOffset: 20
+            spacing: 200
+
+            Speedometer {
+                fontFamily: customFont.name
+                speed: 20   // bind this to CAN signal
+                maxSpeed: 60
+            }
+
+            Tachometer {
+                fontFamily: customFont.name
+                rpm: 40   // bind this to CAN signal
+                maxRpm: 40
+            }
         }
     }
 }

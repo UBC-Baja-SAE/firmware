@@ -9,7 +9,7 @@ public:
     explicit CanSocket(QObject *parent = nullptr);
 
 public slots:
-    bool connectDevice(int baudRate = 500000);
+    bool connectDevice();
 
     signals:
     void rawFrameReceived(const QCanBusFrame &frame);
