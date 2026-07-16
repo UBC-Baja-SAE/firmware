@@ -30,7 +30,7 @@
 #define REG_PWR_MGMT0               0x1F
 #define REG_COMBINED_CONFIG         0x20 // Gyro and Accel FSR/ODR configuration
 #define REG_GYRO_ACCEL_FILT         0x28 // Digital Low-Pass Filter configuration
-#define REG_INT_CONFIG              0x14 // Interrupt pin configuration
+#define REG_INT_CONFIG              0x06 // Interrupt pin configuration
 #define REG_INT_SOURCE0             0x65 // Interrupt source routing
 #define INT1_OPEN_DRAIN_ACTIVE_LOW  0x04
 
@@ -40,6 +40,7 @@
 #define FILT_BW_25HZ                0x33 // DLPF Cutoff at ~25Hz for both sensors
 #define INT1_PUSH_PULL_ACTIVE_HIGH  0x02 // INT1 pin drive configuration
 #define INT_SOURCE_DRDY             0x08 // Route Data Ready to INT1
+
 
 /* USER CODE END 0 */
 
@@ -57,7 +58,7 @@ void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00B03FDB;
+  hi2c1.Init.Timing = 0x009032AE;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -211,15 +212,21 @@ HAL_StatusTypeDef IMU_Init(void) {
   status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x21, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
   if (status != HAL_OK) return status;
 
-  // 5. Interrupt Configuration: Latched, Open-Drain, Active Low
-  tx_data = 0x00;
-  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x14, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  // 4b. Filter Config (Apply 25Hz DLPF to Accel and Gyro)
+  tx_data = 0x33; // 0x33 = FILT_BW_25HZ
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x28, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
   if (status != HAL_OK) return status;
 
-  // 6. Interrupt Routing: INT_SOURCE0 (0x65) is in MREG1, requires indirect write
-  // Step A: Select MREG1 bank
-  tx_data = 0x00;
-  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x7C, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  // 5. Interrupt Configuration: Latched, Push-Pull, Active Low
+  // Corrected Address for ICM-42670-P: 0x06
+  tx_data = 0x02;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x06, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
+  if (status != HAL_OK) return status;
+
+  // 6. Interrupt Routing: Route Data Ready (DRDY) to INT1
+  // Corrected Address for ICM-42670-P: 0x2B (Direct write, no MREG needed)
+  tx_data = 0x08;
+  status = HAL_I2C_Mem_Write(&hi2c1, ICM42670_I2C_ADDR, 0x2B, I2C_MEMADD_SIZE_8BIT, &tx_data, 1, 100);
   if (status != HAL_OK) return status;
 
   // Step B: Set target register address

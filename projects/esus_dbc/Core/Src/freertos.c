@@ -186,8 +186,8 @@ void ReadSensorsTask(void *argument)
   struct mochi_fr_gyro_t gyro_msg;
   CAN_Queue_Msg_t txMsg;
 
-  // ---> FORCE RESET THE LATCH RIGHT BEFORE WE START WAITING <---
-  HAL_I2C_Mem_Read(&hi2c1, ICM42670_I2C_ADDR, REG_ACCEL_DATA_X1, I2C_MEMADD_SIZE_8BIT, rawData, 12, 100);
+  // // ---> FORCE RESET THE LATCH RIGHT BEFORE WE START WAITING <---
+  // HAL_I2C_Mem_Read(&hi2c1, ICM42670_I2C_ADDR, REG_ACCEL_DATA_X1, I2C_MEMADD_SIZE_8BIT, rawData, 12, 100);
 
   /* Infinite loop */
   for(;;)
@@ -195,7 +195,7 @@ void ReadSensorsTask(void *argument)
     // Wait for the EXTI interrupt
     if (xSemaphoreTake(IMU_DataReady_Sem, portMAX_DELAY) == pdTRUE)
     {
-      // Read 12 bytes starting at Accel X
+      // Jump straight to reading the 12 bytes of sensor data
       if (HAL_I2C_Mem_Read(&hi2c1, ICM42670_I2C_ADDR, REG_ACCEL_DATA_X1,
                                  I2C_MEMADD_SIZE_8BIT, rawData, 12, 100) == HAL_OK)
       {
@@ -222,6 +222,7 @@ void ReadSensorsTask(void *argument)
         txMsg.Identifier = MOCHI_FR_GYRO_FRAME_ID;
         txMsg.DataLength = 6; // Explicitly set to 6
         xQueueSend(CAN_Tx_Queue, &txMsg, pdMS_TO_TICKS(10));
+
       }
       else
       {
@@ -260,22 +261,50 @@ void CANTxTask(void *argument)
   TxHeader.MessageMarker = 0;
 
   /* Infinite loop */
+  /* Infinite loop */
   for(;;)
   {
     // Wait forever until a message is placed in the queue
     if (xQueueReceive(CAN_Tx_Queue, &rxMsg, portMAX_DELAY) == pdTRUE)
     {
       TxHeader.Identifier = rxMsg.Identifier;
-      TxHeader.DataLength = rxMsg.DataLength;
+
+      // Convert standard integer length to FDCAN bitfield macro
+      const uint32_t FDCAN_DLC_Table[] = {
+        FDCAN_DLC_BYTES_0, FDCAN_DLC_BYTES_1, FDCAN_DLC_BYTES_2, FDCAN_DLC_BYTES_3,
+        FDCAN_DLC_BYTES_4, FDCAN_DLC_BYTES_5, FDCAN_DLC_BYTES_6, FDCAN_DLC_BYTES_7,
+        FDCAN_DLC_BYTES_8
+      };
+
+      // Protect against out-of-bounds arrays if DataLength is accidentally > 8
+      if (rxMsg.DataLength <= 8) {
+        TxHeader.DataLength = FDCAN_DLC_Table[rxMsg.DataLength];
+      } else {
+        TxHeader.DataLength = FDCAN_DLC_BYTES_8;
+      }
+
+      uint8_t tx_timeout = 0;
 
       // Yield gracefully to other tasks if the hardware FIFO is temporarily full
       while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0)
       {
         vTaskDelay(pdMS_TO_TICKS(1));
+        tx_timeout++;
+
+        // If the bus is broken or disconnected, give up after 5ms
+        if (tx_timeout >= 5)
+        {
+          break;
+        }
+      }
+
+      // Only add the message to the FDCAN hardware queue if space actually freed up
+      if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0)
+      {
+        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, rxMsg.Payload);
       }
 
       // Add the message to the FDCAN hardware queue
-      HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, rxMsg.Payload);
     }
   }
   /* USER CODE END CANTxTask */
@@ -285,3 +314,4 @@ void CANTxTask(void *argument)
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
+
