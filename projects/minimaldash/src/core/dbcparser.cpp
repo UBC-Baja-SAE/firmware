@@ -73,7 +73,8 @@ void DbcParser::processFrame(const QCanBusFrame &frame)
 
         QJsonObject payload;
 
-        payload["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+        qint64 timestamp_ns = QDateTime::currentMSecsSinceEpoch() * 1000000LL;
+        payload["timestamp"] = timestamp_ns;
 
         for (auto it = result.signalValues.cbegin(); it != result.signalValues.cend(); ++it) {
             payload[it.key()] = QJsonValue::fromVariant(it.value());
