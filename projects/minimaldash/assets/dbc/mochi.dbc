@@ -1,6 +1,6 @@
 VERSION ""
 
-NS_ : 
+NS_ :
     NS_DESC_
     CM_
     BA_DEF_
@@ -35,71 +35,69 @@ BS_:
 BU_: rr_ecu rl_ecu fr_ecu fl_ecu rear_ecu
 
 BO_ 258 rr_accel: 6 rr_ecu
-    SG_ accel_x : 0|16@1- (1,0) [-32768|32767] "g" Vector__XXX
-    SG_ accel_y : 16|16@1- (1,0) [-32768|32767] "g" Vector__XXX
-    SG_ accel_z : 32|16@1- (1,0) [-32768|32767] "g" Vector__XXX
+ SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+ SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+ SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
 
 BO_ 259 rr_gyro: 6 rr_ecu
-    SG_ gyro_x : 0|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
-    SG_ gyro_y : 16|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
-    SG_ gyro_z : 32|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
+ SG_ gyro_x : 0|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+ SG_ gyro_y : 16|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+ SG_ gyro_z : 32|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
 
 BO_ 260 rr_linpot: 2 rr_ecu
-    SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
+ SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
 BO_ 514 rl_accel: 6 rl_ecu
-    SG_ accel_x : 0|16@1- (1,0) [-32768|32767] "g" Vector__XXX
-    SG_ accel_y : 16|16@1- (1,0) [-32768|32767] "g" Vector__XXX
-    SG_ accel_z : 32|16@1- (1,0) [-32768|32767] "g" Vector__XXX
+ SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+ SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+ SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
 
 BO_ 515 rl_gyro: 6 rl_ecu
-    SG_ gyro_x : 0|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
-    SG_ gyro_y : 16|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
-    SG_ gyro_z : 32|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
+ SG_ gyro_x : 0|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+ SG_ gyro_y : 16|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+ SG_ gyro_z : 32|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
 
 BO_ 516 rl_linpot: 2 rl_ecu
-    SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
+ SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
 BO_ 770 fr_accel: 6 fr_ecu
-    SG_ accel_x : 0|16@1- (1,0) [-32768|32767] "g" Vector__XXX
-    SG_ accel_y : 16|16@1- (1,0) [-32768|32767] "g" Vector__XXX
-    SG_ accel_z : 32|16@1- (1,0) [-32768|32767] "g" Vector__XXX
+ SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+ SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+ SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
 
 BO_ 771 fr_gyro: 6 fr_ecu
-    SG_ gyro_x : 0|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
-    SG_ gyro_y : 16|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
-    SG_ gyro_z : 32|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
+ SG_ gyro_x : 0|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+ SG_ gyro_y : 16|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+ SG_ gyro_z : 32|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
 
 BO_ 772 fr_linpot: 2 fr_ecu
-    SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
+ SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
 BO_ 1026 fl_accel: 6 fl_ecu
-    SG_ accel_x : 0|16@1- (1,0) [-32768|32767] "g" Vector__XXX
-    SG_ accel_y : 16|16@1- (1,0) [-32768|32767] "g" Vector__XXX
-    SG_ accel_z : 32|16@1- (1,0) [-32768|32767] "g" Vector__XXX
+ SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+ SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+ SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
 
 BO_ 1027 fl_gyro: 6 fl_ecu
-    SG_ gyro_x : 0|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
-    SG_ gyro_y : 16|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
-    SG_ gyro_z : 32|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
+ SG_ gyro_x : 0|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+ SG_ gyro_y : 16|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+ SG_ gyro_z : 32|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
 
 BO_ 1028 fl_linpot: 2 fl_ecu
-    SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
+ SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
 BO_ 1282 speedometer: 2 rear_ecu
-    SG_ speed : 0|16@1+ (1,0) [0|65535] "km/h" Vector__XXX
+ SG_ speed : 0|16@1+ (1,0) [0|65535] "km/h" Vector__XXX
 
 BO_ 1283 tachometer: 2 rear_ecu
-    SG_ rpm : 0|16@1+ (1,0) [0|65535] "rpm" Vector__XXX
+ SG_ rpm : 0|16@1+ (1,0) [0|65535] "rpm" Vector__XXX
 
-BA_DEF_ SG_  "SPN" INT 0 524287;
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
 BA_DEF_  "DatabaseVersion" STRING ;
 BA_DEF_  "BusType" STRING ;
 BA_DEF_  "ProtocolType" STRING ;
 BA_DEF_  "DatabaseCompiler" STRING ;
-BA_DEF_DEF_  "SPN" 0;
-BA_DEF_DEF_  "VFrameFormat" "J1939PG";
+BA_DEF_DEF_  "VFrameFormat" "StandardCAN";
 BA_DEF_DEF_  "DatabaseVersion" "";
 BA_DEF_DEF_  "BusType" "";
 BA_DEF_DEF_  "ProtocolType" "";
