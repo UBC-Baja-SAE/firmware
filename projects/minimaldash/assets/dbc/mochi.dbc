@@ -45,7 +45,7 @@ BO_ 259 rr_gyro: 6 rr_ecu
     SG_ gyro_z : 32|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
 
 BO_ 260 rr_linpot: 2 rr_ecu
-    SG_ lin_pot : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
+    SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
 BO_ 514 rl_accel: 6 rl_ecu
     SG_ accel_x : 0|16@1- (1,0) [-32768|32767] "g" Vector__XXX
@@ -58,7 +58,7 @@ BO_ 515 rl_gyro: 6 rl_ecu
     SG_ gyro_z : 32|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
 
 BO_ 516 rl_linpot: 2 rl_ecu
-    SG_ lin_pot : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
+    SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
 BO_ 770 fr_accel: 6 fr_ecu
     SG_ accel_x : 0|16@1- (1,0) [-32768|32767] "g" Vector__XXX
@@ -71,7 +71,7 @@ BO_ 771 fr_gyro: 6 fr_ecu
     SG_ gyro_z : 32|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
 
 BO_ 772 fr_linpot: 2 fr_ecu
-    SG_ lin_pot : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
+    SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
 BO_ 1026 fl_accel: 6 fl_ecu
     SG_ accel_x : 0|16@1- (1,0) [-32768|32767] "g" Vector__XXX
@@ -84,13 +84,13 @@ BO_ 1027 fl_gyro: 6 fl_ecu
     SG_ gyro_z : 32|16@1- (1,0) [-32768|32767] "dps" Vector__XXX
 
 BO_ 1028 fl_linpot: 2 fl_ecu
-    SG_ lin_pot : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
+    SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
 BO_ 1282 speedometer: 2 rear_ecu
-    SG_ vehicle_speed : 0|16@1+ (1,0) [0|65535] "km/h" Vector__XXX
+    SG_ speed : 0|16@1+ (1,0) [0|65535] "km/h" Vector__XXX
 
 BO_ 1283 tachometer: 2 rear_ecu
-    SG_ engine_rpm : 0|16@1+ (1,0) [0|65535] "rpm" Vector__XXX
+    SG_ rpm : 0|16@1+ (1,0) [0|65535] "rpm" Vector__XXX
 
 BA_DEF_ SG_  "SPN" INT 0 524287;
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";

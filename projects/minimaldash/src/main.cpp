@@ -8,6 +8,7 @@
 #include "core/cansocket.h"
 #include "core/dbcparser.h"
 #include "core/foxglove.h"
+#include "core/dash.h"
 
 int main(int argc, char *argv[]) {
 
@@ -42,10 +43,10 @@ int main(int argc, char *argv[]) {
     bool enableMcap = false;
 #endif
 
-    // Websocket is always enabled on both Debug and Release
     bool enableWebsocket = true;
 
-    // REMOVED: int canBaudRate = 500000;
+    Dash dashBackend;
+    engine.rootContext()->setContextProperty("Data", &dashBackend);
 
     QObject::connect(
         &engine,
@@ -68,7 +69,6 @@ int main(int argc, char *argv[]) {
     dbcParser->moveToThread(parserThread);
     foxgloveSink->moveToThread(foxgloveThread);
 
-    // UPDATED: Removed canBaudRate from the lambda capture and function call
     QObject::connect(canThread, &QThread::started, canSocket, [canSocket]() {
         canSocket->connectDevice();
     });
@@ -95,6 +95,9 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(dbcParser, &DbcParser::frameParsed,
                      foxgloveSink, &FoxgloveSink::broadcastPayload);
+
+    QObject::connect(dbcParser, &DbcParser::frameParsed,
+                     &dashBackend, &Dash::onFrameParsed);
 
     foxgloveThread->start();
     parserThread->start();

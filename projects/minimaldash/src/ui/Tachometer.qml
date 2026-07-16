@@ -10,7 +10,7 @@ Item {
     implicitWidth:  440
     implicitHeight: 440
 
-    readonly property real startDeg: 180
+    readonly property real startDeg: 90
     readonly property real sweepDeg: 270
     readonly property real cx:       width  / 2
     readonly property real cy:       height / 2
@@ -19,6 +19,16 @@ Item {
     property real displayRpm: rpm
     Behavior on displayRpm {
         NumberAnimation { duration: 100 }
+    }
+
+    Text {
+        anchors.centerIn: parent
+        anchors. verticalCenterOffset: -70
+        text: "r/min\nx100"
+        color: "#ffffff"
+        font.pixelSize: 20
+        font.family:    root.fontFamily
+
     }
 
     // Ticks
@@ -31,14 +41,14 @@ Item {
             var ctx = getContext("2d")
             ctx.reset()
 
-            var minorStep = 2
+            var minorStep = 100
 
             for (var s = 0; s <= root.maxRpm; s += minorStep) {
                 var angle = (root.startDeg + (s / root.maxRpm) * root.sweepDeg) * Math.PI / 180
                 var ca = Math.cos(angle)
                 var sa = Math.sin(angle)
 
-                var isMajor = (s % 10 === 0)
+                var isMajor = (s % 500 === 0)
                 var tickLength = isMajor ? 24 : 12
                 var thickness  = isMajor ? 4  : 2.5
 
@@ -47,7 +57,7 @@ Item {
                 ctx.beginPath()
                 ctx.moveTo(root.cx + ca * (outerRadius - tickLength), root.cy + sa * (outerRadius - tickLength))
                 ctx.lineTo(root.cx + ca * outerRadius,                root.cy + sa * outerRadius)
-                ctx.strokeStyle = (s > 30) ? "#ff4444" : "#ffffff"
+                ctx.strokeStyle = (s > 3500) ? "#ff4444" : "#ffffff"
                 ctx.lineWidth = thickness
                 ctx.stroke()
             }
@@ -56,15 +66,15 @@ Item {
 
     // Labels
     Repeater {
-        model: root.maxRpm / 10 + 1
+        model: root.maxRpm / 500 + 1
 
         Text {
             required property int index
 
-            property real angle:  (root.startDeg + (index / (root.maxRpm / 10)) * root.sweepDeg) * Math.PI / 180
+            property real angle:  (root.startDeg + (index / (root.maxRpm / 500)) * root.sweepDeg) * Math.PI / 180
             property real labelR: root.r - 38
 
-            text:           String(index * 10)
+            text:           String(index * 5)
             font.family:    root.fontFamily
             font.pixelSize: 24
             color:          "white"

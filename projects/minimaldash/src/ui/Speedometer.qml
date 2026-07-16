@@ -10,7 +10,7 @@ Item {
     implicitWidth:  440
     implicitHeight: 440
 
-    readonly property real startDeg: 90
+    readonly property real startDeg: 180
     readonly property real sweepDeg: 270
     readonly property real cx:       width  / 2
     readonly property real cy:       height / 2
@@ -19,6 +19,16 @@ Item {
     property real displaySpeed: speed
     Behavior on displaySpeed {
         NumberAnimation { duration: 100 }
+    }
+
+    Text {
+        anchors.centerIn: parent
+        anchors. verticalCenterOffset: -80
+        text: "km/h"
+        color: "white"
+        font.pixelSize: 20
+        font.family:    root.fontFamily
+
     }
 
     // Ticks

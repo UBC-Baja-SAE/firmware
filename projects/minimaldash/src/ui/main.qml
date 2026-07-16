@@ -28,21 +28,31 @@ Window {
 
         rotation: IsReleaseBuild ? 90 : 0
 
+        Debug {
+            anchors.centerIn: parent
+            anchors.verticalCenterOffset: 120
+        }
+
+        Indicator {
+            anchors.centerIn: parent
+            anchors.verticalCenterOffset: -120
+        }
+
+
         Row {
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: 20
             spacing: 200
-
-            Speedometer {
-                fontFamily: customFont.name
-                speed: 20   // bind this to CAN signal
-                maxSpeed: 60
-            }
 
             Tachometer {
                 fontFamily: customFont.name
-                rpm: 40   // bind this to CAN signal
-                maxRpm: 40
+                rpm: Data.rpm
+                maxRpm: 4000
+            }
+
+            Speedometer {
+                fontFamily: customFont.name
+                speed: Data.speed
+                maxSpeed: 60
             }
         }
     }

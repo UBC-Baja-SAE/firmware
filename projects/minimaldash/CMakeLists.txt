@@ -30,6 +30,7 @@ qt_add_executable(${PROJECT_NAME}
         src/core/dbcparser.h
         src/core/foxglove.cpp
         src/core/foxglove.h
+        src/core/dash.h
 )
 
 file(GLOB DBC_FILES "assets/dbc/*.dbc")
@@ -46,6 +47,8 @@ qt_add_qml_module(${PROJECT_NAME}
         src/ui/main.qml
         src/ui/Speedometer.qml
         src/ui/Tachometer.qml
+        src/ui/Indicator.qml
+        src/ui/Debug.qml
         RESOURCES
         "assets/eglfs/eglfs.json"
         "assets/icons/gear.svg"
