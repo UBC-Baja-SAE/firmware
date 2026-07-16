@@ -5,6 +5,7 @@
 #include <QCanUniqueIdDescription>
 #include <QDebug>
 #include <QJsonValue>
+#include <QDateTime>
 
 DbcParser::DbcParser(QObject *parent)
     : QObject(parent)
@@ -72,7 +73,7 @@ void DbcParser::processFrame(const QCanBusFrame &frame)
 
         QJsonObject payload;
 
-        payload["timestamp"] = frame.timeStamp().microSeconds();
+        payload["timestamp"] = QDateTime::currentMSecsSinceEpoch();
 
         for (auto it = result.signalValues.cbegin(); it != result.signalValues.cend(); ++it) {
             payload[it.key()] = QJsonValue::fromVariant(it.value());
