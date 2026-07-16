@@ -38,6 +38,11 @@ bool DbcParser::loadDbcFiles(const QStringList &filePaths)
                 properties[sig.name()] = propProps;
             }
 
+            QJsonObject tsProps;
+            tsProps["type"] = "number";
+            tsProps["title"] = "timestamp";
+            properties["timestamp"] = tsProps;
+
             QJsonObject schema;
             schema["type"] = "object";
             schema["properties"] = properties;
@@ -66,6 +71,9 @@ void DbcParser::processFrame(const QCanBusFrame &frame)
         const QString topicName = m_messageNames.value(result.uniqueId);
 
         QJsonObject payload;
+
+        payload["timestamp"] = frame.timeStamp().microSeconds();
+
         for (auto it = result.signalValues.cbegin(); it != result.signalValues.cend(); ++it) {
             payload[it.key()] = QJsonValue::fromVariant(it.value());
         }
