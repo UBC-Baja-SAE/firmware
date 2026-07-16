@@ -40,9 +40,14 @@ bool DbcParser::loadDbcFiles(const QStringList &filePaths)
             }
 
             QJsonObject tsProps;
-            tsProps["type"] = "number";
-            tsProps["title"] = "timestamp";
+            tsProps["type"] = "object";
+            QJsonObject tsFields;
+            tsFields["sec"] = QJsonObject{{"type", "integer"}};
+            tsFields["nsec"] = QJsonObject{{"type", "integer"}};
+            tsProps["properties"] = tsFields;
             properties["timestamp"] = tsProps;
+
+
 
             QJsonObject schema;
             schema["type"] = "object";
@@ -73,8 +78,11 @@ void DbcParser::processFrame(const QCanBusFrame &frame)
 
         QJsonObject payload;
 
-        qint64 timestamp_ns = QDateTime::currentMSecsSinceEpoch() * 1000000LL;
-        payload["timestamp"] = timestamp_ns;
+        qint64 currentMs = QDateTime::currentMSecsSinceEpoch();
+        QJsonObject tsObj;
+        tsObj["sec"] = currentMs / 1000;
+        tsObj["nsec"] = (currentMs % 1000) * 1000000;
+        payload["timestamp"] = tsObj;
 
         for (auto it = result.signalValues.cbegin(); it != result.signalValues.cend(); ++it) {
             payload[it.key()] = QJsonValue::fromVariant(it.value());
