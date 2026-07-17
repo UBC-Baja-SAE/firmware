@@ -193,23 +193,52 @@ void FoxgloveSink::broadcastImage(const QString &topic, const QImage &image) {
 }
 
 void FoxgloveSink::broadcastAudio(const QString &topic, const QByteArray &data, int sampleRate, int channels) {
-    // Lazily register the topic if it's the first audio chunk
     if (!m_channels.contains(topic)) {
         registerMediaTopic(topic, "foxglove.CompressedAudio");
     }
 
+    // 1. Construct a simple WAV header
+    int dataSize = data.size();
+    int fileSize = 36 + dataSize;
+    int byteRate = sampleRate * channels * 2; // 16-bit = 2 bytes
+
+    QByteArray header;
+    header.append("RIFF");
+    header.append(reinterpret_cast<const char*>(&fileSize), 4);
+    header.append("WAVEfmt ");
+
+    int subChunk1Size = 16;
+    header.append(reinterpret_cast<const char*>(&subChunk1Size), 4);
+
+    short audioFormat = 1; // PCM
+    header.append(reinterpret_cast<const char*>(&audioFormat), 2);
+    header.append(reinterpret_cast<const char*>(&channels), 2);
+    header.append(reinterpret_cast<const char*>(&sampleRate), 4);
+    header.append(reinterpret_cast<const char*>(&byteRate), 4);
+
+    short blockAlign = channels * 2;
+    header.append(reinterpret_cast<const char*>(&blockAlign), 2);
+
+    short bitsPerSample = 16;
+    header.append(reinterpret_cast<const char*>(&bitsPerSample), 2);
+
+    header.append("data");
+    header.append(reinterpret_cast<const char*>(&dataSize), 4);
+
+    // 2. Combine header + raw audio data
+    QByteArray wavData = header + data;
+
+    // 3. Broadcast
     QJsonObject payload;
     QJsonObject timestamp;
     qint64 ms = QDateTime::currentMSecsSinceEpoch();
-    timestamp["sec"] = ms / 1000;
-    timestamp["nsec"] = (ms % 1000) * 1000000;
+    timestamp["sec"] = static_cast<int>(ms / 1000);
+    timestamp["nsec"] = static_cast<int>((ms % 1000) * 1000000);
 
     payload["timestamp"] = timestamp;
     payload["frame_id"] = "microphone";
-    payload["format"] = "pcm";
-    payload["sample_rate"] = sampleRate;
-    payload["channels"] = channels;
-    payload["data"] = QString(data.toBase64());
+    payload["format"] = "wav"; // Now identifying as WAV
+    payload["data"] = QString(wavData.toBase64());
 
     QJsonDocument doc(payload);
     QByteArray payloadBytes = doc.toJson(QJsonDocument::Compact);
