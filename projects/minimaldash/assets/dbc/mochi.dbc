@@ -102,6 +102,9 @@ BO_ 1283 rear_gyro: 6 rear_ecu
   SG_ gyro_y : 16|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
   SG_ gyro_z : 32|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
 
+BO_ 1538 front_steering: 2 front_ecu
+  SG_ steering_angle : 0|16@1- (0.1,0) [-360|360] "deg" Vector__XXX
+
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
 BA_DEF_  "DatabaseVersion" STRING ;
 BA_DEF_  "BusType" STRING ;
