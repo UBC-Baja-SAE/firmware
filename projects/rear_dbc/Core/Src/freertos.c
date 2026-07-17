@@ -120,18 +120,20 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
 
   FDCAN_TxHeaderTypeDef TxHeader;
-  uint8_t TxData[8] = {0}; // mochi_rear_ecu_status requires 4 bytes
-  struct mochi_rear_ecu_status_t rear_ecu_msg;
+  uint8_t TxData[8] = {0};
+
+  // Variables for the newly separated DBC messages
+  struct mochi_speedometer_t speed_msg;
+  struct mochi_tachometer_t tacho_msg;
 
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
   {
     Error_Handler();
   }
 
-  TxHeader.Identifier = MOCHI_REAR_ECU_STATUS_FRAME_ID; // Resolves to 0x500
+  // Base configuration that applies to both messages
   TxHeader.IdType = FDCAN_STANDARD_ID;
   TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-  TxHeader.DataLength = FDCAN_DLC_BYTES_4;
   TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
   TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
   TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
@@ -143,31 +145,48 @@ void StartDefaultTask(void *argument)
   {
     Check_Sensor_Timeouts();
 
-    rear_ecu_msg.speedometer = (uint16_t)speedometer_kmh;
-    rear_ecu_msg.tachometer  = (uint16_t)tachometer_rpm;
+    // Map extern vars to the structs
+    speed_msg.speed = (uint16_t)speedometer_kmh;
+    tacho_msg.rpm   = (uint16_t)tachometer_rpm;
 
-    if (mochi_rear_ecu_status_pack(TxData, &rear_ecu_msg, 4) > 0)
+    /* -------------------------------------------------------------
+       1. Transmit Speedometer Message
+       ------------------------------------------------------------- */
+    TxHeader.Identifier = MOCHI_SPEEDOMETER_FRAME_ID;
+    TxHeader.DataLength = FDCAN_DLC_BYTES_2; // Length changed from 4 to 2 based on DBC
+
+    if (mochi_speedometer_pack(TxData, &speed_msg, MOCHI_SPEEDOMETER_LENGTH) > 0)
     {
-      // If the hardware TX FIFO is full of stale, failed frames, flush them completely
       if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0)
       {
-        /* On STM32H7, resetting the Tx FIFO requires pulling the pending requests
-           out of the peripheral execution register directly. */
-        uint32_t active_buffers = hfdcan1.Instance->TXBRP; // Get all requested buffers
+        uint32_t active_buffers = hfdcan1.Instance->TXBRP;
         if (active_buffers != 0)
         {
           HAL_FDCAN_AbortTxRequest(&hfdcan1, active_buffers);
-
-          // Wait briefly for the hardware cancellation to finalize in silicon
           while ((hfdcan1.Instance->TXBRP & active_buffers) != 0);
         }
       }
+      HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
+    }
 
-      // Now confidently add your new message to the queue
-      if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData) != HAL_OK)
+    /* -------------------------------------------------------------
+       2. Transmit Tachometer Message
+       ------------------------------------------------------------- */
+    TxHeader.Identifier = MOCHI_TACHOMETER_FRAME_ID;
+    TxHeader.DataLength = FDCAN_DLC_BYTES_2; // Length changed from 4 to 2 based on DBC
+
+    if (mochi_tachometer_pack(TxData, &tacho_msg, MOCHI_TACHOMETER_LENGTH) > 0)
+    {
+      if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0)
       {
-        // Handled silently: If a frame fails to append, the next loop cycle recovers it
+        uint32_t active_buffers = hfdcan1.Instance->TXBRP;
+        if (active_buffers != 0)
+        {
+          HAL_FDCAN_AbortTxRequest(&hfdcan1, active_buffers);
+          while ((hfdcan1.Instance->TXBRP & active_buffers) != 0);
+        }
       }
+      HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
     }
 
     osDelay(100);

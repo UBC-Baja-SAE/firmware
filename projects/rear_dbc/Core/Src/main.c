@@ -189,8 +189,8 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-#define TIM1_CLOCK_FREQ         192000000UL   // APB1 Timer Clock @192MHz
-#define TIM3_CLOCK_FREQ         192000000UL   // APB1 Timer Clock @1MHz
+#define TIM1_CLOCK_FREQ         240000000UL   // APB1 Timer Clock @240MHz
+#define TIM3_CLOCK_FREQ         240000000UL   // APB1 Timer Clock @240MHz
 #define TIM1_PERIOD_TICKS       65536ULL      // 2^16 for 16-bit TIM1
 #define TIM3_PERIOD_TICKS       65536ULL      // 2^16 for 16-bit TIM3
 
