@@ -14,6 +14,11 @@ Window {
     minimumHeight: height
     maximumHeight: height
 
+    Shortcut {
+        sequence: "Escape"
+        onActivated: Qt.quit()
+    }
+
     FontLoader {
         id: customFont
         source: "qrc:/qt/qml/app/assets/fonts/microgramma.ttf"

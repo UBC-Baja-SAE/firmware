@@ -16,6 +16,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef LINUX
     qputenv("QT_QPA_PLATFORM", "eglfs");
+    qputenv("QT_QPA_EGLFS_HIDECURSOR", "1"); // Add this line
 
     QString tempKmsPath = "/tmp/eglfs.json";
     QFile::remove(tempKmsPath);
