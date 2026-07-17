@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QDateTime>
+#include <QBuffer>
 
 FoxgloveSink::FoxgloveSink(QObject *parent) : QObject(parent) {}
 
@@ -96,6 +97,36 @@ void FoxgloveSink::registerTopics(const QJsonObject &schemas) {
     }
 }
 
+void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &schemaName) {
+    if (!m_server && !m_writer) return;
+
+    QJsonObject schemaObj;
+    schemaObj["title"] = schemaName;
+    schemaObj["type"] = "object";
+
+    QJsonDocument doc(schemaObj);
+    std::string schemaStr = doc.toJson(QJsonDocument::Compact).toStdString();
+
+    foxglove::Schema channelSchema;
+    channelSchema.name = schemaName.toStdString();
+    channelSchema.encoding = "jsonschema";
+    channelSchema.data = reinterpret_cast<const std::byte*>(schemaStr.data());
+    channelSchema.data_len = schemaStr.size();
+
+    auto channelResult = foxglove::RawChannel::create(
+        topicName.toStdString(),
+        "json",
+        channelSchema
+    );
+
+    if (channelResult.has_value()) {
+        m_channels[topicName] = std::make_shared<foxglove::RawChannel>(std::move(channelResult.value()));
+        qInfo() << "Registered media topic:" << topicName << "as" << schemaName;
+    } else {
+        qWarning() << "Failed to create channel for" << topicName;
+    }
+}
+
 void FoxgloveSink::broadcastPayload(const QString &topicName, const QJsonObject &payload) {
     if (!m_channels.contains(topicName)) {
         return;
@@ -107,6 +138,60 @@ void FoxgloveSink::broadcastPayload(const QString &topicName, const QJsonObject 
     auto channel = m_channels.value(topicName);
 
     channel->log(reinterpret_cast<const std::byte*>(payloadBytes.constData()), payloadBytes.size());
+}
+
+void FoxgloveSink::broadcastImage(const QString &topic, const QImage &image) {
+    // Lazily register the topic if it's the first frame
+    if (!m_channels.contains(topic)) {
+        registerMediaTopic(topic, "foxglove.CompressedImage");
+    }
+
+    // Compress QImage to JPEG inline
+    QByteArray imgData;
+    QBuffer buffer(&imgData);
+    buffer.open(QIODevice::WriteOnly);
+    image.save(&buffer, "JPEG", 80);
+
+    QJsonObject payload;
+    QJsonObject timestamp;
+    qint64 ms = QDateTime::currentMSecsSinceEpoch();
+    timestamp["sec"] = ms / 1000;
+    timestamp["nsec"] = (ms % 1000) * 1000000;
+
+    payload["timestamp"] = timestamp;
+    payload["frame_id"] = "camera";
+    payload["format"] = "jpeg";
+    payload["data"] = QString(imgData.toBase64());
+
+    QJsonDocument doc(payload);
+    QByteArray payloadBytes = doc.toJson(QJsonDocument::Compact);
+
+    m_channels.value(topic)->log(reinterpret_cast<const std::byte*>(payloadBytes.constData()), payloadBytes.size());
+}
+
+void FoxgloveSink::broadcastAudio(const QString &topic, const QByteArray &data, int sampleRate, int channels) {
+    // Lazily register the topic if it's the first audio chunk
+    if (!m_channels.contains(topic)) {
+        registerMediaTopic(topic, "foxglove.CompressedAudio");
+    }
+
+    QJsonObject payload;
+    QJsonObject timestamp;
+    qint64 ms = QDateTime::currentMSecsSinceEpoch();
+    timestamp["sec"] = ms / 1000;
+    timestamp["nsec"] = (ms % 1000) * 1000000;
+
+    payload["timestamp"] = timestamp;
+    payload["frame_id"] = "microphone";
+    payload["format"] = "pcm";
+    payload["sample_rate"] = sampleRate;
+    payload["channels"] = channels;
+    payload["data"] = QString(data.toBase64());
+
+    QJsonDocument doc(payload);
+    QByteArray payloadBytes = doc.toJson(QJsonDocument::Compact);
+
+    m_channels.value(topic)->log(reinterpret_cast<const std::byte*>(payloadBytes.constData()), payloadBytes.size());
 }
 
 void FoxgloveSink::toggleServer(bool enable) {

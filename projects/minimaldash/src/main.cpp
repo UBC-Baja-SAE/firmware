@@ -9,6 +9,7 @@
 #include "core/dbcparser.h"
 #include "core/foxglove.h"
 #include "core/dash.h"
+#include "peripherals/webcam.h"
 
 int main(int argc, char *argv[]) {
 
@@ -35,9 +36,16 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
 
+    // 1. Instantiate the Webcam backend
+    Webcam webcamBackend;
+    engine.rootContext()->setContextProperty("WebcamBackend", &webcamBackend);
+
 #ifdef ENV_RELEASE
     engine.rootContext()->setContextProperty("IsReleaseBuild", true);
     bool enableMcap = true;
+
+    // 2. Start hardware capture for release builds
+    webcamBackend.start();
 #else
     engine.rootContext()->setContextProperty("IsReleaseBuild", false);
     bool enableMcap = false;
@@ -98,6 +106,15 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(dbcParser, &DbcParser::frameParsed,
                      &dashBackend, &Dash::onFrameParsed);
+
+    // 3. Connect the Webcam signals to FoxgloveSink slots
+    // Note: Adjust the slots (&FoxgloveSink::broadcastImage / broadcastAudio)
+    // to match whatever you named the receiving functions in your foxglove.h wrapper.
+    QObject::connect(&webcamBackend, &Webcam::frameReady,
+                     foxgloveSink, &FoxgloveSink::broadcastImage);
+
+    QObject::connect(&webcamBackend, &Webcam::audioReady,
+                     foxgloveSink, &FoxgloveSink::broadcastAudio);
 
     foxgloveThread->start();
     parserThread->start();

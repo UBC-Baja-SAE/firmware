@@ -3,6 +3,7 @@
 #include <QJsonObject>
 #include <QHash>
 #include <QString>
+#include <QImage> // ADDED
 #include <memory>
 
 namespace foxglove {
@@ -24,6 +25,10 @@ public slots:
     void registerTopics(const QJsonObject &schemas);
     void broadcastPayload(const QString &topicName, const QJsonObject &payload);
 
+    // --- ADDED MEDIA SLOTS ---
+    void broadcastImage(const QString &topic, const QImage &image);
+    void broadcastAudio(const QString &topic, const QByteArray &data, int sampleRate, int channels);
+
     void toggleServer(bool enable);
     void toggleLogging(bool enable);
 
@@ -33,6 +38,9 @@ public slots:
 private:
     void stopServer();
     void stopMcapRecording();
+
+    // --- ADDED HELPER ---
+    void registerMediaTopic(const QString &topicName, const QString &schemaName);
 
     std::shared_ptr<foxglove::WebSocketServer> m_server;
     std::shared_ptr<foxglove::McapWriter> m_writer;
