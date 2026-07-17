@@ -92,12 +92,12 @@ BO_ 1284 speedometer: 2 rear_ecu
 BO_ 1285 tachometer: 2 rear_ecu
  SG_ rpm : 0|16@1+ (1,0) [0|65535] "rpm" Vector__XXX
 
- BO_ 1282 fl_accel: 6 rear_ecu
+BO_ 1282 rear_accel: 6 rear_ecu
   SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
   SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
   SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
 
- BO_ 1283 fl_gyro: 6 rear_ecu
+BO_ 1283 rear_gyro: 6 rear_ecu
   SG_ gyro_x : 0|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
   SG_ gyro_y : 16|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
   SG_ gyro_z : 32|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
