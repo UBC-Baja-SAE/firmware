@@ -41,6 +41,7 @@ extern I2C_HandleTypeDef hi2c1;
 void MX_I2C1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+HAL_StatusTypeDef IMU_Init(void);
 
 /* USER CODE END Prototypes */
 
