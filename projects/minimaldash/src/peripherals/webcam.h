@@ -7,7 +7,7 @@
 #include <QByteArray>
 
 // Only include heavy multimedia headers on the release target
-#ifdef RELEASE
+#ifdef ENV_RELEASE
 #include <QCamera>
 #include <QMediaCaptureSession>
 #include <QVideoSink>
@@ -32,7 +32,7 @@ public:
         void frameReady(const QString& topic, const QImage& image);
     void audioReady(const QString& topic, const QByteArray& data, int sampleRate, int channels);
 
-#ifdef RELEASE
+#ifdef ENV_RELEASE
 private slots:
     void processFrame(const QVideoFrame& frame);
     void processAudio();

@@ -3,7 +3,7 @@
 #include <QVariant>
 
 Webcam::Webcam(QObject* parent) : QObject(parent) {
-#ifdef RELEASE
+#ifdef ENV_RELEASE
     // --- Video Setup ---
     m_camera = new QCamera(this);
     m_session = new QMediaCaptureSession(this);
@@ -36,7 +36,7 @@ Webcam::Webcam(QObject* parent) : QObject(parent) {
 }
 
 void Webcam::start() {
-#ifdef RELEASE
+#ifdef ENV_RELEASE
     m_camera->start();
     qInfo() << "[Webcam] Started capture on default camera device";
     startAudio();
@@ -46,7 +46,7 @@ void Webcam::start() {
 }
 
 void Webcam::setQmlVideoOutput(QObject* qmlOutput) {
-#ifdef RELEASE
+#ifdef ENV_RELEASE
     if (!qmlOutput) return;
 
     m_session->setVideoOutput(qmlOutput);
@@ -63,7 +63,7 @@ void Webcam::setQmlVideoOutput(QObject* qmlOutput) {
 #endif
 }
 
-#ifdef RELEASE
+#ifdef ENV_RELEASE
 void Webcam::startAudio() {
     if (QMediaDevices::audioInputs().isEmpty()) {
         qWarning() << "[Webcam] No I2S audio device found yet. Retrying in 2 seconds...";

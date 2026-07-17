@@ -8,6 +8,7 @@ Item {
     implicitHeight: 240
 
     Rectangle {
+        id: camRect
         anchors.centerIn: parent
         width: parent.width - 70
         height: parent.height - 70
