@@ -140,7 +140,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core
         Qt6::Gui
         Qt6::Qml
-        Qt6::Quick
         Qt6::SerialBus
         Qt6::Multimedia
         foxglove_cpp
