@@ -12,7 +12,7 @@ Item {
         anchors.centerIn: parent
         width: parent.width - 70
         height: parent.height - 70
-        color: "blue"
+        color: "black"
     }
 
     VideoOutput {
