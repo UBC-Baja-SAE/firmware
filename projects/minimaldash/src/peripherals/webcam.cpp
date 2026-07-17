@@ -1,0 +1,103 @@
+#include "webcam.h"
+#include <QDebug>
+#include <QVariant>
+
+Webcam::Webcam(QObject* parent) : QObject(parent) {
+#ifdef RELEASE
+    // --- Video Setup ---
+    m_camera = new QCamera(this);
+    m_session = new QMediaCaptureSession(this);
+    m_videoSink = new QVideoSink(this);
+
+    m_session->setCamera(m_camera);
+    m_session->setVideoSink(m_videoSink);
+
+    // Throttle frames to 10 FPS for Foxglove
+    connect(&m_throttleTimer, &QTimer::timeout, this, [this]() {
+        m_readyForNextFrame = true;
+    });
+    m_throttleTimer.start(100);
+    connect(m_videoSink, &QVideoSink::videoFrameChanged, this, &Webcam::processFrame);
+
+    // --- Audio Setup ---
+    QAudioFormat format;
+    format.setSampleRate(m_sampleRate);
+    format.setChannelCount(m_channels);
+    format.setSampleFormat(QAudioFormat::Int16);
+
+    QAudioDevice info = QMediaDevices::defaultAudioInput();
+    if (!info.isFormatSupported(format)) {
+        qWarning() << "[Webcam] Default format not supported. Audio may sound distorted.";
+    }
+    m_audioSource = new QAudioSource(info, format, this);
+#else
+    qInfo() << "[Webcam] Development build detected. Hardware AV capture disabled.";
+#endif
+}
+
+void Webcam::start() {
+#ifdef RELEASE
+    m_camera->start();
+    qInfo() << "[Webcam] Started capture on default camera device";
+    startAudio();
+#else
+    qInfo() << "[Webcam] start() ignored in development build.";
+#endif
+}
+
+void Webcam::setQmlVideoOutput(QObject* qmlOutput) {
+#ifdef RELEASE
+    if (!qmlOutput) return;
+
+    m_session->setVideoOutput(qmlOutput);
+
+    QVideoSink* qmlSink = qvariant_cast<QVideoSink*>(qmlOutput->property("videoSink"));
+    if (qmlSink) {
+        disconnect(m_videoSink, &QVideoSink::videoFrameChanged, this, &Webcam::processFrame);
+        connect(qmlSink, &QVideoSink::videoFrameChanged, this, &Webcam::processFrame);
+        qInfo() << "[Webcam] Routed video frames to QML UI";
+    }
+#else
+    Q_UNUSED(qmlOutput);
+    qInfo() << "[Webcam] setQmlVideoOutput() ignored in development build.";
+#endif
+}
+
+#ifdef RELEASE
+void Webcam::startAudio() {
+    if (QMediaDevices::audioInputs().isEmpty()) {
+        qWarning() << "[Webcam] No I2S audio device found yet. Retrying in 2 seconds...";
+        QTimer::singleShot(2000, this, &Webcam::startAudio);
+        return;
+    }
+
+    m_ioDevice = m_audioSource->start();
+    if (m_ioDevice) {
+        connect(m_ioDevice, &QIODevice::readyRead, this, &Webcam::processAudio);
+        qInfo() << "[Webcam] Started capturing live audio";
+    } else {
+        qWarning() << "[Webcam] Failed to open audio hardware";
+    }
+}
+
+void Webcam::processFrame(const QVideoFrame& frame) {
+    if (!m_readyForNextFrame || !frame.isValid()) return;
+    
+    m_readyForNextFrame = false; 
+    
+    QImage image = frame.toImage();
+    if (!image.isNull()) {
+        QImage scaled = image.scaled(640, 480, Qt::KeepAspectRatio, Qt::FastTransformation);
+        emit frameReady("/camera/front", scaled);
+    }
+}
+
+void Webcam::processAudio() {
+    if (!m_ioDevice) return;
+
+    QByteArray data = m_ioDevice->readAll();
+    if (data.size() > 0) {
+        emit audioReady("/camera/audio", data, m_sampleRate, m_channels);
+    }
+}
+#endif

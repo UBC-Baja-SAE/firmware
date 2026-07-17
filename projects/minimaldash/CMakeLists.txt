@@ -31,6 +31,8 @@ qt_add_executable(${PROJECT_NAME}
         src/core/foxglove.cpp
         src/core/foxglove.h
         src/core/dash.h
+        src/peripherals/webcam.cpp
+        src/peripherals/webcam.h
 )
 
 file(GLOB DBC_FILES "assets/dbc/*.dbc")
