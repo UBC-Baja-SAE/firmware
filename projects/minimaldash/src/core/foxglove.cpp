@@ -116,18 +116,17 @@ void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &s
                 "format": {"type": "string"}
             }
         })";
-    } else if (schemaName == "foxglove.CompressedAudio") {
+    } else if (schemaName == "foxglove.RawAudio") {
         schemaStr = R"({
-            "title": "foxglove.CompressedAudio",
+            "title": "foxglove.RawAudio",
             "type": "object",
             "properties": {
                 "timestamp": {
                     "type": "object",
                     "properties": {"sec": {"type": "integer"}, "nsec": {"type": "integer"}}
                 },
-                "frame_id": {"type": "string"},
                 "data": {"type": "string", "contentEncoding": "base64"},
-                "format": {"type": "string"},
+                "encoding": {"type": "string"},
                 "sample_rate": {"type": "integer"},
                 "channels": {"type": "integer"}
             }
@@ -194,41 +193,9 @@ void FoxgloveSink::broadcastImage(const QString &topic, const QImage &image) {
 
 void FoxgloveSink::broadcastAudio(const QString &topic, const QByteArray &data, int sampleRate, int channels) {
     if (!m_channels.contains(topic)) {
-        registerMediaTopic(topic, "foxglove.CompressedAudio");
+        registerMediaTopic(topic, "foxglove.RawAudio");
     }
 
-    // 1. Construct a simple WAV header
-    int dataSize = data.size();
-    int fileSize = 36 + dataSize;
-    int byteRate = sampleRate * channels * 2; // 16-bit = 2 bytes
-
-    QByteArray header;
-    header.append("RIFF");
-    header.append(reinterpret_cast<const char*>(&fileSize), 4);
-    header.append("WAVEfmt ");
-
-    int subChunk1Size = 16;
-    header.append(reinterpret_cast<const char*>(&subChunk1Size), 4);
-
-    short audioFormat = 1; // PCM
-    header.append(reinterpret_cast<const char*>(&audioFormat), 2);
-    header.append(reinterpret_cast<const char*>(&channels), 2);
-    header.append(reinterpret_cast<const char*>(&sampleRate), 4);
-    header.append(reinterpret_cast<const char*>(&byteRate), 4);
-
-    short blockAlign = channels * 2;
-    header.append(reinterpret_cast<const char*>(&blockAlign), 2);
-
-    short bitsPerSample = 16;
-    header.append(reinterpret_cast<const char*>(&bitsPerSample), 2);
-
-    header.append("data");
-    header.append(reinterpret_cast<const char*>(&dataSize), 4);
-
-    // 2. Combine header + raw audio data
-    QByteArray wavData = header + data;
-
-    // 3. Broadcast
     QJsonObject payload;
     QJsonObject timestamp;
     qint64 ms = QDateTime::currentMSecsSinceEpoch();
@@ -236,9 +203,12 @@ void FoxgloveSink::broadcastAudio(const QString &topic, const QByteArray &data, 
     timestamp["nsec"] = static_cast<int>((ms % 1000) * 1000000);
 
     payload["timestamp"] = timestamp;
-    payload["frame_id"] = "microphone";
-    payload["format"] = "wav"; // Now identifying as WAV
-    payload["data"] = QString(wavData.toBase64());
+
+    // "mono16" is the standard identifier for 1-channel, 16-bit PCM
+    payload["encoding"] = (channels == 1) ? "mono16" : "stereo16";
+    payload["sample_rate"] = sampleRate;
+    payload["channels"] = channels;
+    payload["data"] = QString(data.toBase64());
 
     QJsonDocument doc(payload);
     QByteArray payloadBytes = doc.toJson(QJsonDocument::Compact);
