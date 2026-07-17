@@ -38,11 +38,24 @@ Webcam::Webcam(QObject* parent) : QObject(parent) {
     format.setChannelCount(m_channels);
     format.setSampleFormat(QAudioFormat::Int16);
 
-    QAudioDevice info = QMediaDevices::defaultAudioInput();
-    if (!info.isFormatSupported(format)) {
-        qWarning() << "[Webcam] Default format not supported. Audio may sound distorted.";
+    const QList<QAudioDevice> audioDevices = QMediaDevices::audioInputs();
+    QAudioDevice selectedAudio = QMediaDevices::defaultAudioInput();
+
+    // Loop through and find the C270 microphone
+    for (const auto &mic : audioDevices) {
+        qInfo() << "[Webcam] Found mic:" << mic.description();
+        if (mic.description().contains("C270") || mic.description().contains("Logitech")) {
+            selectedAudio = mic;
+            break;
+        }
     }
-    m_audioSource = new QAudioSource(info, format, this);
+
+    qInfo() << "[Webcam] Bound audio to:" << selectedAudio.description();
+
+    if (!selectedAudio.isFormatSupported(format)) {
+        qWarning() << "[Webcam] Format not supported by this mic. Audio may sound distorted.";
+    }
+    m_audioSource = new QAudioSource(selectedAudio, format, this);
 #else
     qInfo() << "[Webcam] Development build detected. Hardware AV capture disabled.";
 #endif
@@ -79,7 +92,7 @@ void Webcam::setQmlVideoOutput(QObject* qmlOutput) {
 #ifdef ENV_RELEASE
 void Webcam::startAudio() {
     if (QMediaDevices::audioInputs().isEmpty()) {
-        qWarning() << "[Webcam] No I2S audio device found yet. Retrying in 2 seconds...";
+        qWarning() << "[Webcam] No audio devices found yet. Retrying in 2 seconds...";
         QTimer::singleShot(2000, this, &Webcam::startAudio);
         return;
     }

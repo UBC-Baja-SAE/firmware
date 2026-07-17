@@ -10,6 +10,7 @@
 #include "core/foxglove.h"
 #include "core/dash.h"
 #include "peripherals/webcam.h"
+#include <QLoggingCategory>
 
 int main(int argc, char *argv[]) {
 
@@ -115,6 +116,8 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(&webcamBackend, &Webcam::audioReady,
                      foxgloveSink, &FoxgloveSink::broadcastAudio);
+
+    QLoggingCategory::setFilterRules("qt.gui.imageio.jpeg.warning=false");
 
     foxgloveThread->start();
     parserThread->start();
