@@ -5,7 +5,20 @@
 Webcam::Webcam(QObject* parent) : QObject(parent) {
 #ifdef ENV_RELEASE
     // --- Video Setup ---
-    m_camera = new QCamera(this);
+    // --- Video Setup ---
+    const QList<QCameraDevice> cameras = QMediaDevices::videoInputs();
+    QCameraDevice selectedCamera = QMediaDevices::defaultVideoInput();
+
+    for (const auto &cam : cameras) {
+        qInfo() << "[Webcam] Found camera:" << cam.description();
+        if (cam.description().contains("C270") || cam.description().contains("Logitech")) {
+            selectedCamera = cam;
+            break;
+        }
+    }
+
+    m_camera = new QCamera(selectedCamera, this);
+    qInfo() << "[Webcam] Bound to:" << selectedCamera.description();
     m_session = new QMediaCaptureSession(this);
     m_videoSink = new QVideoSink(this);
 

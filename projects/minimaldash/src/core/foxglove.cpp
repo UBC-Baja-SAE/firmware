@@ -100,12 +100,39 @@ void FoxgloveSink::registerTopics(const QJsonObject &schemas) {
 void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &schemaName) {
     if (!m_server && !m_writer) return;
 
-    QJsonObject schemaObj;
-    schemaObj["title"] = schemaName;
-    schemaObj["type"] = "object";
+    std::string schemaStr;
 
-    QJsonDocument doc(schemaObj);
-    std::string schemaStr = doc.toJson(QJsonDocument::Compact).toStdString();
+    if (schemaName == "foxglove.CompressedImage") {
+        schemaStr = R"({
+            "title": "foxglove.CompressedImage",
+            "type": "object",
+            "properties": {
+                "timestamp": {
+                    "type": "object",
+                    "properties": {"sec": {"type": "integer"}, "nsec": {"type": "integer"}}
+                },
+                "frame_id": {"type": "string"},
+                "data": {"type": "string", "contentEncoding": "base64"},
+                "format": {"type": "string"}
+            }
+        })";
+    } else if (schemaName == "foxglove.CompressedAudio") {
+        schemaStr = R"({
+            "title": "foxglove.CompressedAudio",
+            "type": "object",
+            "properties": {
+                "timestamp": {
+                    "type": "object",
+                    "properties": {"sec": {"type": "integer"}, "nsec": {"type": "integer"}}
+                },
+                "frame_id": {"type": "string"},
+                "data": {"type": "string", "contentEncoding": "base64"},
+                "format": {"type": "string"},
+                "sample_rate": {"type": "integer"},
+                "channels": {"type": "integer"}
+            }
+        })";
+    }
 
     foxglove::Schema channelSchema;
     channelSchema.name = schemaName.toStdString();
@@ -113,11 +140,7 @@ void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &s
     channelSchema.data = reinterpret_cast<const std::byte*>(schemaStr.data());
     channelSchema.data_len = schemaStr.size();
 
-    auto channelResult = foxglove::RawChannel::create(
-        topicName.toStdString(),
-        "json",
-        channelSchema
-    );
+    auto channelResult = foxglove::RawChannel::create(topicName.toStdString(), "json", channelSchema);
 
     if (channelResult.has_value()) {
         m_channels[topicName] = std::make_shared<foxglove::RawChannel>(std::move(channelResult.value()));
