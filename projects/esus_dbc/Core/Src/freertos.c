@@ -27,6 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include <stdlib.h>
 
 #include "adc.h"
 #include "semphr.h"
@@ -54,6 +55,19 @@ typedef struct {
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+
+// Fast median filter for 3 values
+static inline int16_t median3(int16_t a, int16_t b, int16_t c) {
+  if (a > b) {
+    if (b > c) return b;
+    else if (a > c) return c;
+    else return a;
+  } else {
+    if (a > c) return a;
+    else if (b > c) return c;
+    else return b;
+  }
+}
 
 /* USER CODE END PM */
 
@@ -190,10 +204,73 @@ void StartDefaultTask(void *argument)
 void ReadIMUTask(void *argument)
 {
   /* USER CODE BEGIN ReadIMUTask */
+
+  if (IMU_Init() != HAL_OK)
+  {
+    vTaskSuspend(NULL);
+  }
+
+  uint8_t rawData[12];
+  struct mochi_fr_accel_t accel_msg;
+  struct mochi_fr_gyro_t gyro_msg;
+  CAN_Queue_Msg_t txMsg;
+
+  // History buffers for the 3-sample sliding window
+  int16_t ax_hist[3] = {0}, ay_hist[3] = {0}, az_hist[3] = {0};
+  int16_t gx_hist[3] = {0}, gy_hist[3] = {0}, gz_hist[3] = {0};
+  uint8_t hist_idx = 0;
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    // Wait for the EXTI interrupt
+    if (xSemaphoreTake(IMU_DataReady_Sem, portMAX_DELAY) == pdTRUE)
+    {
+      if (HAL_I2C_Mem_Read(&hi2c1, ICM42670_I2C_ADDR, REG_ACCEL_DATA_X1,
+                                 I2C_MEMADD_SIZE_8BIT, rawData, 12, 100) == HAL_OK)
+      {
+        // Extract the raw bits directly into the history buffer
+        ax_hist[hist_idx] = (int16_t)((rawData[0] << 8) | rawData[1]);
+        ay_hist[hist_idx] = (int16_t)((rawData[2] << 8) | rawData[3]);
+        az_hist[hist_idx] = (int16_t)((rawData[4] << 8) | rawData[5]);
+
+        gx_hist[hist_idx] = (int16_t)((rawData[6] << 8)  | rawData[7]);
+        gy_hist[hist_idx] = (int16_t)((rawData[8] << 8)  | rawData[9]);
+        gz_hist[hist_idx] = (int16_t)((rawData[10] << 8) | rawData[11]);
+
+        // Advance the circular buffer index (0, 1, 2, 0, 1...)
+        hist_idx = (hist_idx + 1) % 3;
+
+        // Filter Accelerometer
+        memset(&txMsg, 0, sizeof(txMsg));
+        accel_msg.accel_x = median3(ax_hist[0], ax_hist[1], ax_hist[2]);
+        accel_msg.accel_y = median3(ay_hist[0], ay_hist[1], ay_hist[2]);
+        accel_msg.accel_z = median3(az_hist[0], az_hist[1], az_hist[2]);
+
+        mochi_fr_accel_pack(txMsg.Payload, &accel_msg, sizeof(txMsg.Payload));
+        txMsg.Identifier = MOCHI_FR_ACCEL_FRAME_ID;
+        txMsg.DataLength = 6;
+        xQueueSend(CAN_Tx_Queue, &txMsg, pdMS_TO_TICKS(10));
+
+        // Filter Gyroscope
+        memset(&txMsg, 0, sizeof(txMsg));
+        gyro_msg.gyro_x = median3(gx_hist[0], gx_hist[1], gx_hist[2]);
+        gyro_msg.gyro_y = median3(gy_hist[0], gy_hist[1], gy_hist[2]);
+        gyro_msg.gyro_z = median3(gz_hist[0], gz_hist[1], gz_hist[2]);
+
+        mochi_fr_gyro_pack(txMsg.Payload, &gyro_msg, sizeof(txMsg.Payload));
+        txMsg.Identifier = MOCHI_FR_GYRO_FRAME_ID;
+        txMsg.DataLength = 6;
+        xQueueSend(CAN_Tx_Queue, &txMsg, pdMS_TO_TICKS(10));
+      }
+      else
+      {
+        // AUTO-RECOVERY
+        HAL_I2C_DeInit(&hi2c1);
+        vTaskDelay(pdMS_TO_TICKS(5));
+        MX_I2C1_Init();
+      }
+    }
   }
   /* USER CODE END ReadIMUTask */
 }
@@ -315,8 +392,8 @@ void ReadLinPotTask(void *argument)
       xQueueSend(CAN_Tx_Queue, &txMsg, pdMS_TO_TICKS(10));
     }
 
-    // Wait 10ms (100 Hz sampling rate) before asking for another reading
-    vTaskDelay(pdMS_TO_TICKS(10));
+    // Wait
+    vTaskDelay(pdMS_TO_TICKS(50));
   }
   /* USER CODE END ReadLinPotTask */
 }
