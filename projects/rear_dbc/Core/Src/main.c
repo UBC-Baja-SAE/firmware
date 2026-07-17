@@ -20,6 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "fdcan.h"
+#include "i2c.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -97,6 +98,7 @@ HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
   MX_FDCAN1_Init();
   MX_TIM3_Init();
   MX_TIM1_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
 

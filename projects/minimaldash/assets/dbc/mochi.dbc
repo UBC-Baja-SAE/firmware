@@ -32,7 +32,7 @@ NS_ :
 
 BS_:
 
-BU_: rr_ecu rl_ecu fr_ecu fl_ecu rear_ecu
+BU_: rr_ecu rl_ecu fr_ecu fl_ecu rear_ecu front_ecu
 
 BO_ 258 rr_accel: 6 rr_ecu
  SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
@@ -86,11 +86,21 @@ BO_ 1027 fl_gyro: 6 fl_ecu
 BO_ 1028 fl_linpot: 2 fl_ecu
  SG_ travel : 0|16@1+ (0.01,0) [0|655.35] "cm" Vector__XXX
 
-BO_ 1282 speedometer: 2 rear_ecu
+BO_ 1284 speedometer: 2 rear_ecu
  SG_ speed : 0|16@1+ (1,0) [0|65535] "km/h" Vector__XXX
 
-BO_ 1283 tachometer: 2 rear_ecu
+BO_ 1285 tachometer: 2 rear_ecu
  SG_ rpm : 0|16@1+ (1,0) [0|65535] "rpm" Vector__XXX
+
+ BO_ 1282 fl_accel: 6 rear_ecu
+  SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+  SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+  SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
+
+ BO_ 1283 fl_gyro: 6 rear_ecu
+  SG_ gyro_x : 0|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+  SG_ gyro_y : 16|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
+  SG_ gyro_z : 32|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
 
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
 BA_DEF_  "DatabaseVersion" STRING ;
