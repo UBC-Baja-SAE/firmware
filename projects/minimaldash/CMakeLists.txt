@@ -17,6 +17,7 @@ find_package(Qt6 REQUIRED COMPONENTS
         Gui
         Qml
         SerialBus
+        Multimedia
 )
 
 qt_policy(SET QTP0001 NEW)
