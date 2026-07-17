@@ -19,7 +19,7 @@ Item {
 
     VideoOutput {
         id: videoOutput
-        anchors.fill: parent
+        anchors.fill: camRect // <--- CHANGED: Fill the rectangle, not the root item
         anchors.margins: camRect.border.width // Avoid overlapping the white border
         fillMode: VideoOutput.PreserveAspectCrop // Fills the container perfectly
     }
@@ -30,7 +30,4 @@ Item {
             WebcamBackend.setQmlVideoOutput(videoOutput)
         }
     }
-
-
-
 }
