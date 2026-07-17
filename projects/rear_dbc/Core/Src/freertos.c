@@ -64,6 +64,13 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for ReadIMU */
+osThreadId_t ReadIMUHandle;
+const osThreadAttr_t ReadIMU_attributes = {
+  .name = "ReadIMU",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -71,6 +78,7 @@ void ReadIMUTask(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
+void ReadIMUTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -99,6 +107,9 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of ReadIMU */
+  ReadIMUHandle = osThreadNew(ReadIMUTask, NULL, &ReadIMU_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
@@ -187,13 +198,16 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
-/* Private application code --------------------------------------------------*/
-/* USER CODE BEGIN Application */
+/* USER CODE BEGIN Header_ReadIMUTask */
 /**
 * @brief Function implementing the ReadIMU thread.
+* @param argument: Not used
+* @retval None
 */
+/* USER CODE END Header_ReadIMUTask */
 void ReadIMUTask(void *argument)
 {
+  /* USER CODE BEGIN ReadIMUTask */
   if (IMU_Init() != HAL_OK)
   {
     vTaskSuspend(NULL);
@@ -201,8 +215,8 @@ void ReadIMUTask(void *argument)
 
   uint8_t rawData[12];
   uint8_t TxData[8];
-  struct mochi_fr_accel_t accel_msg;
-  struct mochi_fr_gyro_t gyro_msg;
+  struct mochi_rear_accel_t accel_msg;
+  struct mochi_rear_gyro_t gyro_msg;
 
   FDCAN_TxHeaderTypeDef TxHeader;
   TxHeader.IdType = FDCAN_STANDARD_ID;
@@ -243,8 +257,8 @@ void ReadIMUTask(void *argument)
         accel_msg.accel_y = median3(ay_hist[0], ay_hist[1], ay_hist[2]);
         accel_msg.accel_z = median3(az_hist[0], az_hist[1], az_hist[2]);
 
-        mochi_fr_accel_pack(TxData, &accel_msg, 6);
-        TxHeader.Identifier = MOCHI_FR_ACCEL_FRAME_ID;
+        mochi_rear_accel_pack(TxData, &accel_msg, 6);
+        TxHeader.Identifier = MOCHI_REAR_ACCEL_FRAME_ID;
 
         if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0) {
           uint32_t active_buffers = hfdcan1.Instance->TXBRP;
@@ -260,8 +274,8 @@ void ReadIMUTask(void *argument)
         gyro_msg.gyro_y = median3(gy_hist[0], gy_hist[1], gy_hist[2]);
         gyro_msg.gyro_z = median3(gz_hist[0], gz_hist[1], gz_hist[2]);
 
-        mochi_fr_gyro_pack(TxData, &gyro_msg, 6);
-        TxHeader.Identifier = MOCHI_FR_GYRO_FRAME_ID;
+        mochi_rear_gyro_pack(TxData, &gyro_msg, 6);
+        TxHeader.Identifier = MOCHI_REAR_GYRO_FRAME_ID;
 
         if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0) {
           uint32_t active_buffers = hfdcan1.Instance->TXBRP;
@@ -281,6 +295,14 @@ void ReadIMUTask(void *argument)
       }
     }
   }
+  /* USER CODE END ReadIMUTask */
 }
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+/**
+* @brief Function implementing the ReadIMU thread.
+*/
+
 /* USER CODE END Application */
 
