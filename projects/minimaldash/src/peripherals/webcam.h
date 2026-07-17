@@ -51,6 +51,8 @@ private:
     QIODevice* m_ioDevice = nullptr;
     int m_sampleRate = 44100;
     int m_channels = 1;
+
+    QByteArray m_audioBuffer;
 #endif
 };
 

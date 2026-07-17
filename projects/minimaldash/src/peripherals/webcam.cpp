@@ -121,9 +121,20 @@ void Webcam::processFrame(const QVideoFrame& frame) {
 void Webcam::processAudio() {
     if (!m_ioDevice) return;
 
-    QByteArray data = m_ioDevice->readAll();
-    if (data.size() > 0) {
-        emit audioReady("/camera/mic", data, m_sampleRate, m_channels);
+    // Append the tiny incoming hardware slivers to our buffer
+    m_audioBuffer.append(m_ioDevice->readAll());
+
+    // Calculate how many bytes represent 100ms of audio
+    // 16-bit audio = 2 bytes per sample
+    int bytesPerSecond = m_sampleRate * m_channels * 2;
+    int chunkSize = bytesPerSecond / 10;
+
+    // Only broadcast to Foxglove when we have a full 100ms chunk
+    if (m_audioBuffer.size() >= chunkSize) {
+        emit audioReady("/camera/mic", m_audioBuffer, m_sampleRate, m_channels);
+
+        // Clear the buffer for the next 100ms
+        m_audioBuffer.clear();
     }
 }
 #endif
