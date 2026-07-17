@@ -125,14 +125,13 @@ void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &s
                     "type": "object",
                     "properties": {"sec": {"type": "integer"}, "nsec": {"type": "integer"}}
                 },
-                "data": {"type": "string", "contentEncoding": "base64"},
-                "encoding": {"type": "string"},
+                "frame_id": {"type": "string"},
+                "format": {"type": "string"},
                 "sample_rate": {"type": "integer"},
-                "channels": {"type": "integer"}
+                "data": {"type": "string", "contentEncoding": "base64"}
             }
         })";
     }
-
     foxglove::Schema channelSchema;
     channelSchema.name = schemaName.toStdString();
     channelSchema.encoding = "jsonschema";
@@ -203,11 +202,12 @@ void FoxgloveSink::broadcastAudio(const QString &topic, const QByteArray &data, 
     timestamp["nsec"] = static_cast<int>((ms % 1000) * 1000000);
 
     payload["timestamp"] = timestamp;
+    payload["frame_id"] = "microphone";
 
-    // "mono16" is the standard identifier for 1-channel, 16-bit PCM
-    payload["encoding"] = (channels == 1) ? "mono16" : "stereo16";
+    // Use "format" instead of "encoding".
+    // "mono16" or "stereo16" is the correct format specifier.
+    payload["format"] = (channels == 1) ? "mono16" : "stereo16";
     payload["sample_rate"] = sampleRate;
-    payload["channels"] = channels;
     payload["data"] = QString(data.toBase64());
 
     QJsonDocument doc(payload);
