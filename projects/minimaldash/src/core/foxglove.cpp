@@ -126,8 +126,9 @@ void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &s
                     "properties": {"sec": {"type": "integer"}, "nsec": {"type": "integer"}}
                 },
                 "frame_id": {"type": "string"},
-                "format": {"type": "string"},
                 "sample_rate": {"type": "integer"},
+                "channels": {"type": "integer"},
+                "encoding": {"type": "string"},
                 "data": {"type": "string", "contentEncoding": "base64"}
             }
         })";
@@ -204,10 +205,11 @@ void FoxgloveSink::broadcastAudio(const QString &topic, const QByteArray &data, 
     payload["timestamp"] = timestamp;
     payload["frame_id"] = "microphone";
 
-    // Use "format" instead of "encoding".
-    // "mono16" or "stereo16" is the correct format specifier.
-    payload["format"] = (channels == 1) ? "mono16" : "stereo16";
+    // Foxglove expects exact PCM descriptors.
+    // Qt's QAudioFormat::Int16 is "pcm_s16le" (Signed 16-bit Little Endian)
+    payload["encoding"] = "pcm_s16le";
     payload["sample_rate"] = sampleRate;
+    payload["channels"] = channels;
     payload["data"] = QString(data.toBase64());
 
     QJsonDocument doc(payload);
