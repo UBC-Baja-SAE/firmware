@@ -123,7 +123,7 @@ void Webcam::processAudio() {
 
     QByteArray data = m_ioDevice->readAll();
     if (data.size() > 0) {
-        emit audioReady("/camera/audio", data, m_sampleRate, m_channels);
+        emit audioReady("/camera/mic", data, m_sampleRate, m_channels);
     }
 }
 #endif
