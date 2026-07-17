@@ -117,6 +117,7 @@ void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &s
             }
         })";
     } else if (schemaName == "foxglove.RawAudio") {
+        // EXACT schema from your old working app
         schemaStr = R"({
             "title": "foxglove.RawAudio",
             "type": "object",
@@ -125,14 +126,14 @@ void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &s
                     "type": "object",
                     "properties": {"sec": {"type": "integer"}, "nsec": {"type": "integer"}}
                 },
-                "frame_id": {"type": "string"},
+                "data": {"type": "string", "contentEncoding": "base64"},
+                "format": {"type": "string"},
                 "sample_rate": {"type": "integer"},
-                "channels": {"type": "integer"},
-                "encoding": {"type": "string"},
-                "data": {"type": "string", "contentEncoding": "base64"}
+                "number_of_channels": {"type": "integer"}
             }
         })";
     }
+
     foxglove::Schema channelSchema;
     channelSchema.name = schemaName.toStdString();
     channelSchema.encoding = "jsonschema";
@@ -148,6 +149,8 @@ void FoxgloveSink::registerMediaTopic(const QString &topicName, const QString &s
         qWarning() << "Failed to create channel for" << topicName;
     }
 }
+
+
 
 void FoxgloveSink::broadcastPayload(const QString &topicName, const QJsonObject &payload) {
     if (!m_channels.contains(topicName)) {
@@ -202,14 +205,11 @@ void FoxgloveSink::broadcastAudio(const QString &topic, const QByteArray &data, 
     timestamp["sec"] = static_cast<int>(ms / 1000);
     timestamp["nsec"] = static_cast<int>((ms % 1000) * 1000000);
 
+    // EXACT JSON payload format from your old working app
     payload["timestamp"] = timestamp;
-    payload["frame_id"] = "microphone";
-
-    // Foxglove expects exact PCM descriptors.
-    // Qt's QAudioFormat::Int16 is "pcm_s16le" (Signed 16-bit Little Endian)
-    payload["encoding"] = "pcm_s16le";
+    payload["format"] = "pcm-s16";
     payload["sample_rate"] = sampleRate;
-    payload["channels"] = channels;
+    payload["number_of_channels"] = channels;
     payload["data"] = QString(data.toBase64());
 
     QJsonDocument doc(payload);
