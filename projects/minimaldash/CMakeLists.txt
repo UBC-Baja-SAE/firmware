@@ -54,7 +54,7 @@ qt_add_qml_module(${PROJECT_NAME}
         src/ui/Debug.qml
         RESOURCES
         "assets/eglfs/eglfs.json"
-        "assets/icons/gear.svg"
+        "assets/icons/logo.png"
         "assets/fonts/microgramma.ttf"
 )
 

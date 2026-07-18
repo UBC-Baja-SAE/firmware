@@ -40,7 +40,8 @@ Window {
 
         Indicator {
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: -120
+            anchors.verticalCenterOffset: -150
+            anchors.horizontalCenterOffset: -10
         }
 
 
