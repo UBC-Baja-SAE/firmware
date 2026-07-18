@@ -157,15 +157,24 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+// 20 notches on rot encoder
+// 10 teeth on rot encoder gear ~36deg per tooth
+// 16 teeth on steering wheel gear ~22.5deg per tooth
+
 volatile int16_t counter = 0;
 volatile int16_t count = 0;
+volatile float steering_angle_deg = 0.0f;
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM3)
   {
-    counter = __HAL_TIM_GET_COUNTER(htim);
+    // Cast to int16_t natively handles negative values when the timer rolls under 0
+    counter = (int16_t)__HAL_TIM_GET_COUNTER(htim);
     count = counter / 4;
+
+    // Calculate the physical steering wheel angle
+    steering_angle_deg = (float)count * 11.25f;
   }
 }
 /* USER CODE END 4 */

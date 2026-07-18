@@ -25,7 +25,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "can.h"
+#include "mochi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -110,16 +111,48 @@ void MX_FREERTOS_Init(void) {
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
+/* USER CODE BEGIN StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+  CAN_TxHeaderTypeDef txHeader;
+  uint32_t txMailbox;
+  uint8_t txData[8];
+  struct mochi_front_steering_t steering_msg;
+
+  // Bring in the volatile counter you debugged in main.c
+  extern volatile float steering_angle_deg;
+
+  // IMPORTANT: You must start the CAN peripheral before sending
+  HAL_CAN_Start(&hcan);
+
+  // Configure the CAN transmit header
+  txHeader.StdId = MOCHI_FRONT_STEERING_FRAME_ID;
+  txHeader.ExtId = 0;
+  txHeader.IDE = CAN_ID_STD;
+  txHeader.RTR = CAN_RTR_DATA;
+  txHeader.DLC = 2;       // The front_steering pack function requires 2 bytes
+  txHeader.TransmitGlobalTime = DISABLE;
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    // 1. Assign your encoder count to the steering angle
+    steering_msg.steering_angle = mochi_front_steering_steering_angle_encode(steering_angle_deg);
+
+    // 2. Pack the struct into the byte array using Cantools
+    mochi_front_steering_pack(txData, &steering_msg, txHeader.DLC);
+
+    // 3. Ensure a transmit mailbox is empty before adding the message
+    if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) > 0)
+    {
+      HAL_CAN_AddTxMessage(&hcan, &txHeader, txData, &txMailbox);
+    }
+
+    // 4. Send at 10Hz
+    osDelay(100);
   }
-  /* USER CODE END StartDefaultTask */
+/* USER CODE END StartDefaultTask */
 }
 
 /* Private application code --------------------------------------------------*/
