@@ -92,7 +92,12 @@ int main(int argc, char *argv[]) {
             foxgloveSink->startServer(8765);
         }
         if (enableMcap) {
-            QString logDir = QCoreApplication::applicationDirPath() + "/logs";
+#ifdef ENV_RELEASE
+        QString logDir = QStringLiteral("/home/ubcbaja/firmware/logs");
+#else
+        QString logDir = QCoreApplication::applicationDirPath() + "/logs";
+#endif
+        foxgloveSink->startMcapRecording(logDir);
             foxgloveSink->startMcapRecording(logDir);
         }
     });

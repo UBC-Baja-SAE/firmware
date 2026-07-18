@@ -231,7 +231,7 @@ void FoxgloveSink::toggleServer(bool enable) {
 
 void FoxgloveSink::toggleLogging(bool enable) {
     if (enable && !m_writer) {
-#ifdef NDEBUG
+#ifdef ENV_RELEASE
         QString logDir = QStringLiteral("/home/ubcbaja/firmware/logs");
 #else
         QString logDir = QCoreApplication::applicationDirPath() + "/logs";
