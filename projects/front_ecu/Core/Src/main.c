@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "can.h"
 #include "tim.h"
 #include "gpio.h"
@@ -34,7 +35,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ROT_A_GPIO_Port GPIOA
+#define ROT_A_Pin GPIO_PIN_6
+#define ROT_B_GPIO_Port GPIOA
+#define ROT_B_Pin GPIO_PIN_7
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,11 +49,11 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -91,8 +95,17 @@ int main(void)
   MX_TIM3_Init();
   MX_CAN_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);
   /* USER CODE END 2 */
+
+  /* Init scheduler */
+  osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
+  MX_FREERTOS_Init();
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -144,8 +157,40 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+volatile int16_t counter = 0;
+volatile int16_t count = 0;
 
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM3)
+  {
+    counter = __HAL_TIM_GET_COUNTER(htim);
+    count = counter / 4;
+  }
+}
 /* USER CODE END 4 */
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
