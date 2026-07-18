@@ -231,7 +231,11 @@ void FoxgloveSink::toggleServer(bool enable) {
 
 void FoxgloveSink::toggleLogging(bool enable) {
     if (enable && !m_writer) {
+#ifdef ENV_RELEASE
+        QString logDir = QStringLiteral("/home/ubcbaja/firmware/logs");
+#else
         QString logDir = QCoreApplication::applicationDirPath() + "/logs";
+#endif
         startMcapRecording(logDir);
         if (!m_cachedSchemas.isEmpty()) {
             registerTopics(m_cachedSchemas);
