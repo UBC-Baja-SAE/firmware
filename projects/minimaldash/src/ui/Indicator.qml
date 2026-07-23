@@ -21,8 +21,9 @@ Item {
      * uncomment the Connections block below to automatically route the signals.
      */
     Connections {
-        target: DbcParser
-        function onFrameParsed(topicName, payload) {
+        target: Data
+
+        function onFrameForwardedToQml(topicName, payload) {
             root.processCanMessage(topicName, payload)
         }
     }

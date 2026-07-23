@@ -58,13 +58,23 @@ int main(int argc, char *argv[]) {
     Dash dashBackend;
     engine.rootContext()->setContextProperty("Data", &dashBackend);
 
-    // --- NEW: Instantiate the objects BEFORE loading QML ---
+    // 1. Create the backend objects
     CanSocket* canSocket = new CanSocket();
     DbcParser* dbcParser = new DbcParser();
     FoxgloveSink* foxgloveSink = new FoxgloveSink();
 
-    // --- NEW: Expose the parser to QML ---
-    engine.rootContext()->setContextProperty("DbcParser", dbcParser);
+    // 2. Create the threads
+    QThread* canThread = new QThread();
+    QThread* parserThread = new QThread();
+    QThread* foxgloveThread = new QThread();
+
+    // 3. Move objects to background threads
+    canSocket->moveToThread(canThread);
+    dbcParser->moveToThread(parserThread);
+    foxgloveSink->moveToThread(foxgloveThread);
+
+    // REMOVED: engine.rootContext()->setContextProperty("DbcParser", dbcParser);
+    // Data (Dash) already lives on the GUI thread and handles QML routing safely!
 
     QObject::connect(
         &engine,
@@ -73,16 +83,8 @@ int main(int argc, char *argv[]) {
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
-    // Now load the QML
+    // 5. Load the QML UI
     engine.load("qrc:/qt/qml/app/src/ui/main.qml");
-
-    QThread* canThread = new QThread();
-    QThread* parserThread = new QThread();
-    QThread* foxgloveThread = new QThread();
-
-    canSocket->moveToThread(canThread);
-    dbcParser->moveToThread(parserThread);
-    foxgloveSink->moveToThread(foxgloveThread);
 
     QObject::connect(canThread, &QThread::started, canSocket, [canSocket]() {
         canSocket->connectDevice();

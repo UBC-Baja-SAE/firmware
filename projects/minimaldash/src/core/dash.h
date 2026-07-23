@@ -33,11 +33,15 @@ public slots:
                 emit rpmChanged();
             }
         }
+
+        // Forward the parsed frame payload directly to QML on the GUI thread
+        emit frameForwardedToQml(topicName, payload);
     }
 
     signals:
         void speedChanged();
     void rpmChanged();
+    void frameForwardedToQml(const QString &topicName, const QJsonObject &payload);
 
 private:
     int m_speed;
