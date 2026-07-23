@@ -35,11 +35,8 @@ Item {
         height: 16
         radius: width / 2
 
-        // Map this to the specific CAN message name (from your DBC file)
         property string topic: ""
-
-        // 0: Red (No data), 1: Yellow (Unchanged), 2: Green (Changing)
-        property int status: 0
+        property int status: 0 // 0: Red, 1: Yellow, 2: Green
 
         color: status === 0 ? "#FF3B30" : (status === 1 ? "#FFCC00" : "#34C759")
         border.color: "#1C1C1E"
@@ -47,42 +44,58 @@ Item {
 
         property string _lastPayloadStr: ""
 
-        // Timer resets on message; if it fires, we assume the message stopped coming
+        // 1. Timer for complete data loss (Red)
+        // If no messages arrive at all for 1.5s, it goes Red.
         Timer {
-            id: timeoutTimer
-            interval: 1500 // 1.5 seconds without a message triggers Red
+            id: redTimer
+            interval: 1500
             repeat: false
-            onTriggered: dot.status = 0
+            onTriggered: {
+                dot.status = 0
+                yellowTimer.stop()
+            }
+        }
+
+        // 2. Timer for unchanging data (Yellow)
+        // If messages arrive but haven't changed for 3s, it drops to Yellow.
+        Timer {
+            id: yellowTimer
+            interval: 3000
+            repeat: false
+            onTriggered: {
+                if (dot.status === 2) {
+                    dot.status = 1
+                }
+            }
         }
 
         function updateStatus(payload) {
-            // Create a shallow copy and remove the timestamp for an accurate data comparison
             let cleanPayload = Object.assign({}, payload)
             delete cleanPayload.timestamp
-
-            // Convert to string to easily check if the values have actually changed
             let currentString = JSON.stringify(cleanPayload)
 
-            if (currentString === _lastPayloadStr) {
-                dot.status = 1 // Yellow (Data is coming, but values aren't changing)
-            } else {
-                dot.status = 2 // Green (Data is coming and values are updating)
-                _lastPayloadStr = currentString
-            }
+            // A message arrived! Prevent the dot from going Red.
+            redTimer.restart()
 
-            timeoutTimer.restart()
+            if (currentString !== _lastPayloadStr) {
+                // The data is actively changing: Go Green
+                dot.status = 2
+                _lastPayloadStr = currentString
+
+                // Restart the countdown to Yellow
+                yellowTimer.restart()
+            } else if (dot.status === 0) {
+                // Edge case: Node just came back online (from Red),
+                // but the values are identical to before it died.
+                dot.status = 1
+            }
         }
 
-        // Register and unregister from the parent map dynamically
         Component.onCompleted: {
-            if (topic !== "") {
-                root.dotMap[topic] = this
-            }
+            if (topic !== "") root.dotMap[topic] = this
         }
         Component.onDestruction: {
-            if (topic !== "") {
-                delete root.dotMap[topic]
-            }
+            if (topic !== "") delete root.dotMap[topic]
         }
     }
 
