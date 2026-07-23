@@ -58,6 +58,14 @@ int main(int argc, char *argv[]) {
     Dash dashBackend;
     engine.rootContext()->setContextProperty("Data", &dashBackend);
 
+    // --- NEW: Instantiate the objects BEFORE loading QML ---
+    CanSocket* canSocket = new CanSocket();
+    DbcParser* dbcParser = new DbcParser();
+    FoxgloveSink* foxgloveSink = new FoxgloveSink();
+
+    // --- NEW: Expose the parser to QML ---
+    engine.rootContext()->setContextProperty("DbcParser", dbcParser);
+
     QObject::connect(
         &engine,
         &QQmlApplicationEngine::objectCreationFailed,
@@ -65,15 +73,12 @@ int main(int argc, char *argv[]) {
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
+    // Now load the QML
     engine.load("qrc:/qt/qml/app/src/ui/main.qml");
 
     QThread* canThread = new QThread();
     QThread* parserThread = new QThread();
     QThread* foxgloveThread = new QThread();
-
-    CanSocket* canSocket = new CanSocket();
-    DbcParser* dbcParser = new DbcParser();
-    FoxgloveSink* foxgloveSink = new FoxgloveSink();
 
     canSocket->moveToThread(canThread);
     dbcParser->moveToThread(parserThread);

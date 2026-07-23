@@ -17,12 +17,11 @@ Item {
 
     VideoOutput {
         id: videoOutput
-        anchors.fill: camRect // <--- CHANGED: Fill the rectangle, not the root item
-        anchors.margins: camRect.border.width // Avoid overlapping the white border
-        fillMode: VideoOutput.PreserveAspectCrop // Fills the container perfectly
+        anchors.fill: camRect
+        anchors.margins: camRect.border.width
+        fillMode: VideoOutput.PreserveAspectCrop
     }
 
-    // 3. Route the backend stream directly to the video element
     Component.onCompleted: {
         if (IsReleaseBuild && typeof WebcamBackend !== "undefined") {
             WebcamBackend.setQmlVideoOutput(videoOutput)
