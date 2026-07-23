@@ -47,6 +47,11 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+// Change these at the top of your file
+static volatile uint64_t previous_capture_64 = 0;
+static volatile uint64_t tach_previous_capture_64 = 0;
+volatile uint64_t tim1_overflow_count = 0;
+// You can delete tim3_overflow_count completely
 
 /* USER CODE END PV */
 
@@ -96,7 +101,6 @@ HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_FDCAN1_Init();
-  MX_TIM3_Init();
   MX_TIM1_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
@@ -105,8 +109,8 @@ HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
   HAL_TIM_Base_Start_IT(&htim1);
   HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_2);
 
-  HAL_TIM_Base_Start_IT(&htim3);
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
+  // HAL_TIM_Base_Start_IT(&htim1);
+  HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
 
   /* USER CODE END 2 */
 
@@ -191,14 +195,14 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-#define TIM1_CLOCK_FREQ         240000000UL   // APB1 Timer Clock @240MHz
-#define TIM3_CLOCK_FREQ         240000000UL   // APB1 Timer Clock @240MHz
+#define TIM1_CLOCK_FREQ         192000000UL   // APB1 Timer Clock @240MHz
+#define TIM3_CLOCK_FREQ         192000000UL   // APB1 Timer Clock @240MHz
 #define TIM1_PERIOD_TICKS       65536ULL      // 2^16 for 16-bit TIM1
 #define TIM3_PERIOD_TICKS       65536ULL      // 2^16 for 16-bit TIM3
 
 #define MAGNET_DEBOUNCE_TIME_MS 5U
-#define SPARK_DEBOUNCE_TIME_MS  10U
-#define PULSES_PER_REV          2.0f
+#define SPARK_DEBOUNCE_TIME_MS  2U
+#define PULSES_PER_REV          1.0f
 
 #define SPEED_SMOOTHING         0.2f
 #define TIRE_CIRCUMFERENCE_KM   0.001963f
@@ -209,7 +213,6 @@ void SystemClock_Config(void)
 
 static volatile uint32_t previous_capture     = 0;
 static volatile uint8_t  speed_first_pulse    = 1;
-volatile uint64_t tim1_overflow_count  = 0;
 static volatile float    smoothed_speed_freq  = 0.0f;
 
 volatile uint32_t last_magnet_time     = 0;
@@ -217,7 +220,6 @@ volatile uint32_t last_spark_time      = 0;
 
 static volatile uint32_t tach_previous_capture = 0;
 static volatile uint8_t  tach_first_pulse      = 1;
-volatile uint64_t tim3_overflow_count  = 0;
 static volatile float    tach_smoothed_freq    = 0.0f;
 
 // Outputs
@@ -229,96 +231,77 @@ void Speedometer_OverflowISR(void)
   tim1_overflow_count++;
 }
 
-void Tachometer_OverflowISR(void)
-{
-  tim3_overflow_count++;
-}
-
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-  /* ---------------- SPEEDOMETER (TIM1) ---------------- */
-  if (htim->Instance == TIM1 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
+  if (htim->Instance == TIM1)
   {
-    uint32_t now = HAL_GetTick();
-
-    if ((now - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS)
-      return;
-    last_magnet_time = now;
-
-    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
-
-    if (speed_first_pulse)
+    /* ---------------- SPEEDOMETER (TIM1 CH2) ---------------- */
+    if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
     {
-      previous_capture    = cap;
-      tim1_overflow_count = 0;
-      speed_first_pulse   = 0;
-      return;
+      uint32_t now = HAL_GetTick();
+
+      if ((now - last_magnet_time) < MAGNET_DEBOUNCE_TIME_MS) return;
+      last_magnet_time = now;
+
+      uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
+      uint64_t current_overflow = tim1_overflow_count;
+
+      // If an overflow is pending AND the capture value is small (meaning it rolled over)
+      if (__HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) && (cap < 32768)) {
+        current_overflow++;
+      }
+
+      uint64_t current_time = (current_overflow * TIM1_PERIOD_TICKS) + (uint64_t)cap;
+
+      if (speed_first_pulse)
+      {
+        previous_capture_64 = current_time;
+        speed_first_pulse   = 0;
+        return;
+      }
+
+      uint64_t diff = current_time - previous_capture_64;
+      previous_capture_64 = current_time; // Save for next time
+
+      if (diff > 0ULL)
+      {
+        float instant_freq = (float)TIM1_CLOCK_FREQ / (float)diff;
+        smoothed_speed_freq = (instant_freq * SPEED_SMOOTHING) + (smoothed_speed_freq * (1.0f - SPEED_SMOOTHING));
+        uint32_t kmh = (uint32_t)(smoothed_speed_freq * TIRE_CIRCUMFERENCE_KM * 3600.0f);
+        speedometer_kmh = (kmh > MAX_SPEED_KMH) ? MAX_SPEED_KMH : kmh;
+      }
     }
 
-    uint64_t diff = (tim1_overflow_count * TIM1_PERIOD_TICKS)
-                  + (uint64_t)cap
-                  - (uint64_t)previous_capture;
-
-    previous_capture    = cap;
-    tim1_overflow_count = 0;
-
-    if (diff > 0ULL)
+    /* ---------------- TACHOMETER (TIM1 CH4) ---------------- */
+    else if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
     {
-      float instant_freq = (float)TIM1_CLOCK_FREQ / (float)diff;
+      uint32_t now = HAL_GetTick();
 
-      smoothed_speed_freq = (instant_freq * SPEED_SMOOTHING)
-                          + (smoothed_speed_freq * (1.0f - SPEED_SMOOTHING));
+      if ((now - last_spark_time) < SPARK_DEBOUNCE_TIME_MS) return;
+      last_spark_time = now;
 
-      uint32_t kmh = (uint32_t)(smoothed_speed_freq
-                               * TIRE_CIRCUMFERENCE_KM
-                               * 3600.0f);
+      uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4);
 
-      speedometer_kmh = (kmh > MAX_SPEED_KMH) ? MAX_SPEED_KMH : kmh;
-    }
-  }
+      // Calculate absolute 64-bit timestamp
+      uint64_t current_time = (tim1_overflow_count * TIM1_PERIOD_TICKS) + (uint64_t)cap;
 
-  /* ---------------- TACHOMETER (TIM3) ---------------- */
-  /* ---------------- TACHOMETER (TIM3) ---------------- */
-  else if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
-  {
-    uint32_t now = HAL_GetTick();
+      if (tach_first_pulse)
+      {
+        tach_previous_capture_64 = current_time;
+        tach_first_pulse = 0;
+        return;
+      }
 
-    // SOFTWARE DEBOUNCE: Ignores the BJT high-frequency ringing
-    if ((now - last_spark_time) < SPARK_DEBOUNCE_TIME_MS) {
-      return;
-    }
-    last_spark_time = now;
+      uint64_t diff = current_time - tach_previous_capture_64;
+      tach_previous_capture_64 = current_time; // Save for next time
 
-    uint32_t cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
-
-    if (tach_first_pulse)
-    {
-      tach_previous_capture = cap;
-      tim3_overflow_count = 0;
-      tach_first_pulse = 0;
-      return;
-    }
-
-    // New safe multi-overflow math
-    uint64_t diff = (tim3_overflow_count * TIM3_PERIOD_TICKS)
-                  + (uint64_t)cap
-                  - (uint64_t)tach_previous_capture;
-
-    tach_previous_capture = cap;
-    tim3_overflow_count = 0;
-
-    if (diff > 0ULL)
-    {
-      float instant_freq = (float)TIM3_CLOCK_FREQ / (float)diff;
-
-      tach_smoothed_freq = (instant_freq * SPEED_SMOOTHING)
-                          + (tach_smoothed_freq * (1.0f - SPEED_SMOOTHING));
-
-      // Calculate true RPM using your old logic
-      uint32_t calculated_rpm = (uint32_t)((tach_smoothed_freq * 60.0f) / PULSES_PER_REV);
-
-      // Cap at max limit
-      tachometer_rpm = (calculated_rpm > MAX_RPM_LIMIT) ? MAX_RPM_LIMIT : calculated_rpm;
+      if (diff > 0ULL)
+      {
+        float instant_freq = (float)TIM1_CLOCK_FREQ / (float)diff;
+        tach_smoothed_freq = (instant_freq * SPEED_SMOOTHING) + (tach_smoothed_freq * (1.0f - SPEED_SMOOTHING));
+        uint32_t calculated_rpm = (uint32_t)((tach_smoothed_freq * 60.0f) / PULSES_PER_REV);
+        tachometer_rpm = (calculated_rpm > MAX_RPM_LIMIT) ? MAX_RPM_LIMIT : calculated_rpm;
+      }
     }
   }
 }
@@ -392,13 +375,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+
+  // ADD THIS BLOCK: Increment the shared overflow counter for TIM1
   if (htim->Instance == TIM1)
   {
-    Speedometer_OverflowISR();
-  }
-  if (htim->Instance == TIM3)
-  {
-    Tachometer_OverflowISR();
+    tim1_overflow_count++;
   }
 
   /* USER CODE END Callback 1 */
