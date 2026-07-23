@@ -103,7 +103,6 @@ int main(int argc, char *argv[]) {
         QString logDir = QCoreApplication::applicationDirPath() + "/logs";
 #endif
         foxgloveSink->startMcapRecording(logDir);
-            foxgloveSink->startMcapRecording(logDir);
         }
     });
 

@@ -114,7 +114,8 @@ void Webcam::processFrame(const QVideoFrame& frame) {
     QImage image = frame.toImage();
     if (!image.isNull()) {
         QImage scaled = image.scaled(640, 480, Qt::KeepAspectRatio, Qt::FastTransformation);
-        emit frameReady("/camera/front", scaled);
+
+        emit frameReady("/camera/front", scaled.convertToFormat(QImage::Format_RGB32));
     }
 }
 
