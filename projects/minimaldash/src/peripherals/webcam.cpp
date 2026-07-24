@@ -11,7 +11,7 @@ Webcam::Webcam(QObject* parent) : QObject(parent) {
 
     for (const auto &cam : cameras) {
         qInfo() << "[Webcam] Found camera:" << cam.description();
-        if (cam.description().contains("C270") || cam.description().contains("Logitech")) {
+        if (cam.description().contains("C210") || cam.description().contains("Logitech")) {
             selectedCamera = cam;
             break;
         }
@@ -41,10 +41,10 @@ Webcam::Webcam(QObject* parent) : QObject(parent) {
     const QList<QAudioDevice> audioDevices = QMediaDevices::audioInputs();
     QAudioDevice selectedAudio = QMediaDevices::defaultAudioInput();
 
-    // Loop through and find the C270 microphone
+    // Loop through and find the C210 microphone
     for (const auto &mic : audioDevices) {
         qInfo() << "[Webcam] Found mic:" << mic.description();
-        if (mic.description().contains("C270") || mic.description().contains("Logitech")) {
+        if (mic.description().contains("C210") || mic.description().contains("Logitech")) {
             selectedAudio = mic;
             break;
         }
