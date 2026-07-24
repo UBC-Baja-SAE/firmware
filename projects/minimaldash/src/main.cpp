@@ -120,15 +120,13 @@ int main(int argc, char *argv[]) {
     QObject::connect(dbcParser, &DbcParser::frameParsed,
                      &dashBackend, &Dash::onFrameParsed);
 
-    // 3. Connect the Webcam signals to FoxgloveSink slots
-    // Note: Adjust the slots (&FoxgloveSink::broadcastImage / broadcastAudio)
-    // to match whatever you named the receiving functions in your foxglove.h wrapper.
     QObject::connect(&webcamBackend, &Webcam::frameReady,
-                     foxgloveSink, &FoxgloveSink::broadcastImage);
+                     foxgloveSink, &FoxgloveSink::broadcastImage,
+                     Qt::QueuedConnection);
 
     QObject::connect(&webcamBackend, &Webcam::audioReady,
-                     foxgloveSink, &FoxgloveSink::broadcastAudio);
-
+                     foxgloveSink, &FoxgloveSink::broadcastAudio,
+                     Qt::QueuedConnection);
     QLoggingCategory::setFilterRules("qt.gui.imageio.jpeg.warning=false");
 
     foxgloveThread->start();

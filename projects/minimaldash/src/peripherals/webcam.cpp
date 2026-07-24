@@ -18,6 +18,10 @@ Webcam::Webcam(QObject* parent) : QObject(parent) {
     }
 
     m_camera = new QCamera(selectedCamera, this);
+
+    connect(m_camera, &QCamera::errorOccurred, this, [](QCamera::Error error, const QString &errorString) {
+        qWarning() << "[Webcam] Camera error occurred:" << error << errorString;
+    });
     qInfo() << "[Webcam] Bound to:" << selectedCamera.description();
     m_session = new QMediaCaptureSession(this);
     m_videoSink = new QVideoSink(this);
@@ -107,34 +111,48 @@ void Webcam::startAudio() {
 }
 
 void Webcam::processFrame(const QVideoFrame& frame) {
-    if (!m_readyForNextFrame || !frame.isValid()) return;
-    
-    m_readyForNextFrame = false; 
-    
-    QImage image = frame.toImage();
-    if (!image.isNull()) {
-        QImage scaled = image.scaled(640, 480, Qt::KeepAspectRatio, Qt::FastTransformation);
-        
-        QImage flipped = scaled.mirrored(true, false);
+    if (!m_readyForNextFrame) return;
 
-        emit frameReady("/camera/front", flipped.convertToFormat(QImage::Format_RGB32));
+    if (m_camera && m_camera->error() != QCamera::NoError) {
+        return;
     }
+
+    if (!frame.isValid()) return;
+
+    m_readyForNextFrame = false;
+
+    QVideoFrame cloneFrame = frame;
+    if (!cloneFrame.isValid()) return;
+
+    QImage image = cloneFrame.toImage();
+    if (image.isNull()) return;
+
+    QImage scaled = image.scaled(640, 480, Qt::KeepAspectRatio, Qt::FastTransformation);
+    QImage flipped = scaled.mirrored(true, false);
+
+    emit frameReady("/camera/front", flipped.convertToFormat(QImage::Format_RGB32));
 }
 
 void Webcam::processAudio() {
-    if (!m_ioDevice) return;
+    if (!m_ioDevice || !m_audioSource) return;
 
-    // Append incoming data to the buffer (make sure m_audioBuffer is in your header!)
-    m_audioBuffer.append(m_ioDevice->readAll());
+    if (m_audioSource->error() != QAudio::NoError) {
+        qWarning() << "[Webcam] Audio device error detected. Stopping audio stream.";
+        m_audioSource->stop();
+        m_ioDevice = nullptr;
+        return;
+    }
 
-    // Calculate 100ms chunk size
+    QByteArray data = m_ioDevice->readAll();
+    if (data.isEmpty()) return;
+
+    m_audioBuffer.append(data);
+
     int bytesPerSecond = m_sampleRate * m_channels * 2;
     int chunkSize = bytesPerSecond / 10;
 
     if (m_audioBuffer.size() >= chunkSize) {
-        // Use a brand-new topic name to bust the Foxglove cache
         emit audioReady("/camera/audio_stream", m_audioBuffer, m_sampleRate, m_channels);
-
         m_audioBuffer.clear();
     }
 }
