@@ -128,7 +128,7 @@ void Webcam::processFrame(const QVideoFrame& frame) {
     if (image.isNull()) return;
 
     QImage scaled = image.scaled(640, 480, Qt::KeepAspectRatio, Qt::FastTransformation);
-    QImage flipped = scaled.mirrored(true, false);
+    QImage flipped = scaled.mirrored(true, true);
 
     emit frameReady("/camera/front", flipped.convertToFormat(QImage::Format_RGB32));
 }

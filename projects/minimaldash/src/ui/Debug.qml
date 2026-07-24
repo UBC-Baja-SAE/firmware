@@ -20,6 +20,8 @@ Item {
         anchors.fill: camRect
         anchors.margins: camRect.border.width
         fillMode: VideoOutput.PreserveAspectCrop
+        orientation: 180
+
     }
 
     Component.onCompleted: {
