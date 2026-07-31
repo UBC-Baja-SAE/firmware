@@ -32,7 +32,7 @@ NS_ :
 
 BS_:
 
-BU_: rr_ecu rl_ecu fr_ecu fl_ecu rear_ecu front_ecu
+BU_: rr_ecu rl_ecu fr_ecu fl_ecu rear_ecu front_ecu dash
 
 BO_ 258 rr_accel: 6 rr_ecu
  SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
@@ -104,6 +104,16 @@ BO_ 1283 rear_gyro: 6 rear_ecu
 
 BO_ 1538 front_steering: 2 front_ecu
   SG_ steering_angle : 0|16@1- (0.1,0) [-360|360] "deg" Vector__XXX
+
+BO_ 1537 front_buttons: 3 front_ecu
+ SG_ button_id : 0|8@1+ (1,0) [0|255] "" dash
+ SG_ button_state : 8|8@1+ (1,0) [0|255] "" dash
+ SG_ seq : 16|8@1+ (1,0) [0|255] "" dash
+
+BO_ 1280 dash_ack: 3 dash
+ SG_ button_id : 0|8@1+ (1,0) [0|255] "" front_ecu
+ SG_ ack_status : 8|8@1+ (1,0) [0|255] "" front_ecu
+ SG_ seq : 16|8@1+ (1,0) [0|255] "" front_ecu
 
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
 BA_DEF_  "DatabaseVersion" STRING ;

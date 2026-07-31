@@ -10,6 +10,7 @@ public:
 
 public slots:
     bool connectDevice();
+    void sendFrame(const QCanBusFrame &frame);
 
     signals:
     void rawFrameReceived(const QCanBusFrame &frame);

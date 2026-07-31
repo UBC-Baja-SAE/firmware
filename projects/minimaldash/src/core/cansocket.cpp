@@ -43,3 +43,12 @@ void CanSocket::onFramesReceived()
         emit rawFrameReceived(frame);
     }
 }
+
+void CanSocket::sendFrame(const QCanBusFrame &frame)
+{
+    if (m_device && m_device->state() == QCanBusDevice::ConnectedState) {
+        if (!m_device->writeFrame(frame)) {
+            qWarning() << "Failed to send CAN frame:" << m_device->errorString();
+        }
+    }
+}

@@ -52,6 +52,7 @@ qt_add_qml_module(${PROJECT_NAME}
         src/ui/Tachometer.qml
         src/ui/Indicator.qml
         src/ui/Debug.qml
+        src/ui/Steering.qml
         RESOURCES
         "assets/eglfs/eglfs.json"
         "assets/icons/logo.png"

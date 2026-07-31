@@ -40,19 +40,29 @@ Window {
 
         Indicator {
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: -150
+            anchors.verticalCenterOffset: -160
             anchors.horizontalCenterOffset: -10
         }
 
 
         Row {
             anchors.centerIn: parent
-            spacing: 200
+            spacing: 60
 
             Tachometer {
                 fontFamily: customFont.name
                 rpm: Data.rpm
                 maxRpm: 4000
+            }
+
+            Steering {
+                fontFamily: customFont.name
+                angle: Data.steeringAngle
+                maxAngle: 30
+
+                anchors.verticalCenter: parent.verticalCenter
+
+                anchors.verticalCenterOffset: 0
             }
 
             Speedometer {

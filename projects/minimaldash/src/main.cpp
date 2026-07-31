@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef LINUX
     qputenv("QT_QPA_PLATFORM", "eglfs");
-    qputenv("QT_QPA_EGLFS_HIDECURSOR", "1"); // Add this line
+    qputenv("QT_QPA_EGLFS_HIDECURSOR", "1");
 
     QString tempKmsPath = "/tmp/eglfs.json";
     QFile::remove(tempKmsPath);
@@ -38,7 +38,6 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
 
-    // 1. Instantiate the Webcam backend
     Webcam webcamBackend;
     engine.rootContext()->setContextProperty("WebcamBackend", &webcamBackend);
 
@@ -46,7 +45,6 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("IsReleaseBuild", true);
     bool enableMcap = true;
 
-    // 2. Start hardware capture for release builds
     webcamBackend.start();
 #else
     engine.rootContext()->setContextProperty("IsReleaseBuild", false);
@@ -58,23 +56,17 @@ int main(int argc, char *argv[]) {
     Dash dashBackend;
     engine.rootContext()->setContextProperty("Data", &dashBackend);
 
-    // 1. Create the backend objects
     CanSocket* canSocket = new CanSocket();
     DbcParser* dbcParser = new DbcParser();
     FoxgloveSink* foxgloveSink = new FoxgloveSink();
 
-    // 2. Create the threads
     QThread* canThread = new QThread();
     QThread* parserThread = new QThread();
     QThread* foxgloveThread = new QThread();
 
-    // 3. Move objects to background threads
     canSocket->moveToThread(canThread);
     dbcParser->moveToThread(parserThread);
     foxgloveSink->moveToThread(foxgloveThread);
-
-    // REMOVED: engine.rootContext()->setContextProperty("DbcParser", dbcParser);
-    // Data (Dash) already lives on the GUI thread and handles QML routing safely!
 
     QObject::connect(
         &engine,
@@ -83,7 +75,6 @@ int main(int argc, char *argv[]) {
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
-    // 5. Load the QML UI
     engine.load("qrc:/qt/qml/app/src/ui/main.qml");
 
     QObject::connect(canThread, &QThread::started, canSocket, [canSocket]() {
@@ -120,6 +111,10 @@ int main(int argc, char *argv[]) {
     QObject::connect(dbcParser, &DbcParser::frameParsed,
                      &dashBackend, &Dash::onFrameParsed);
 
+    QObject::connect(&dashBackend, &Dash::outboundFrameReady,
+                     canSocket, &CanSocket::sendFrame,
+                     Qt::QueuedConnection);
+
     QObject::connect(&webcamBackend, &Webcam::frameReady,
                      foxgloveSink, &FoxgloveSink::broadcastImage,
                      Qt::QueuedConnection);
@@ -127,6 +122,7 @@ int main(int argc, char *argv[]) {
     QObject::connect(&webcamBackend, &Webcam::audioReady,
                      foxgloveSink, &FoxgloveSink::broadcastAudio,
                      Qt::QueuedConnection);
+
     QLoggingCategory::setFilterRules("qt.gui.imageio.jpeg.warning=false");
 
     foxgloveThread->start();
