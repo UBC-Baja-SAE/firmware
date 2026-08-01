@@ -97,7 +97,6 @@ Window {
                     maxSpeed: 60
                 }
             }
-
         }
     }
 }
