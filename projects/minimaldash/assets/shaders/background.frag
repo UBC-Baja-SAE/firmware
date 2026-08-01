@@ -10,8 +10,8 @@ layout(std140, binding = 0) uniform buf {
 };
 
 #define TAU 6.28318530718
-#define HOLES
-#define BUMP_MAP
+// #define HOLES
+// #define BUMP_MAP
 #define DIST_TYPE 0
 
 // WORKAROUND 1: Force const initialization to prevent transpiler from moving
