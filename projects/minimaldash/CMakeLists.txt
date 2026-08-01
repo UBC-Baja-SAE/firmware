@@ -63,7 +63,9 @@ qt_add_qml_module(${PROJECT_NAME}
 qt_add_shaders(${PROJECT_NAME} "warning_shader"
         PREFIX "/shaders"
         BASE "assets/shaders"
-        FILES "assets/shaders/warning.frag"
+        FILES
+        "assets/shaders/warning.frag"
+        "assets/shaders/background.frag"
 )
 
 # ---------------------------------------------------------
