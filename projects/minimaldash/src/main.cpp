@@ -43,12 +43,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef ENV_RELEASE
     engine.rootContext()->setContextProperty("IsReleaseBuild", true);
-    bool enableMcap = true;
-
     webcamBackend.start();
 #else
     engine.rootContext()->setContextProperty("IsReleaseBuild", false);
-    bool enableMcap = false;
 #endif
 
     bool enableWebsocket = true;
@@ -85,17 +82,10 @@ int main(int argc, char *argv[]) {
         dbcParser->loadDbcFiles({":/mochi.dbc"});
     });
 
-    QObject::connect(foxgloveThread, &QThread::started, foxgloveSink, [foxgloveSink, enableWebsocket, enableMcap]() {
+    // Auto-start Websocket, but leave MCAP off until the toggle switch flips
+    QObject::connect(foxgloveThread, &QThread::started, foxgloveSink, [foxgloveSink, enableWebsocket]() {
         if (enableWebsocket) {
             foxgloveSink->startServer(8765);
-        }
-        if (enableMcap) {
-#ifdef ENV_RELEASE
-        QString logDir = QStringLiteral("/home/ubcbaja/firmware/logs");
-#else
-        QString logDir = QCoreApplication::applicationDirPath() + "/logs";
-#endif
-        foxgloveSink->startMcapRecording(logDir);
         }
     });
 
@@ -113,6 +103,11 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(&dashBackend, &Dash::outboundFrameReady,
                      canSocket, &CanSocket::sendFrame,
+                     Qt::QueuedConnection);
+
+    // NEW: Route the toggle switch signal to FoxgloveSink across threads
+    QObject::connect(&dashBackend, &Dash::loggingCommanded,
+                     foxgloveSink, &FoxgloveSink::toggleLogging,
                      Qt::QueuedConnection);
 
     QObject::connect(&webcamBackend, &Webcam::frameReady,

@@ -38,7 +38,7 @@ Item {
         property string topic: ""
         property int status: 0 // 0: Red, 1: Yellow, 2: Green
 
-        color: status === 0 ? "#FF3B30" : (status === 1 ? "#FFCC00" : "#34C759")
+        color: status === 0 ? "#ff4444" : (status === 1 ? "#FFCC00" : "#34C759")
         border.color: "#1C1C1E"
         border.width: 1
 

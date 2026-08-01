@@ -71,5 +71,13 @@ Window {
                 maxSpeed: 60
             }
         }
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            border.color: "#ff4444" // Pure Red
+            border.width: 12
+            visible: Data.isLogging // Bound directly to your C++ Dash property
+            z: 100 // Forces it above all other UI elements
+        }
     }
 }
