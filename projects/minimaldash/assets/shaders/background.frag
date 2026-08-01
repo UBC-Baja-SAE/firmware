@@ -2,16 +2,15 @@
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
 
-// WARNING: Struct order must exactly match Qt's std140 padding rules
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
     float time;
     vec2 resolution;
     float uiDepth;
-    float cloudDensity; // Driven by RPM
-    float timeOfDay;    // Driven by Speed
-    float panOffset;    // Driven by Steering
+    float cloudDensity;
+    float timeOfDay;
+    float panOffset;
 };
 
 layout(binding = 1) uniform sampler2D uiSource;
@@ -37,43 +36,30 @@ float dither(ivec2 px) {
     return fract(sin(dot(vec2(px), vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-// Maps 0.0 (few clouds) to 1.0 (heavy overcast) based on RPM
 float getCloudOffset() {
     return mix(-1.5, 0.8, cloudDensity);
 }
 
-float map5( in vec3 p ) {
-    vec3 q = p - vec3(0.0,0.1,1.0)*time;
-    float f; float a = 0.5;
-    f  = a*noise( q ); q = q*2.02; a = a*0.5;
-    f += a*noise( q ); q = q*2.03; a = a*0.5;
-    f += a*noise( q ); q = q*2.01; a = a*0.5;
-    f += a*noise( q ); q = q*2.02; a = a*0.5;
-    f += a*noise( q );
-    return clamp( getCloudOffset() - p.y + 1.75*f, 0.0, 1.0 );
-}
-float map4( in vec3 p ) {
-    vec3 q = p - vec3(0.0,0.1,1.0)*time;
-    float f; float a = 0.5;
-    f  = a*noise( q ); q = q*2.02; a = a*0.5;
-    f += a*noise( q ); q = q*2.03; a = a*0.5;
-    f += a*noise( q ); q = q*2.01; a = a*0.5;
-    f += a*noise( q );
-    return clamp( getCloudOffset() - p.y + 1.75*f, 0.0, 1.0 );
-}
+// OPTIMIZATION: Reduced noise detail to save GPU cycles
+// Foreground (3 octaves)
 float map3( in vec3 p ) {
     vec3 q = p - vec3(0.0,0.1,1.0)*time;
-    float f; float a = 0.5;
-    f  = a*noise( q ); q = q*2.02; a = a*0.5;
-    f += a*noise( q ); q = q*2.03; a = a*0.5;
-    f += a*noise( q );
+    float f = 0.500 * noise(q); q = q*2.02;
+    f += 0.250 * noise(q); q = q*2.03;
+    f += 0.125 * noise(q);
     return clamp( getCloudOffset() - p.y + 1.75*f, 0.0, 1.0 );
 }
+// Midground (2 octaves)
 float map2( in vec3 p ) {
     vec3 q = p - vec3(0.0,0.1,1.0)*time;
-    float f; float a = 0.5;
-    f  = a*noise( q ); q = q*2.02; a = a*0.5;
-    f += a*noise( q );
+    float f = 0.500 * noise(q); q = q*2.02;
+    f += 0.250 * noise(q);
+    return clamp( getCloudOffset() - p.y + 1.75*f, 0.0, 1.0 );
+}
+// Deep Background (1 octave - super fast)
+float map1( in vec3 p ) {
+    vec3 q = p - vec3(0.0,0.1,1.0)*time;
+    float f = 0.500 * noise(q);
     return clamp( getCloudOffset() - p.y + 1.75*f, 0.0, 1.0 );
 }
 
@@ -81,7 +67,7 @@ const vec3 sundir = vec3(-0.7071,0.0,-0.7071);
 
 vec4 raymarch( in vec3 ro, in vec3 rd, in vec3 bgcol, in ivec2 px, in vec2 uv ) {
     vec4 sum = vec4(0.0);
-    float t = 0.05 * dither(px);
+    float t = 0.1 * dither(px);
     bool uiBlended = false;
 
     if (t >= uiDepth) {
@@ -90,6 +76,7 @@ vec4 raymarch( in vec3 ro, in vec3 rd, in vec3 bgcol, in ivec2 px, in vec2 uv ) 
         uiBlended = true;
     }
 
+    // OPTIMIZATION: t += max(0.12, 0.1*t) makes rays travel much faster
     #define MARCH(STEPS,MAPLOD) for(int i=0; i<STEPS; i++) { \
         vec3 pos = ro + t*rd; \
         if( pos.y<-3.0 || pos.y>2.0 || sum.a>0.99 ) break; \
@@ -110,13 +97,13 @@ vec4 raymarch( in vec3 ro, in vec3 rd, in vec3 bgcol, in ivec2 px, in vec2 uv ) 
             col.rgb *= col.a; \
             sum += col*(1.0-sum.a); \
         } \
-        t += max(0.06,0.05*t); \
+        t += max(0.12,0.1*t); \
     }
 
-    MARCH(30,map5);
-    MARCH(30,map4);
-    MARCH(20,map3);
-    MARCH(20,map2);
+    // OPTIMIZATION: Only 35 max steps instead of 100
+    MARCH(15,map3);
+    MARCH(10,map2);
+    MARCH(10,map1);
 
     if (!uiBlended) {
         vec4 uiCol = texture(uiSource, uv);
@@ -139,7 +126,6 @@ void main() {
     vec2 fragCoord = fixed_uv * resolution;
     vec2 p = (2.0 * fragCoord - resolution.xy) / resolution.y;
 
-    // Steering dynamically offsets the panning angle
     vec2 m = vec2(time * 0.05 + (panOffset * 0.8), 0.5);
 
     vec3 ro = 4.0*normalize(vec3(sin(3.0*m.x), 0.8*m.y, cos(3.0*m.x))) - vec3(0.0,0.1,0.0);
@@ -149,12 +135,10 @@ void main() {
 
     float sun = clamp( dot(sundir,rd), 0.0, 1.0 );
 
-    // Interpolate Sky Color based on Speedometer (0 = Sunset, 1 = Midday Blue)
     vec3 skySunset = vec3(0.6, 0.71, 0.75);
     vec3 skyMidday = vec3(0.15, 0.4, 0.8);
     vec3 baseSky = mix(skySunset, skyMidday, timeOfDay);
 
-    // Interpolate Sun Glare Color
     vec3 sunSunset = vec3(1.0, 0.6, 0.1);
     vec3 sunMidday = vec3(1.0, 0.9, 0.7);
     vec3 sunColor = mix(sunSunset, sunMidday, timeOfDay);
