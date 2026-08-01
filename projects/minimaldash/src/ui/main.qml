@@ -1,11 +1,9 @@
 import QtQuick
 import QtQuick.Controls
-import QtMultimedia
 
 Window {
     id: root
 
-    // Screen dimensions based on build target
     width: IsReleaseBuild ? 480 : 1280
     height: IsReleaseBuild ? 1280 : 480
     visible: true
@@ -33,24 +31,10 @@ Window {
         anchors.centerIn: parent
         rotation: IsReleaseBuild ? 90 : 0
 
-        // ======================================
-        // 1. HARDWARE-UPSCALED CLOUDS
-        // ======================================
         ShaderEffect {
-            id: cloudBackground
+            anchors.fill: parent
             z: -2
 
-            // RENDER RESOLUTION: Exactly 1/4 of your 1280x480 screen
-            width: 320
-            height: 120
-
-            // Stretch it out 4x visually to fill the dash
-            transform: Scale {
-                xScale: 4
-                yScale: 4
-            }
-
-            // The shader reads these tiny dimensions to calculate correctly
             property size resolution: Qt.size(width, height)
 
             property real time: 0
@@ -60,36 +44,25 @@ Window {
                 running: true
             }
 
-            // Assumes you compiled this in CMake
             fragmentShader: "qrc:/shaders/background.frag.qsb"
         }
 
-        // ======================================
-        // 2. FADING UI MASTER CONTAINER
-        // ======================================
         Item {
             id: uiLayer
             anchors.fill: parent
 
-            // 0.0 (Invisible) when idle, 1.0 (Fully visible) when logging
             opacity: Data.isLogging ? 1.0 : 0.0
 
-            // Smoothly animate the fade in/out over 800 milliseconds
             Behavior on opacity {
-                NumberAnimation {
-                    duration: 800
-                    easing.type: Easing.InOutQuad
-                }
+                NumberAnimation { duration: 800; easing.type: Easing.InOutQuad }
             }
 
-            // --- A. The Dark Tint Overlay ---
             Rectangle {
                 anchors.fill: parent
                 z: -1
-                color: Qt.rgba(0, 0, 0, 0.2) // 65% black tint to make gauges readable
+                color: Qt.rgba(0, 0, 0, 0.3)
             }
 
-            // --- B. The Gauges ---
             Debug {
                 anchors.centerIn: parent
                 anchors.verticalCenterOffset: 120
@@ -124,6 +97,7 @@ Window {
                     maxSpeed: 60
                 }
             }
+
         }
     }
 }
