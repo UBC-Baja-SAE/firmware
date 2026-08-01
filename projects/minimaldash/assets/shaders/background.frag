@@ -7,150 +7,318 @@ layout(std140, binding = 0) uniform buf {
     float qt_Opacity;
     float time;
     vec2 resolution;
-    float uiDepth;
-    float cloudDensity;
-    float timeOfDay;
-    float panOffset;
 };
 
-layout(binding = 1) uniform sampler2D uiSource;
+#define TAU 6.28318530718
+#define HOLES
+#define BUMP_MAP
+#define DIST_TYPE 0
 
-float hash(vec3 p) {
-    p = fract(p * 0.3183099 + 0.1);
-    p *= 17.0;
-    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+vec2 gSc = vec2(1.0)/5.0;
+vec2 cntr;
+float cir;
+int polyID;
+int pID;
+
+mat4x2 vID = mat4x2(vec2(-.5, -.5), vec2(-.5, .5), vec2(.5, .5), vec2(.5, -.5));
+mat4x2 eID = mat4x2(vec2(-.5, 0), vec2(0, .5), vec2(.5, 0), vec2(0, -.5));
+vec2 vP[16];
+
+// --- INJECTED MISSING SHADERTOY MATH FUNCTIONS ---
+float hash21(vec2 p) {
+    return fract(sin(dot(p, vec2(141.13, 289.97))) * 43758.5453);
 }
 
-float noise(in vec3 x) {
-    vec3 p = floor(x);
-    vec3 f = fract(x);
-    f = f * f * (3.0 - 2.0 * f);
-    float n = mix(mix(mix(hash(p + vec3(0,0,0)), hash(p + vec3(1,0,0)), f.x),
-                      mix(hash(p + vec3(0,1,0)), hash(p + vec3(1,1,0)), f.x), f.y),
-                  mix(mix(hash(p + vec3(0,0,1)), hash(p + vec3(1,0,1)), f.x),
-                      mix(hash(p + vec3(0,1,1)), hash(p + vec3(1,1,1)), f.x), f.y), f.z);
-    return n * 2.0 - 1.0;
+float distLineS(vec2 p, vec2 a, vec2 b) {
+    vec2 dir = normalize(b - a);
+    return dot(p - a, vec2(-dir.y, dir.x));
 }
 
-float dither(ivec2 px) {
-    return fract(sin(dot(vec2(px), vec2(12.9898, 78.233))) * 43758.5453);
+float lineIntersect(vec2 p1, vec2 d1, vec2 p2, vec2 p3) {
+    vec2 d2 = p3 - p2;
+    float crossD1D2 = d1.x*d2.y - d1.y*d2.x;
+    if (abs(crossD1D2) < 1e-6) return 0.0;
+    return ((p2.x - p1.x)*d2.y - (p2.y - p1.y)*d2.x) / crossD1D2;
 }
 
-float getCloudOffset() {
-    return mix(-1.5, 0.8, cloudDensity);
+float sdPoly(vec2 p, vec2 v[16], int n) {
+    float d = dot(p-v[0],p-v[0]);
+    float s = 1.0;
+    for( int i=0, j=n-1; i<16; j=i, i++ ) {
+        if(i>=n) break;
+        vec2 e = v[j] - v[i];
+        vec2 w = p - v[i];
+        vec2 b = w - e*clamp( dot(w,e)/dot(e,e), 0.0, 1.0 );
+        d = min( d, dot(b,b) );
+        bvec3 cond = bvec3( p.y>=v[i].y, p.y<v[j].y, e.x*w.y>e.y*w.x );
+        if( all(cond) || all(not(cond)) ) s*=-1.0;
+    }
+    return s*sqrt(d);
 }
 
-// OPTIMIZATION: Reduced noise detail to save GPU cycles
-// Foreground (3 octaves)
-float map3( in vec3 p ) {
-    vec3 q = p - vec3(0.0,0.1,1.0)*time;
-    float f = 0.500 * noise(q); q = q*2.02;
-    f += 0.250 * noise(q); q = q*2.03;
-    f += 0.125 * noise(q);
-    return clamp( getCloudOffset() - p.y + 1.75*f, 0.0, 1.0 );
+float sBox(vec2 p, vec2 b) {
+    vec2 d = abs(p) - b;
+    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
 }
-// Midground (2 octaves)
-float map2( in vec3 p ) {
-    vec3 q = p - vec3(0.0,0.1,1.0)*time;
-    float f = 0.500 * noise(q); q = q*2.02;
-    f += 0.250 * noise(q);
-    return clamp( getCloudOffset() - p.y + 1.75*f, 0.0, 1.0 );
-}
-// Deep Background (1 octave - super fast)
-float map1( in vec3 p ) {
-    vec3 q = p - vec3(0.0,0.1,1.0)*time;
-    float f = 0.500 * noise(q);
-    return clamp( getCloudOffset() - p.y + 1.75*f, 0.0, 1.0 );
+// --------------------------------------------------
+
+mat4x2 getEdges(vec2 ip){
+    const float rF = .95;
+    vec2 eR = vec2(0, .5*rF);
+    mat4x2 eM;
+
+    for(int i = 0; i<4; i++){
+        vec2 edID = ip + eID[i];
+        float rndI = mod(dot(edID, vec2(41, 53)), 4.)/4.;
+        float rndD = hash21(edID + .06)<.5? -1. : 1.;
+        rndI = sin(TAU*rndI*rndD + time*fract(rndD*77.77 + .5))*.5 + .5;
+        eM[i] = eID[i]*gSc - rndI*rndD*gSc*rF*eR;
+        eR = eR.yx;
+    }
+    return eM;
 }
 
-const vec3 sundir = vec3(-0.7071,0.0,-0.7071);
+vec4 distField(vec2 p){
+    vec2 ip = floor(p/gSc);
+    p -= (ip + .5)*gSc;
+    vec2 svIP = ip;
+    mat4x2 eM = getEdges(ip);
 
-vec4 raymarch( in vec3 ro, in vec3 rd, in vec3 bgcol, in ivec2 px, in vec2 uv ) {
-    vec4 sum = vec4(0.0);
-    float t = 0.1 * dither(px);
-    bool uiBlended = false;
+    vec2 minE = min(vec2(eM[1].x, eM[0].y), vec2(eM[3].x, eM[2].y));
+    vec2 maxE = max(vec2(eM[1].x, eM[0].y), vec2(eM[3].x, eM[2].y));
+    mat4x2 p4 = mat4x2(minE, vec2(minE.x, maxE.y), maxE, vec2(maxE.x, minE.y));
 
-    if (t >= uiDepth) {
-        vec4 uiCol = texture(uiSource, uv);
-        sum += uiCol * (1.0 - sum.a);
-        uiBlended = true;
+    vec2 rDim = (vec2(maxE.x - minE.x, maxE.y - minE.y));
+    vec2 rP = mix(minE, maxE, .5);
+    vec2 ap = abs(p - rP) - rDim/2.;
+    float cPoly = max(ap.x, ap.y);
+
+    float d;
+
+    if(cPoly<0.){
+        d = cPoly;
+        polyID = 4;
+        pID = 4;
+        vP[0] = p4[0], vP[1] = p4[1], vP[2] = p4[2], vP[3] = p4[3];
+        cntr = rP;
+    } else {
+        d = -cPoly;
+        vec4 ln;
+        for(int i = 0; i<4; i++){
+            ln[i] = distLineS(p, eM[i], eM[i] - eID[i]);
+        }
+        ln = max(ln, -ln.wxyz);
+        for(int i = 0; i<4; i++){
+            if(ln[i]<0.){
+                polyID = i;
+                break;
+            }
+        }
+
+        int i = polyID;
+        float dir = (i==0 || i==2)? 1. : -1.;
+
+        vec2 ro = eM[i];
+        vec2 rd = -normalize(eID[i]);
+        float t = lineIntersect(ro, rd, eM[(i + 3)%4], eM[(i + 3)%4] - eID[(i + 3)%4]*8.);
+        vec2 p0 = ro + rd*t;
+
+        mat4x2 eMD = getEdges(ip + vID[i]*2.);
+        int k = (i + 1)%4;
+        ro = eMD[k];
+        rd = -normalize(eID[k]);
+        t = lineIntersect(ro, rd, eMD[(k + 1)%4], eMD[(k + 1)%4] - eID[(k + 1)%4]*8.);
+        vec2 p1 = ro + rd*t + vID[i]*2.*gSc;
+        cntr = mix(p0, p1, .5);
+
+        d = max(d, ln[i]);
+        vec2 q = p - p1;
+        vec2 ln2 = q*sign(vID[i]);
+        d = max(d, max(ln2.x, ln2.y));
+
+        vec2 minI = min(vec2(eMD[1].x, eMD[0].y), vec2(eMD[3].x, eMD[2].y));
+        vec2 maxI = max(vec2(eMD[1].x, eMD[0].y), vec2(eMD[3].x, eMD[2].y));
+        mat4x2 p4D = mat4x2(minI, vec2(minI.x, maxI.y), maxI, vec2(maxI.x, minI.y));
+
+        rDim = (vec2(maxI.x - minI.x, maxI.y - minI.y));
+        vec2 rQ = mix(minI, maxI, .5);
+        q = p - vID[i]*2.*gSc;
+        vec2 aq = abs(q - rQ) - (rDim)/2.;
+        float rect = max(aq.x, aq.y);
+        d = max(d, -rect);
+
+        #if DIST_TYPE == 0
+        vP[0] = p0;
+        vP[1] = vec2(p0.x, p1.y);
+        vP[2] = p1;
+        vP[3] = vec2(p1.x, p0.y);
+        if(i%2==1){
+           vec2 tmp = vP[1]; vP[1] = vP[3]; vP[3] = tmp;
+        }
+        #endif
+
+        mat4x2 cP = mat4x2(vP[0], vP[1], vP[2], vP[3]);
+        int vIndex = 0;
+        int hit = 0;
+
+        #if DIST_TYPE == 0
+        eM *= dir;
+        if(eM[1].x<eM[3].x && -eM[0].y<-eM[2].y){
+            vP[vIndex++] = p4[(i + 1)%4];
+            vP[vIndex++] = p4[(i + 0)%4];
+            vP[vIndex++] = p4[(i + 3)%4];
+            hit = 1;
+        }
+        if(hit==0) vP[vIndex++] = cP[0];
+        #endif
+
+        mat4x2 eMI = getEdges(svIP + eID[(i + 3)%4]*2.);
+        minI = min(vec2(eMI[1].x, eMI[0].y), vec2(eMI[3].x, eMI[2].y));
+        maxI = max(vec2(eMI[1].x, eMI[0].y), vec2(eMI[3].x, eMI[2].y));
+        mat4x2 p4I = mat4x2(minI, vec2(minI.x, maxI.y), maxI, vec2(maxI.x, minI.y));
+
+        rDim = (vec2(maxI.x - minI.x, maxI.y - minI.y));
+        rQ = mix(minI, maxI, .5);
+        q = p - eID[(i + 3)%4]*gSc*2.;
+        q = abs(q - rQ) - (rDim)/2.;
+        rect = max(q.x, q.y);
+        d = max(d, -rect);
+
+        #if DIST_TYPE == 0
+        hit = 0;
+        eMI *= dir;
+        if(-eMI[1].x<-eMI[3].x && eMI[0].y<eMI[2].y){
+            vP[vIndex++] = p4I[(i + 2)%4] + eID[(i + 3)%4]*2.*gSc;
+            vP[vIndex++] = p4I[(i + 1)%4] + eID[(i + 3)%4]*2.*gSc;
+            vP[vIndex++] = p4I[(i + 0)%4] + eID[(i + 3)%4]*2.*gSc;
+            hit = 1;
+        }
+        if(hit==0) vP[vIndex++] = cP[1];
+        #endif
+
+        #if DIST_TYPE == 0
+        hit = 0;
+        eMD *= dir;
+        if(eMD[1].x<eMD[3].x && -eMD[0].y<-eMD[2].y){
+            vP[vIndex++] = p4D[(i + 3)%4] + vID[i]*2.*gSc;
+            vP[vIndex++] = p4D[(i + 2)%4] + vID[i]*2.*gSc;
+            vP[vIndex++] = p4D[(i + 1)%4] + vID[i]*2.*gSc;
+            hit = 1;
+        }
+        if(hit==0) vP[vIndex++] = cP[2];
+        #endif
+
+        eMI = getEdges(svIP + eID[i]*2.);
+        minI = min(vec2(eMI[1].x, eMI[0].y), vec2(eMI[3].x, eMI[2].y));
+        maxI = max(vec2(eMI[1].x, eMI[0].y), vec2(eMI[3].x, eMI[2].y));
+        p4I = mat4x2(minI, vec2(minI.x, maxI.y), maxI, vec2(maxI.x, minI.y));
+
+        rDim = (vec2(maxI.x - minI.x, maxI.y - minI.y));
+        rQ = mix(minI, maxI, .5);
+        q = p - eID[i]*gSc*2.;
+        q = abs(q - rQ) - (rDim)/2.;
+        rect = max(q.x, q.y);
+        d = max(d, -rect);
+
+        #if DIST_TYPE == 0
+        hit = 0;
+        eMI *= dir;
+        if(-eMI[1].x<-eMI[3].x && eMI[0].y<eMI[2].y){
+            vP[vIndex++] = p4I[(i + 0)%4] + eID[i]*2.*gSc;
+            vP[vIndex++] = p4I[(i + 3)%4] + eID[i]*2.*gSc;
+            vP[vIndex++] = p4I[(i + 2)%4] + eID[i]*2.*gSc;
+            hit = 1;
+        }
+        if(hit==0) vP[vIndex++] = cP[3];
+        #endif
+
+        pID = vIndex;
+        ip += vID[i];
     }
 
-    // OPTIMIZATION: t += max(0.12, 0.1*t) makes rays travel much faster
-    #define MARCH(STEPS,MAPLOD) for(int i=0; i<STEPS; i++) { \
-        vec3 pos = ro + t*rd; \
-        if( pos.y<-3.0 || pos.y>2.0 || sum.a>0.99 ) break; \
-        if (!uiBlended && t >= uiDepth) { \
-            vec4 uiCol = texture(uiSource, uv); \
-            sum += uiCol * (1.0 - sum.a); \
-            uiBlended = true; \
-        } \
-        float den = MAPLOD( pos ); \
-        if( den>0.01 ) { \
-            float dif = clamp((den - MAPLOD(pos+0.3*sundir))/0.6, 0.0, 1.0 ); \
-            vec3 sunLightCol = mix(vec3(1.0, 0.6, 0.3), vec3(1.0, 0.9, 0.8), timeOfDay); \
-            vec3 lin = sunLightCol * dif + vec3(0.91, 0.98, 1.05); \
-            vec4 col = vec4( mix( vec3(1.0,0.95,0.8), vec3(0.25,0.3,0.35), den ), den ); \
-            col.xyz *= lin; \
-            col.xyz = mix( col.xyz, bgcol, 1.0-exp(-0.003*t*t) ); \
-            col.w *= 0.4; \
-            col.rgb *= col.a; \
-            sum += col*(1.0-sum.a); \
-        } \
-        t += max(0.12,0.1*t); \
+    #if DIST_TYPE == 0
+    d = sdPoly(p, vP, pID);
+    #endif
+
+    cir = length(p - cntr);
+
+    #ifdef HOLES
+    if(hash21(ip + .23)<.4 && gSc.x>1./5. - .001){
+        d = abs(d + .09*gSc.x) - .09*gSc.x;
     }
+    #endif
 
-    // OPTIMIZATION: Only 35 max steps instead of 100
-    MARCH(15,map3);
-    MARCH(10,map2);
-    MARCH(10,map1);
+    float lN = 80.;
+    float pat = abs(fract(d*lN + .5) - .5)/lN;
+    d = mix(d*1.055, d*.9, smoothstep(0., .02, pat));
 
-    if (!uiBlended) {
-        vec4 uiCol = texture(uiSource, uv);
-        sum += uiCol * (1.0 - sum.a);
-    }
-
-    return clamp( sum, 0.0, 1.0 );
+    return vec4(d, ip, polyID);
 }
 
-mat3 setCamera( in vec3 ro, in vec3 ta, float cr ) {
-    vec3 cw = normalize(ta-ro);
-    vec3 cp = vec3(sin(cr), cos(cr),0.0);
-    vec3 cu = normalize( cross(cw,cp) );
-    vec3 cv = normalize( cross(cu,cw) );
-    return mat3( cu, cv, cw );
+float grid(vec2 p){
+    vec2 ip = floor(p/gSc);
+    p -= (ip + .5)*gSc;
+    return sBox(p, gSc/2.);
 }
 
 void main() {
-    vec2 fixed_uv = vec2(qt_TexCoord0.x, 1.0 - qt_TexCoord0.y);
-    vec2 fragCoord = fixed_uv * resolution;
-    vec2 p = (2.0 * fragCoord - resolution.xy) / resolution.y;
+    vec2 fragCoord = qt_TexCoord0 * resolution;
+    vec2 uv = (fragCoord - resolution.xy*.5)/resolution.y;
+    vec2 p = uv - vec2(0, time/12.);
 
-    vec2 m = vec2(time * 0.05 + (panOffset * 0.8), 0.5);
+    #ifdef HOLES
+    gSc /= 1.5;
+    vec4 d4B = distField(p + .5 - vec2(time/12., 0));
+    gSc *= 1.5;
 
-    vec3 ro = 4.0*normalize(vec3(sin(3.0*m.x), 0.8*m.y, cos(3.0*m.x))) - vec3(0.0,0.1,0.0);
-    vec3 ta = vec3(0.0, -1.0, 0.0);
-    mat3 ca = setCamera( ro, ta, 0.07*cos(0.25*time) );
-    vec3 rd = ca * normalize( vec3(p.xy,1.5));
+    float dB = d4B.x;
+    vec2 idB = d4B.yz;
 
-    float sun = clamp( dot(sundir,rd), 0.0, 1.0 );
+    float rndB = hash21(idB + .1);
+    vec3 rColB = .5 + .45*cos(TAU*rndB/3.5 + vec3(0, 1, 2)*1.5 - .3);
+    float grB = dot(rColB, vec3(.299, .587, .114));
+    vec3 pColB = polyID==4? vec3(grB*.5 + .5)*vec3(.97, 1, 1.03) : rColB.zyx*1.2;
+    #endif
 
-    vec3 skySunset = vec3(0.6, 0.71, 0.75);
-    vec3 skyMidday = vec3(0.15, 0.4, 0.8);
-    vec3 baseSky = mix(skySunset, skyMidday, timeOfDay);
+    #ifdef BUMP_MAP
+    vec2 ld = normalize(vec2(-2.5, -1));
+    vec4 d4Hi = distField(p - ld*.003);
+    #endif
 
-    vec3 sunSunset = vec3(1.0, 0.6, 0.1);
-    vec3 sunMidday = vec3(1.0, 0.9, 0.7);
-    vec3 sunColor = mix(sunSunset, sunMidday, timeOfDay);
+    vec4 d4 = distField(p);
+    float d = d4.x;
+    vec2 id = d4.yz;
 
-    vec3 col = baseSky - rd.y*0.2*vec3(1.0,0.5,1.0) + 0.15*0.5;
-    col += 0.2 * sunColor * pow( sun, 8.0 );
+    float sf = 1./resolution.y;
+    float shF = resolution.y/450.;
+    float ew = .006;
 
-    ivec2 px = ivec2(fragCoord);
-    vec4 res = raymarch( ro, rd, col, px, qt_TexCoord0 );
+    vec3 col = vec3(.25);
+    #ifdef HOLES
+    col = mix(col, vec3(0), 1. - smoothstep(0., sf*shF*16., dB));
+    col = mix(col, vec3(0), 1. - smoothstep(0., sf, dB));
+    col = mix(col, pColB, 1. - smoothstep(0., sf, dB + ew*.8));
+    #endif
 
-    col = col*(1.0-res.w) + res.xyz;
-    col += vec3(0.2,0.08,0.04)*pow( sun, 3.0 );
+    float rnd = hash21(id + .1);
+    vec3 rCol = .5 + .45*cos(TAU*rnd/3.5 + vec3(0, 1, 2)*1.5 - .3);
+    float gr = dot(rCol, vec3(.299, .587, .114));
+    vec3 pCol = polyID<4? vec3(gr*.5 + .5)*vec3(.97, 1, 1.03) : rCol*1.2;
 
-    fragColor = vec4(col, 1.0) * qt_Opacity;
+    #ifdef BUMP_MAP
+    float b = max(.5 + (d4Hi.x - d)/.003, 0.);
+    float b2 = max(.5 + (max(d4Hi.x, -.0125) - max(d, -.0125))/.003, 0.);
+    pCol *= .5 + b*b*.5 + b2*b2*.5;
+    #else
+    pCol *= 1.1;
+    #endif
+
+    col = mix(col, col*.4, 1. - smoothstep(0., sf*shF*24., d));
+    col = mix(col, vec3(0), 1. - smoothstep(0., sf, d - ew/2.));
+    col = mix(col, pCol, 1. - smoothstep(0., sf, d + ew));
+
+    uv = qt_TexCoord0;
+    col *= pow(16.*uv.x*uv.y*(1. - uv.x)*(1. - uv.y) , 1./16.);
+
+    fragColor = vec4(sqrt(max(col, 0.)), 1.0) * qt_Opacity;
 }
