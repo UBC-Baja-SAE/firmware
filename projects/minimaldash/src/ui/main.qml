@@ -71,13 +71,21 @@ Window {
                 maxSpeed: 60
             }
         }
-        Rectangle {
+        ShaderEffect {
             anchors.fill: parent
-            color: "transparent"
-            border.color: "#ff4444" // Pure Red
-            border.width: 12
-            visible: Data.isLogging // Bound directly to your C++ Dash property
-            z: 100 // Forces it above all other UI elements
+            z: 100
+            visible: Data.isLogging
+
+            property real time: 0
+            NumberAnimation on time {
+                loops: Animation.Infinite
+                from: 0; to: Math.PI * 2
+                duration: 1500
+                running: Data.isLogging
+            }
+
+            // Load the compiled shader via qrc
+            fragmentShader: "qrc:/shaders/warning.frag.qsb"
         }
     }
 }

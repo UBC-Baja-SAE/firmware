@@ -18,6 +18,7 @@ find_package(Qt6 REQUIRED COMPONENTS
         Qml
         SerialBus
         Multimedia
+        ShaderTools
 )
 
 qt_policy(SET QTP0001 NEW)
@@ -57,6 +58,12 @@ qt_add_qml_module(${PROJECT_NAME}
         "assets/eglfs/eglfs.json"
         "assets/icons/logo.png"
         "assets/fonts/microgramma.ttf"
+)
+
+qt_add_shaders(${PROJECT_NAME} "warning_shader"
+        PREFIX "/shaders"
+        BASE "assets/shaders"
+        FILES "assets/shaders/warning.frag"
 )
 
 # ---------------------------------------------------------
@@ -144,6 +151,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Qml
         Qt6::SerialBus
         Qt6::Multimedia
+        Qt6::ShaderTools
         foxglove_cpp
 )
 
