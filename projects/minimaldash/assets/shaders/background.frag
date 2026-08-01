@@ -20,11 +20,11 @@ float cir;
 int polyID;
 int pID;
 
-mat4x2 vID = mat4x2(vec2(-.5, -.5), vec2(-.5, .5), vec2(.5, .5), vec2(.5, -.5));
-mat4x2 eID = mat4x2(vec2(-.5, 0), vec2(0, .5), vec2(.5, 0), vec2(0, -.5));
+// WORKAROUND: Swapped mat4x2 for mat4 to fix OpenGL ES 2.0 translation crashes on Raspberry Pi
+mat4 vID = mat4(vec4(-.5, -.5, 0, 0), vec4(-.5, .5, 0, 0), vec4(.5, .5, 0, 0), vec4(.5, -.5, 0, 0));
+mat4 eID = mat4(vec4(-.5, 0, 0, 0), vec4(0, .5, 0, 0), vec4(.5, 0, 0, 0), vec4(0, -.5, 0, 0));
 vec2 vP[16];
 
-// --- INJECTED MISSING SHADERTOY MATH FUNCTIONS ---
 float hash21(vec2 p) {
     return fract(sin(dot(p, vec2(141.13, 289.97))) * 43758.5453);
 }
@@ -60,19 +60,18 @@ float sBox(vec2 p, vec2 b) {
     vec2 d = abs(p) - b;
     return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
 }
-// --------------------------------------------------
 
-mat4x2 getEdges(vec2 ip){
+mat4 getEdges(vec2 ip){
     const float rF = .95;
     vec2 eR = vec2(0, .5*rF);
-    mat4x2 eM;
+    mat4 eM;
 
     for(int i = 0; i<4; i++){
-        vec2 edID = ip + eID[i];
+        vec2 edID = ip + eID[i].xy;
         float rndI = mod(dot(edID, vec2(41, 53)), 4.)/4.;
         float rndD = hash21(edID + .06)<.5? -1. : 1.;
         rndI = sin(TAU*rndI*rndD + time*fract(rndD*77.77 + .5))*.5 + .5;
-        eM[i] = eID[i]*gSc - rndI*rndD*gSc*rF*eR;
+        eM[i] = vec4(eID[i].xy*gSc - rndI*rndD*gSc*rF*eR, 0.0, 0.0);
         eR = eR.yx;
     }
     return eM;
@@ -82,11 +81,11 @@ vec4 distField(vec2 p){
     vec2 ip = floor(p/gSc);
     p -= (ip + .5)*gSc;
     vec2 svIP = ip;
-    mat4x2 eM = getEdges(ip);
+    mat4 eM = getEdges(ip);
 
     vec2 minE = min(vec2(eM[1].x, eM[0].y), vec2(eM[3].x, eM[2].y));
     vec2 maxE = max(vec2(eM[1].x, eM[0].y), vec2(eM[3].x, eM[2].y));
-    mat4x2 p4 = mat4x2(minE, vec2(minE.x, maxE.y), maxE, vec2(maxE.x, minE.y));
+    mat4 p4 = mat4(vec4(minE,0,0), vec4(minE.x, maxE.y,0,0), vec4(maxE,0,0), vec4(maxE.x, minE.y,0,0));
 
     vec2 rDim = (vec2(maxE.x - minE.x, maxE.y - minE.y));
     vec2 rP = mix(minE, maxE, .5);
@@ -99,13 +98,13 @@ vec4 distField(vec2 p){
         d = cPoly;
         polyID = 4;
         pID = 4;
-        vP[0] = p4[0], vP[1] = p4[1], vP[2] = p4[2], vP[3] = p4[3];
+        vP[0] = p4[0].xy, vP[1] = p4[1].xy, vP[2] = p4[2].xy, vP[3] = p4[3].xy;
         cntr = rP;
     } else {
         d = -cPoly;
         vec4 ln;
         for(int i = 0; i<4; i++){
-            ln[i] = distLineS(p, eM[i], eM[i] - eID[i]);
+            ln[i] = distLineS(p, eM[i].xy, eM[i].xy - eID[i].xy);
         }
         ln = max(ln, -ln.wxyz);
         for(int i = 0; i<4; i++){
@@ -118,31 +117,31 @@ vec4 distField(vec2 p){
         int i = polyID;
         float dir = (i==0 || i==2)? 1. : -1.;
 
-        vec2 ro = eM[i];
-        vec2 rd = -normalize(eID[i]);
-        float t = lineIntersect(ro, rd, eM[(i + 3)%4], eM[(i + 3)%4] - eID[(i + 3)%4]*8.);
+        vec2 ro = eM[i].xy;
+        vec2 rd = -normalize(eID[i].xy);
+        float t = lineIntersect(ro, rd, eM[(i + 3)%4].xy, eM[(i + 3)%4].xy - eID[(i + 3)%4].xy*8.);
         vec2 p0 = ro + rd*t;
 
-        mat4x2 eMD = getEdges(ip + vID[i]*2.);
+        mat4 eMD = getEdges(ip + vID[i].xy*2.);
         int k = (i + 1)%4;
-        ro = eMD[k];
-        rd = -normalize(eID[k]);
-        t = lineIntersect(ro, rd, eMD[(k + 1)%4], eMD[(k + 1)%4] - eID[(k + 1)%4]*8.);
-        vec2 p1 = ro + rd*t + vID[i]*2.*gSc;
+        ro = eMD[k].xy;
+        rd = -normalize(eID[k].xy);
+        t = lineIntersect(ro, rd, eMD[(k + 1)%4].xy, eMD[(k + 1)%4].xy - eID[(k + 1)%4].xy*8.);
+        vec2 p1 = ro + rd*t + vID[i].xy*2.*gSc;
         cntr = mix(p0, p1, .5);
 
         d = max(d, ln[i]);
         vec2 q = p - p1;
-        vec2 ln2 = q*sign(vID[i]);
+        vec2 ln2 = q*sign(vID[i].xy);
         d = max(d, max(ln2.x, ln2.y));
 
         vec2 minI = min(vec2(eMD[1].x, eMD[0].y), vec2(eMD[3].x, eMD[2].y));
         vec2 maxI = max(vec2(eMD[1].x, eMD[0].y), vec2(eMD[3].x, eMD[2].y));
-        mat4x2 p4D = mat4x2(minI, vec2(minI.x, maxI.y), maxI, vec2(maxI.x, minI.y));
+        mat4 p4D = mat4(vec4(minI,0,0), vec4(minI.x, maxI.y,0,0), vec4(maxI,0,0), vec4(maxI.x, minI.y,0,0));
 
         rDim = (vec2(maxI.x - minI.x, maxI.y - minI.y));
         vec2 rQ = mix(minI, maxI, .5);
-        q = p - vID[i]*2.*gSc;
+        q = p - vID[i].xy*2.*gSc;
         vec2 aq = abs(q - rQ) - (rDim)/2.;
         float rect = max(aq.x, aq.y);
         d = max(d, -rect);
@@ -157,29 +156,29 @@ vec4 distField(vec2 p){
         }
         #endif
 
-        mat4x2 cP = mat4x2(vP[0], vP[1], vP[2], vP[3]);
+        mat4 cP = mat4(vec4(vP[0],0,0), vec4(vP[1],0,0), vec4(vP[2],0,0), vec4(vP[3],0,0));
         int vIndex = 0;
         int hit = 0;
 
         #if DIST_TYPE == 0
         eM *= dir;
         if(eM[1].x<eM[3].x && -eM[0].y<-eM[2].y){
-            vP[vIndex++] = p4[(i + 1)%4];
-            vP[vIndex++] = p4[(i + 0)%4];
-            vP[vIndex++] = p4[(i + 3)%4];
+            vP[vIndex++] = p4[(i + 1)%4].xy;
+            vP[vIndex++] = p4[(i + 0)%4].xy;
+            vP[vIndex++] = p4[(i + 3)%4].xy;
             hit = 1;
         }
-        if(hit==0) vP[vIndex++] = cP[0];
+        if(hit==0) vP[vIndex++] = cP[0].xy;
         #endif
 
-        mat4x2 eMI = getEdges(svIP + eID[(i + 3)%4]*2.);
+        mat4 eMI = getEdges(svIP + eID[(i + 3)%4].xy*2.);
         minI = min(vec2(eMI[1].x, eMI[0].y), vec2(eMI[3].x, eMI[2].y));
         maxI = max(vec2(eMI[1].x, eMI[0].y), vec2(eMI[3].x, eMI[2].y));
-        mat4x2 p4I = mat4x2(minI, vec2(minI.x, maxI.y), maxI, vec2(maxI.x, minI.y));
+        mat4 p4I = mat4(vec4(minI,0,0), vec4(minI.x, maxI.y,0,0), vec4(maxI,0,0), vec4(maxI.x, minI.y,0,0));
 
         rDim = (vec2(maxI.x - minI.x, maxI.y - minI.y));
         rQ = mix(minI, maxI, .5);
-        q = p - eID[(i + 3)%4]*gSc*2.;
+        q = p - eID[(i + 3)%4].xy*gSc*2.;
         q = abs(q - rQ) - (rDim)/2.;
         rect = max(q.x, q.y);
         d = max(d, -rect);
@@ -188,34 +187,34 @@ vec4 distField(vec2 p){
         hit = 0;
         eMI *= dir;
         if(-eMI[1].x<-eMI[3].x && eMI[0].y<eMI[2].y){
-            vP[vIndex++] = p4I[(i + 2)%4] + eID[(i + 3)%4]*2.*gSc;
-            vP[vIndex++] = p4I[(i + 1)%4] + eID[(i + 3)%4]*2.*gSc;
-            vP[vIndex++] = p4I[(i + 0)%4] + eID[(i + 3)%4]*2.*gSc;
+            vP[vIndex++] = p4I[(i + 2)%4].xy + eID[(i + 3)%4].xy*2.*gSc;
+            vP[vIndex++] = p4I[(i + 1)%4].xy + eID[(i + 3)%4].xy*2.*gSc;
+            vP[vIndex++] = p4I[(i + 0)%4].xy + eID[(i + 3)%4].xy*2.*gSc;
             hit = 1;
         }
-        if(hit==0) vP[vIndex++] = cP[1];
+        if(hit==0) vP[vIndex++] = cP[1].xy;
         #endif
 
         #if DIST_TYPE == 0
         hit = 0;
         eMD *= dir;
         if(eMD[1].x<eMD[3].x && -eMD[0].y<-eMD[2].y){
-            vP[vIndex++] = p4D[(i + 3)%4] + vID[i]*2.*gSc;
-            vP[vIndex++] = p4D[(i + 2)%4] + vID[i]*2.*gSc;
-            vP[vIndex++] = p4D[(i + 1)%4] + vID[i]*2.*gSc;
+            vP[vIndex++] = p4D[(i + 3)%4].xy + vID[i].xy*2.*gSc;
+            vP[vIndex++] = p4D[(i + 2)%4].xy + vID[i].xy*2.*gSc;
+            vP[vIndex++] = p4D[(i + 1)%4].xy + vID[i].xy*2.*gSc;
             hit = 1;
         }
-        if(hit==0) vP[vIndex++] = cP[2];
+        if(hit==0) vP[vIndex++] = cP[2].xy;
         #endif
 
-        eMI = getEdges(svIP + eID[i]*2.);
+        eMI = getEdges(svIP + eID[i].xy*2.);
         minI = min(vec2(eMI[1].x, eMI[0].y), vec2(eMI[3].x, eMI[2].y));
         maxI = max(vec2(eMI[1].x, eMI[0].y), vec2(eMI[3].x, eMI[2].y));
-        p4I = mat4x2(minI, vec2(minI.x, maxI.y), maxI, vec2(maxI.x, minI.y));
+        p4I = mat4(vec4(minI,0,0), vec4(minI.x, maxI.y,0,0), vec4(maxI,0,0), vec4(maxI.x, minI.y,0,0));
 
         rDim = (vec2(maxI.x - minI.x, maxI.y - minI.y));
         rQ = mix(minI, maxI, .5);
-        q = p - eID[i]*gSc*2.;
+        q = p - eID[i].xy*gSc*2.;
         q = abs(q - rQ) - (rDim)/2.;
         rect = max(q.x, q.y);
         d = max(d, -rect);
@@ -224,16 +223,16 @@ vec4 distField(vec2 p){
         hit = 0;
         eMI *= dir;
         if(-eMI[1].x<-eMI[3].x && eMI[0].y<eMI[2].y){
-            vP[vIndex++] = p4I[(i + 0)%4] + eID[i]*2.*gSc;
-            vP[vIndex++] = p4I[(i + 3)%4] + eID[i]*2.*gSc;
-            vP[vIndex++] = p4I[(i + 2)%4] + eID[i]*2.*gSc;
+            vP[vIndex++] = p4I[(i + 0)%4].xy + eID[i].xy*2.*gSc;
+            vP[vIndex++] = p4I[(i + 3)%4].xy + eID[i].xy*2.*gSc;
+            vP[vIndex++] = p4I[(i + 2)%4].xy + eID[i].xy*2.*gSc;
             hit = 1;
         }
-        if(hit==0) vP[vIndex++] = cP[3];
+        if(hit==0) vP[vIndex++] = cP[3].xy;
         #endif
 
         pID = vIndex;
-        ip += vID[i];
+        ip += vID[i].xy;
     }
 
     #if DIST_TYPE == 0
