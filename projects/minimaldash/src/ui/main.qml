@@ -31,6 +31,14 @@ Window {
         anchors.centerIn: parent
         rotation: IsReleaseBuild ? 90 : 0
 
+        opacity: 0.0
+
+        Behavior on opacity {
+            NumberAnimation { duration: 5000; easing.type: Easing.InOutQuad }
+        }
+
+        Component.onCompleted: dash.opacity = 1.0
+
         ShaderEffect {
             anchors.fill: parent
             z: -2
