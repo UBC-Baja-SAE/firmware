@@ -72,7 +72,7 @@ Window {
             anchors.fill: parent
 
             // 0.0 (Invisible) when idle, 1.0 (Fully visible) when logging
-            opacity: true ? 1.0 : 0.0
+            opacity: Data.isLogging ? 1.0 : 0.0
 
             // Smoothly animate the fade in/out over 800 milliseconds
             Behavior on opacity {
