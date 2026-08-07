@@ -56,10 +56,8 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, []() {
             QTimer::singleShot(400, []() {
-                // Loop up to 10 times. If aplay succeeds, 'break' exits the loop immediately.
-                // If it gets "Device or resource busy", it waits 0.5s and tries again.
                 QString bashCmd = "for i in 1 2 3 4 5 6 7 8 9 10; do "
-                                  "/usr/bin/aplay -D plughw:0,0 /tmp/win95.wav > /tmp/audio_debug.log 2>&1 "
+                                  "/usr/bin/aplay -D plughw:0,0 /tmp/win95.wav"
                                   "&& break; "
                                   "sleep 0.5; "
                                   "done";
