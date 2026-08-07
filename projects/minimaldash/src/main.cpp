@@ -5,8 +5,7 @@
 #include <QDir>
 #include <QDebug>
 #include <QQmlContext>
-#include <QSoundEffect>
-#include <QUrl>
+#include <QProcess>
 #include <QTimer>
 #include "core/cansocket.h"
 #include "core/dbcparser.h"
@@ -36,6 +35,13 @@ int main(int argc, char *argv[]) {
     if (!QFile::copy(":/mochi.dbc", tempDbcPath)) {
         qCritical() << "Failed to extract dbc to /tmp";
     }
+
+    QString tempWavPath = "/tmp/win95.wav";
+    QFile::remove(tempWavPath);
+
+    if (!QFile::copy(":/qt/qml/app/assets/sounds/win95.wav", tempWavPath)) {
+        qCritical() << "Failed to extract win95.wav to /tmp";
+    }
 #endif
 
     QGuiApplication app(argc, argv);
@@ -48,13 +54,12 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("IsReleaseBuild", true);
     webcamBackend.start();
 
-    QSoundEffect* startupSound = new QSoundEffect(&app);
-    startupSound->setSource(QUrl("qrc:/qt/qml/app/assets/sounds/win95.wav"));
-    startupSound->setVolume(1.0f);
-    // Defer playback until the UI is loaded and the event loop is running
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [startupSound]() {
-        QTimer::singleShot(400, startupSound, &QSoundEffect::play);
-    });
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, []() {
+            QTimer::singleShot(400, []() {
+                // startDetached fires the command asynchronously so it doesn't block the UI thread
+                QProcess::startDetached("aplay", {"-D", "default", "/tmp/win95.wav"});
+            });
+        });
 #else
     engine.rootContext()->setContextProperty("IsReleaseBuild", false);
 #endif
