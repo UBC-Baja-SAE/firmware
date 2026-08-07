@@ -55,13 +55,13 @@ int main(int argc, char *argv[]) {
     webcamBackend.start();
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, []() {
-            QTimer::singleShot(400, []() {
-                // 1. Use the absolute path to aplay (/usr/bin/aplay)
-                // 2. Use plughw:0,0 to route directly to Card 0 (MAX98357A) while automatically
-                //    handling any required sample rate conversions for the .wav file.
-                QProcess::startDetached("/usr/bin/aplay", {"-D", "plughw:0,0", "/tmp/win95.wav"});
-            });
+        // Increased from 400ms to 1500ms to guarantee the amplifier IC has time
+        // to sync to the I2S clocks after a cold power-on.
+        QTimer::singleShot(1500, []() {
+            // Wrap the command in a shell to redirect ALL terminal output (errors and successes) to a log file
+            QProcess::startDetached("/bin/sh", {"-c", "/usr/bin/aplay -D plughw:0,0 /tmp/win95.wav > /tmp/audio_debug.log 2>&1"});
         });
+    });
 #else
     engine.rootContext()->setContextProperty("IsReleaseBuild", false);
 #endif
