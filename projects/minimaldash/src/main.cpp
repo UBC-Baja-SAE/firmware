@@ -56,8 +56,10 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, []() {
             QTimer::singleShot(400, []() {
-                // startDetached fires the command asynchronously so it doesn't block the UI thread
-                QProcess::startDetached("aplay", {"-D", "default", "/tmp/win95.wav"});
+                // 1. Use the absolute path to aplay (/usr/bin/aplay)
+                // 2. Use plughw:0,0 to route directly to Card 0 (MAX98357A) while automatically
+                //    handling any required sample rate conversions for the .wav file.
+                QProcess::startDetached("/usr/bin/aplay", {"-D", "plughw:0,0", "/tmp/win95.wav"});
             });
         });
 #else
