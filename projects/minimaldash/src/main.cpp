@@ -7,6 +7,7 @@
 #include <QQmlContext>
 #include <QSoundEffect>
 #include <QUrl>
+#include <QTimer>
 #include "core/cansocket.h"
 #include "core/dbcparser.h"
 #include "core/foxglove.h"
@@ -50,7 +51,10 @@ int main(int argc, char *argv[]) {
     QSoundEffect* startupSound = new QSoundEffect(&app);
     startupSound->setSource(QUrl("qrc:/qt/qml/app/assets/sounds/win95.wav"));
     startupSound->setVolume(1.0f);
-    startupSound->play();
+    // Defer playback until the UI is loaded and the event loop is running
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [startupSound]() {
+        QTimer::singleShot(400, startupSound, &QSoundEffect::play);
+    });
 #else
     engine.rootContext()->setContextProperty("IsReleaseBuild", false);
 #endif
