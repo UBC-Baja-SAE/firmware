@@ -63,6 +63,7 @@ public slots:
                 }
             }
 
+
             // Always ACK the button back to the STM32
             QByteArray ackPayload;
             ackPayload.resize(3);

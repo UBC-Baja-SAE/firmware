@@ -5,6 +5,8 @@
 #include <QDir>
 #include <QDebug>
 #include <QQmlContext>
+#include <QSoundEffect>
+#include <QUrl>
 #include "core/cansocket.h"
 #include "core/dbcparser.h"
 #include "core/foxglove.h"
@@ -44,6 +46,11 @@ int main(int argc, char *argv[]) {
 #ifdef ENV_RELEASE
     engine.rootContext()->setContextProperty("IsReleaseBuild", true);
     webcamBackend.start();
+
+    QSoundEffect* startupSound = new QSoundEffect(&app);
+    startupSound->setSource(QUrl("qrc:/qt/qml/app/assets/sounds/win95.wav"));
+    startupSound->setVolume(1.0f);
+    startupSound->play();
 #else
     engine.rootContext()->setContextProperty("IsReleaseBuild", false);
 #endif

@@ -58,6 +58,7 @@ qt_add_qml_module(${PROJECT_NAME}
         "assets/eglfs/eglfs.json"
         "assets/icons/logo.png"
         "assets/fonts/microgramma.ttf"
+        "assets/sounds/win95.wav"
 )
 
 qt_add_shaders(${PROJECT_NAME} "warning_shader"
