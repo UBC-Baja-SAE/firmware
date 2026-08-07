@@ -55,13 +55,18 @@ int main(int argc, char *argv[]) {
     webcamBackend.start();
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, []() {
-        // Increased from 400ms to 1500ms to guarantee the amplifier IC has time
-        // to sync to the I2S clocks after a cold power-on.
-        QTimer::singleShot(1500, []() {
-            // Wrap the command in a shell to redirect ALL terminal output (errors and successes) to a log file
-            QProcess::startDetached("/bin/sh", {"-c", "/usr/bin/aplay -D plughw:0,0 /tmp/win95.wav > /tmp/audio_debug.log 2>&1"});
+            QTimer::singleShot(400, []() {
+                // Loop up to 10 times. If aplay succeeds, 'break' exits the loop immediately.
+                // If it gets "Device or resource busy", it waits 0.5s and tries again.
+                QString bashCmd = "for i in 1 2 3 4 5 6 7 8 9 10; do "
+                                  "/usr/bin/aplay -D plughw:0,0 /tmp/win95.wav > /tmp/audio_debug.log 2>&1 "
+                                  "&& break; "
+                                  "sleep 0.5; "
+                                  "done";
+
+                QProcess::startDetached("/bin/sh", {"-c", bashCmd});
+            });
         });
-    });
 #else
     engine.rootContext()->setContextProperty("IsReleaseBuild", false);
 #endif
