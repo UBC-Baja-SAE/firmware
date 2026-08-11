@@ -43,6 +43,11 @@ CMakeUserPresets.json
 *.su
 *.srec
 
+# STM32
+cmake
+Drivers
+Middlewares
+
 # VS Code
 .vscode/*
 !.vscode/tasks.json
