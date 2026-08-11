@@ -1,18 +1,73 @@
-# general
-.vscode
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Trashes
 
-# dashboard-specific custom output directory
-build
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehout.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# stm32-specific
-**/.settings/
-**/Debug/
+# CMake
+[Bb]uild/
+[Bb]uild-*/
+cmake-build-*/
+bin/
+obj/
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+CMakeUserPresets.json
 
-# JVM crash logs
-hs_err_pid*.log
-replay_pid*.log
 
-# IntelliJ/CLion IDEA files
+# Embedded Toolchain Output Files
+*.elf
+*.bin
+*.hex
+*.map
+*.d
+*.o
+*.su
+*.srec
+
+# VS Code
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/c_cpp_properties.json
+
+# CLion / JetBrains
 .idea/
 *.iml
-cmake-build-*/
+
+# STM32CubeIDE
+.settings/
+.project
+.cproject
+.languageSettings.xml
+**/Debug/
+**/Release/
+
+# STM32CubeMX auto-generated backups and logs
+*_backup.ioc
+.mxproject
+STM32CubeMXLog.txt
+
+# Temp files
+*.tmp
+*.bak
+*.log
