@@ -21,7 +21,7 @@ STM32 firmware for parsing linear potentiometers and IMUs
 
 STM32 firmware for parsing steering angle and button inputs
 
-### Rear ECU (rear_ECU)
+### Rear ECU (rear_dbc)
 
 STM32 firmware for parsing a speedometer, tachometer, and IMU
 
