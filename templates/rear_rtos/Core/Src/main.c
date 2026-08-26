@@ -105,9 +105,6 @@ int main(void)
   MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
 
-  // Start SystemView on a delay
-  HAL_Delay(1000);
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
