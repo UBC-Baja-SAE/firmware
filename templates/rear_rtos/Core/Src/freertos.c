@@ -121,7 +121,7 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
 
   //SystemView Start
-  osDelay(100);
+  osDelay(200);
   SEGGER_SYSVIEW_Start();
 
   /* Infinite loop */
