@@ -28,6 +28,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
+# ==============================================================================
+# HARDWARE CONFIGURATION (STM32H723xx - Cortex-M7)
+# ==============================================================================
+# -mthumb: Forces Thumb instruction set (required for Cortex-M)
+# -mcpu: Defines the exact core
+# -mfloat-abi / -mfpu: Enables the hardware floating point unit (Double Precision)
+set(MCU_FLAGS "-mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-d16")
+
+# Inject flags globally so the stm32cubemx subdirectory inherits them
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MCU_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MCU_FLAGS}")
+set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${MCU_FLAGS}")
+
+# Tell the linker to discard unused functions/data to save flash space
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MCU_FLAGS} -Wl,--gc-sections")
+# ==============================================================================
+
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 
@@ -80,4 +97,13 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+)
+
+set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32H723xG_flash.ld")
+
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+        -T${LINKER_SCRIPT}                 # Points GCC to the linker script
+        -Wl,-Map=${CMAKE_PROJECT_NAME}.map # Generates a memory map file for debugging
+        --specs=nano.specs                 # Uses newlib-nano (smaller standard library footprint)
+        --specs=nosys.specs                # Provides stub implementations for system calls (prevents _sbrk / _exit errors)
 )
