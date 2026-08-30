@@ -1,0 +1,29 @@
+FDCAN
+64 bytes 512 bits
+Speedo
+~ 64kmh 2^6 --- 6 bits
+Tach
+~ 4096rpm 2^12 --- 12 bits
+LinPot * 2
+~ 25.6cm 2^8 --- 8 bits
+total: 16 bits
+Accel * 3 axis
+~ 8g ~ +/-32768 2^16 --- 16 bits
+total: 48 bits
+Gyro * 3 axis
+~ 8g ~ +/-32768 2^16 --- 16 bits
+total: 48 bits
+Magnetometer * 3 axis
+~ 8g ~ +/-32768 2^16 --- 16 bits
+total: 48 bits
+
+170 / 512 bits used
+
+Future Developments:
+CVT Belt?
+Fuel Tank?
+Strain Guage?
+Gearbox Oil?
+
+Conclusion:
+Enough per FD frame to include metadata + new sensors

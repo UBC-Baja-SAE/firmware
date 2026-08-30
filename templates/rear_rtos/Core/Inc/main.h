@@ -57,6 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SPEEDO_Pin GPIO_PIN_9
+#define SPEEDO_GPIO_Port GPIOA
+#define TACH_Pin GPIO_PIN_11
+#define TACH_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
