@@ -1,4 +1,4 @@
-<img height="60" alt="logo" align="right" src="https://github.com/user-attachments/assets/d739a631-2552-4862-bf54-d37b73a4db2b" />
+<img height="60" alt="logo" align="right" src="https://github.com/user-attachments/assets/4ff369fe-0a6e-43cc-8d50-4a43564a78e6" />
 
 # UBC Baja SAE Firmware
 
