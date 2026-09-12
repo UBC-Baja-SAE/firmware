@@ -118,13 +118,13 @@ const osMessageQueueAttr_t FIFOCANTransmit_attributes = {
   .mq_mem = &FIFOCANTransmitBuffer,
   .mq_size = sizeof(FIFOCANTransmitBuffer)
 };
-/* Definitions for myTimer01 */
-osTimerId_t myTimer01Handle;
-osStaticTimerDef_t myTimer01ControlBlock;
-const osTimerAttr_t myTimer01_attributes = {
-  .name = "myTimer01",
-  .cb_mem = &myTimer01ControlBlock,
-  .cb_size = sizeof(myTimer01ControlBlock),
+/* Definitions for EnableCANTx */
+osTimerId_t EnableCANTxHandle;
+osStaticTimerDef_t EnableCANTxControlBlock;
+const osTimerAttr_t EnableCANTx_attributes = {
+  .name = "EnableCANTx",
+  .cb_mem = &EnableCANTxControlBlock,
+  .cb_size = sizeof(EnableCANTxControlBlock),
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -137,7 +137,7 @@ void SpeedoRead(void *argument);
 void CANTransmit(void *argument);
 void TachRead(void *argument);
 void IMURead(void *argument);
-void Callback01(void *argument);
+void EnableCANTxCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -163,8 +163,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* Create the timer(s) */
-  /* creation of myTimer01 */
-  myTimer01Handle = osTimerNew(Callback01, osTimerPeriodic, NULL, &myTimer01_attributes);
+  /* creation of EnableCANTx */
+  EnableCANTxHandle = osTimerNew(EnableCANTxCallback, osTimerPeriodic, NULL, &EnableCANTx_attributes);
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
@@ -299,12 +299,12 @@ void IMURead(void *argument)
   /* USER CODE END IMURead */
 }
 
-/* Callback01 function */
-void Callback01(void *argument)
+/* EnableCANTxCallback function */
+void EnableCANTxCallback(void *argument)
 {
-  /* USER CODE BEGIN Callback01 */
+  /* USER CODE BEGIN EnableCANTxCallback */
 
-  /* USER CODE END Callback01 */
+  /* USER CODE END EnableCANTxCallback */
 }
 
 /* Private application code --------------------------------------------------*/
