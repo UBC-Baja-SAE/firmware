@@ -13,9 +13,6 @@ and the induction sensor (Tachometer). When the task is run, the counter registe
 current time are stored. The number from this task's previous run is subtracted from the current value to calculate the
 speed.
 
-Tasks "triggers" are handled with an RTOS notification. 32-bit val is passed as the unblocker for the 'read sensor value'
-and 'push to CAN message queue' portions of the tasks. A bit-mask is applied to discern the triggers
-
 *Note: Speedo has been reconfigured for a different timer peripheral than the other projects (PC7 instead of PA9), adjust the pins accordingly*
 
 ## DMA Sensor Tasks
@@ -36,8 +33,10 @@ memory without needing extra CPU cycles for polling.
 
 ### Transmit Task
 
-The transmission task will be set to "ready" every 100ms arbitrated by the Timer Channel. It takes a FIFO queue 
+The transmission task will be set to "ready" every 100ms arbitrated by the Timer Channel. It takes a struct with mutexes 
 with the sensor data and metadata. It packs the queue into a defined static CAN frame according to the DBC file.
+The CAN transmit tasks handles all bit packing and transmission, as there is less overhead from context switching when 
+handled by a single task.
 
 ### Frame packing
 With CANFD, we have a maximum of 64 bytes / 512 bits. For robust packing, we are defining a static payload structure.
@@ -46,7 +45,7 @@ roughly calculated payload size here: [frame_packing.txt](frame_packing.txt)
 
 ## RTOS Timer
 
-RTOS Software Timer is configured to "unlock" the sensor tasks' software FIFO queue that feeds into the CAN Transmission task.
+RTOS Software Timer is configured to "unlock" the CAN Transmission task.
 This should unlock every 100 ms (measured using RTOS Ticks), as to not overload the CAN bus.
 
 TIM2 is selected based on its 32 bit counter resolution allowing for less frequent overflow handling and thus less 
