@@ -36,7 +36,12 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+extern uint32_t tach_pulse_count;
+extern uint32_t speedo_pulse_count;
+extern uint32_t prev_tach_pulse_count;
+extern uint32_t prev_speedo_pulse_count;
+extern uint32_t tach_interval_total;
+extern uint32_t speedo_interval_total;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -57,8 +62,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define SPEEDO_Pin GPIO_PIN_9
-#define SPEEDO_GPIO_Port GPIOA
+#define SPEEDO_Pin GPIO_PIN_7
+#define SPEEDO_GPIO_Port GPIOC
 #define TACH_Pin GPIO_PIN_11
 #define TACH_GPIO_Port GPIOA
 

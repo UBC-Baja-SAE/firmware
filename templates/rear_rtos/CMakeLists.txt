@@ -102,8 +102,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32H723xG_flash.ld")
 
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
-        -T${LINKER_SCRIPT}                 # Points GCC to the linker script
-        -Wl,-Map=${CMAKE_PROJECT_NAME}.map # Generates a memory map file for debugging
-        --specs=nano.specs                 # Uses newlib-nano (smaller standard library footprint)
-        --specs=nosys.specs                # Provides stub implementations for system calls (prevents _sbrk / _exit errors)
+        # -T${LINKER_SCRIPT}                 # (Usually already handled by CubeMX)
+        # -Wl,-Map=${CMAKE_PROJECT_NAME}.map # (Usually already handled by CubeMX)
+        # --specs=nano.specs                 # REMOVED: Already handled by CubeMX
+        --specs=nosys.specs                  # Keep this if CubeMX doesn't add it automatically
 )
