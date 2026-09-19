@@ -34,30 +34,24 @@ BS_:
 
 BU_: front_ecu central_ecu rear_ecu
 
-BO_ 513 tachometer: 2 rear_ecu
- SG_ rpm : 0|16@1+ (1,0) [0|65535] "rpm" Vector__XXX
 
-BO_ 514 speedometer: 2 rear_ecu
- SG_ kph : 0|16@1+ (1,0) [0|65535] "kph" Vector__XXX
 
-BO_ 515 left_linpot: 2 rear_ecu
- SG_ kph : 0|16@1+ (1,0) [0|65535] "cm" Vector__XXX
 
-BO_ 515 right_linpot: 2 rear_ecu
- SG_ kph : 0|16@1+ (1,0) [0|65535] "cm" Vector__XXX
 
-BO_ 517 rear_accel: 6 rear_ecu
-  SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
-  SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
-  SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" Vector__XXX
 
-BO_ 518 rear_gyro: 6 rear_ecu
-  SG_ gyro_x : 0|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
-  SG_ gyro_y : 16|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
-  SG_ gyro_z : 32|16@1- (0.061,0) [-2000|2000] "dps" Vector__XXX
 
-BO_ 769 steering_angle: 2 front_ecu
- SG_ rpm : 0|16@1+ (1,0) [0|65535] "deg" Vector__XXX
+
+BO_ 512 rear_daq: 114 Vector__XXX
+ SG_ speedometer : 96|6@1+ (0,0) [0|0] "" Vector__XXX
+ SG_ tachometer : 112|12@1+ (0,0) [0|0] "" Vector__XXX
+ SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
+ SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
+ SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
+ SG_ gyro_x : 48|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
+ SG_ gyro_y : 64|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
+ SG_ gyro_z : 80|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
+ SG_ obj_temp : 128|16@1+ (0.02,-273.15) [-70|380] "" Vector__XXX
+ SG_ amb_temp : 144|16@1+ (0.02,-273.15) [-70|380] "" Vector__XXX
 
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
 BA_DEF_  "DatabaseVersion" STRING ;
@@ -73,3 +67,6 @@ BA_ "ProtocolType" "";
 BA_ "BusType" "CAN";
 BA_ "DatabaseCompiler" "UBC BAJA";
 BA_ "DatabaseVersion" "1.0.0";
+
+
+
