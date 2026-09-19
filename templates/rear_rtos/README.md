@@ -2,7 +2,9 @@
 
 ## Disclaimer
 This is a test version where we are aiming to build out the current implementation of the rear ECU within a 
-RTOS environment. 
+RTOS environment.
+
+*Note: Mochi DBC and message definitions are used for this iteration*
 
 ## Tachometer Task + Speedometer Task
 
@@ -10,6 +12,11 @@ External Clock mode increments a counter-register using the external pulse from 
 and the induction sensor (Tachometer). When the task is run, the counter registers (and overflow if applicable) and the 
 current time are stored. The number from this task's previous run is subtracted from the current value to calculate the
 speed.
+
+Tasks "triggers" are handled with an RTOS notification. 32-bit val is passed as the unblocker for the 'read sensor value'
+and 'push to CAN message queue' portions of the tasks. A bit-mask is applied to discern the triggers
+
+*Note: Speedo has been reconfigured for a different timer peripheral than the other projects (PC7 instead of PA9), adjust the pins accordingly*
 
 ## DMA Sensor Tasks
 
@@ -37,10 +44,10 @@ With CANFD, we have a maximum of 64 bytes / 512 bits. For robust packing, we are
 Looking at the data we aim to implement, a single frame should encompass all sensor integration. For reference, we have 
 roughly calculated payload size here: [frame_packing.txt](frame_packing.txt)
 
-## Timer Channel
+## RTOS Timer
 
-Timer channel is configured to "unlock" the sensor tasks' software FIFO queue that feeds into the CAN Transmission task.
-This should unlock every 100 ms, as to not overload the CAN bus.
+RTOS Software Timer is configured to "unlock" the sensor tasks' software FIFO queue that feeds into the CAN Transmission task.
+This should unlock every 100 ms (measured using RTOS Ticks), as to not overload the CAN bus.
 
 TIM2 is selected based on its 32 bit counter resolution allowing for less frequent overflow handling and thus less 
 CPU cycles wasted. 

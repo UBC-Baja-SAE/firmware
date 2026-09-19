@@ -121,10 +121,19 @@ else()
     )
 
     target_compile_options(${PROJECT_NAME} PRIVATE
+            # GCC and Clang flags
+            $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:
             -O0
             -g
             -Wall
             -Wextra
+            >
+            # MSVC flags
+            $<$<CXX_COMPILER_ID:MSVC>:
+            /Od # Disable optimization (Debug)
+            /Zi # Generate debugging information
+            /W4 # Warning level 4 (similar to -Wall -Wextra)
+            >
     )
 endif()
 

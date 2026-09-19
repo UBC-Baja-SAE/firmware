@@ -21,9 +21,15 @@ total: 48 bits
 
 Future Developments:
 CVT Belt?
+16
 Fuel Tank?
+16
 Strain Guage?
+16*4 = 64
 Gearbox Oil?
+16
+
+112 + 170 = 212
 
 Conclusion:
 Enough per FD frame to include metadata + new sensors

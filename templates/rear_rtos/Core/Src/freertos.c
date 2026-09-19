@@ -27,20 +27,24 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "SEGGER_RTT.h"
+#include "tim.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 typedef StaticTask_t osStaticThreadDef_t;
 typedef StaticQueue_t osStaticMessageQDef_t;
-typedef StaticTimer_t osStaticTimerDef_t;
+typedef StaticEventGroup_t osStaticEventGroupDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ALL_SENSORS_TX_READY 0x4
+#define TACH_TX_READY 0x0
+#define SPEEDO_TX_READY 0x1
+#define IMU_TX_READY 0x2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,7 +54,6 @@ typedef StaticTimer_t osStaticTimerDef_t;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -120,9 +123,14 @@ const osMessageQueueAttr_t FIFOCANTransmit_attributes = {
 };
 /* Definitions for EnableCANTx */
 osTimerId_t EnableCANTxHandle;
-osStaticTimerDef_t EnableCANTxControlBlock;
 const osTimerAttr_t EnableCANTx_attributes = {
-  .name = "EnableCANTx",
+  .name = "EnableCANTx"
+};
+/* Definitions for CANTxEvent */
+osEventFlagsId_t CANTxEventHandle;
+osStaticEventGroupDef_t EnableCANTxControlBlock;
+const osEventFlagsAttr_t CANTxEvent_attributes = {
+  .name = "CANTxEvent",
   .cb_mem = &EnableCANTxControlBlock,
   .cb_size = sizeof(EnableCANTxControlBlock),
 };
@@ -168,6 +176,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
+  osTimerStart(EnableCANTxHandle, 100);
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
@@ -197,6 +206,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* Create the event(s) */
+  /* creation of CANTxEvent */
+  CANTxEventHandle = osEventFlagsNew(&CANTxEvent_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
@@ -240,7 +253,18 @@ void SpeedoRead(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    speedo_pulse_count = __HAL_TIM_GET_COUNTER(&htim3);
+    speedo_pulse_count = speedo_pulse_count - prev_speedo_pulse_count;
+    prev_speedo_pulse_count = speedo_pulse_count;
+
+    osEventFlagsWait(
+    CANTxEventHandle,
+    SPEEDO_TX_READY,
+    osFlagsWaitAny,
+    osWaitForever
+    );
+
+    // TODO: CAN Tx pack the data frame/push to CAN Queue
   }
   /* USER CODE END SpeedoRead */
 }
@@ -276,7 +300,20 @@ void TachRead(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    tach_pulse_count = __HAL_TIM_GET_COUNTER(&htim1);
+    tach_interval_total = tach_pulse_count - prev_tach_pulse_count;
+    prev_tach_pulse_count = tach_pulse_count;
+
+    osEventFlagsWait(
+        CANTxEventHandle,
+        TACH_TX_READY,
+        osFlagsWaitAny,
+        osWaitForever
+    );
+
+    // TODO: Stale data check
+
+    // TODO: CAN Tx pack the data frame/push to CAN Queue
   }
   /* USER CODE END TachRead */
 }
@@ -303,7 +340,12 @@ void IMURead(void *argument)
 void EnableCANTxCallback(void *argument)
 {
   /* USER CODE BEGIN EnableCANTxCallback */
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
+  // Broadcast to all tasks with tx capabilities
+  osEventFlagsSet(CANTxEventHandle, ALL_SENSORS_TX_READY);
+
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   /* USER CODE END EnableCANTxCallback */
 }
 

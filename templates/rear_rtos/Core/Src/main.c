@@ -48,7 +48,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,7 +60,12 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint32_t tach_pulse_count = 0u;
+uint32_t speedo_pulse_count = 0u;
+uint32_t prev_tach_pulse_count = 0u;
+uint32_t prev_speedo_pulse_count = 0u;
+uint32_t tach_interval_total = 0u;
+uint32_t speedo_interval_total = 0u;
 /* USER CODE END 0 */
 
 /**
@@ -106,8 +110,13 @@ int main(void)
   MX_TIM2_Init();
   MX_I2C1_Init();
   MX_TIM1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start(&htim1);
+  HAL_TIM_Base_Start(&htim3);
 
+  HAL_TIM_Base_Start_IT(&htim1);
+  HAL_TIM_Base_Start_IT(&htim3);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -160,7 +169,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 30;
   RCC_OscInitStruct.PLL.PLLP = 1;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 3;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
@@ -224,7 +233,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  // TACHOMETER OVERFLOW
+  if (htim->Instance == TIM1)
+  {
+    tach_pulse_count = (prev_tach_pulse_count - TIM1_COUNTER_PERIOD) + __HAL_TIM_GET_COUNTER(&htim1);
+    tach_interval_total = tach_pulse_count - prev_tach_pulse_count;
+    prev_tach_pulse_count = tach_pulse_count;
+  }
+  // SPEEDOMETER OVERFLOW
+  if (htim->Instance == TIM3)
+  {
+    speedo_pulse_count = (prev_speedo_pulse_count - TIM3_COUNTER_PERIOD) + __HAL_TIM_GET_COUNTER(&htim3);
+    speedo_pulse_count = speedo_pulse_count - prev_speedo_pulse_count;
+    prev_speedo_pulse_count = speedo_pulse_count;
+  }
   /* USER CODE END Callback 1 */
 }
 
