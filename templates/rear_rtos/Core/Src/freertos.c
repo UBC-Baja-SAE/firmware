@@ -19,9 +19,14 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
-#include <stdint.h>
-#include "roxy.h"
-#include "helpers.h"
+#include "task.h"
+#include "main.h"
+#include "FreeRTOS.h"
+#include "cmsis_os2.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "SEGGER_RTT.h"
 
 /* USER CODE END Includes */
 
@@ -33,14 +38,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-// i2c polling addresses based on GY-906 datasheet
-#define IR_SLAVE_ADDR 0x5A
-#define AMB_POLL_ADDR 0x06
-#define OBJ_POLL_ADDR 0x07
-
-// buffer sizing defines
-#define IR_POLL_BFR_SIZE 3u
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,25 +47,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
-// OS thread definitions
-osThreadId_t thermalTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "thermalTask",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-
-// Sensor Read Structs
-typedef struct __attribute__((packed)) {
-  uint8_t lsb;  // i2c reads for IR sensor come in 2 bytes
-  uint8_t msb;
-  uint8_t crc;  // checksum for valid data
-} thermo_read_raw_t;
-
-// Single Variables
-volatile thermo_read_raw_t obj_read_raw = {0};
-volatile thermo_read_raw_t amb_read_raw = {0};
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -81,8 +59,6 @@ const osThreadAttr_t defaultTask_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
-void StartThermalSensorTask(void *argument);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -158,37 +134,6 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-
-StartThermalSensorTask(void *argument) {
-  HAL_I2C_Mem_Read_DMA(&hi2c1, (IR_SLAVE_ADDR << 1), OBJ_POLL_ADDR, I2C_MEMADD_SIZE_8BIT, &obj_read_raw, IR_POLL_BFR_SIZE);
-  HAL_I2C_Mem_Read_DMA(&hi2c1, (IR_SLAVE_ADDR << 1), AMB_POLL_ADDR, I2C_MEMADD_SIZE_8BIT, &amb_read_raw, IR_POLL_BFR_SIZE);
-
-  // OBJ Handling
-  if(MLX90614_VerifyData(OBJ_POLL_ADDR, (volatile uint8_t *)&obj_read_raw)) {
-
-    //CRC Check Passed -- Proceed with Data Processing
-    uint16_t obj_read_val = obj_read_raw.msb << 8 | obj_read_raw.lsb;
-
-    m
-  }
-  else {
-    // CRC Check Failed -- Do Nothing
-  }
-
-  // AMB Handling
-  if(MLX90614_VerifyData(AMB_POLL_ADDR, (volatile uint8_t *)&amb_read_raw)) {
-
-    //CRC Check Passed -- Proceed with Data Processing
-    uint16_t amb_read_val = amb_read_raw.msb << 8 | amb_read_raw.lsb;
-
-
-  }
-  else {
-    // CRC Check Failed -- Do Nothing
-  }
-
-  osDelay(20);
-}
 
 /* USER CODE END Application */
 
