@@ -19,10 +19,16 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
-#include <stdint.h>
-#include "roxy.h"
-#include "helpers.h"
+#include "task.h"
+#include "main.h"
+#include "FreeRTOS.h"
+#include "cmsis_os2.h"
 
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include <stdio.h>
+
+#include "st7735.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,14 +38,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
-// i2c polling addresses based on GY-906 datasheet
-#define IR_SLAVE_ADDR 0x5A
-#define AMB_POLL_ADDR 0x06
-#define OBJ_POLL_ADDR 0x07
-
-// buffer sizing defines
-#define IR_POLL_BFR_SIZE 3u
 
 /* USER CODE END PD */
 
@@ -51,25 +49,6 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 
-// OS thread definitions
-osThreadId_t thermalTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "thermalTask",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-
-// Sensor Read Structs
-typedef struct __attribute__((packed)) {
-  uint8_t lsb;  // i2c reads for IR sensor come in 2 bytes
-  uint8_t msb;
-  uint8_t crc;  // checksum for valid data
-} thermo_read_raw_t;
-
-// Single Variables
-volatile thermo_read_raw_t obj_read_raw = {0};
-volatile thermo_read_raw_t amb_read_raw = {0};
-
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -78,15 +57,21 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for displayTask */
+osThreadId_t displayTaskHandle;
+const osThreadAttr_t displayTask_attributes = {
+  .name = "displayTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 
-void StartThermalSensorTask(void *argument);
-
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
+void StartDisplayTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -98,8 +83,10 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
-  // SystemView Init
-  SEGGER_SYSVIEW_Conf();
+  // Init Display
+  HAL_GPIO_WritePin(LCD_BLK_GPIO_Port, LCD_BLK_Pin, GPIO_PIN_RESET);
+  ST7735_Init();
+  ST7735_FillScreen(ST7735_BLACK);
 
   /* USER CODE END Init */
 
@@ -123,6 +110,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
+  /* creation of displayTask */
+  displayTaskHandle = osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -144,51 +134,52 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
 
-  //SystemView Start
-  osDelay(200);
-  SEGGER_SYSVIEW_Start();
-
+  ST7735_WriteString(5, 5, "Jordi is mad", Font_7x10, ST7735_WHITE, ST7735_BLACK);
+  
   /* Infinite loop */
   for(;;)
   {
-    osDelay(100);
+    osDelay(1);
   }
   /* USER CODE END StartDefaultTask */
 }
 
+/* USER CODE BEGIN Header_StartDisplayTask */
+/**
+* @brief Function implementing the displayTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDisplayTask */
+void StartDisplayTask(void *argument)
+{
+  /* USER CODE BEGIN StartDisplayTask */
+
+  char buf[16];
+  uint32_t counter = 0;
+
+  ST7735_FillScreen(ST7735_BLACK);
+
+  /* Infinite loop */
+  for(;;)
+  {
+    // Draw UI elements
+    snprintf(buf, sizeof(buf), "Count: %lu", counter++);
+    ST7735_WriteString(10, 15, buf, Font_11x18, ST7735_WHITE, ST7735_BLACK);
+
+    // Draw an animated progress bar
+    uint16_t bar_width = (counter * 4) % (ST7735_WIDTH - 20);
+    ST7735_FillRectangle(10, 50, bar_width, 10, ST7735_WHITE);
+    ST7735_FillRectangle(10 + bar_width, 50, (ST7735_WIDTH - 20) - bar_width, 10, ST7735_BLACK);
+
+    // Sleep to yield CPU
+    osDelay(20);
+  }
+  /* USER CODE END StartDisplayTask */
+}
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-
-StartThermalSensorTask(void *argument) {
-  HAL_I2C_Mem_Read_DMA(&hi2c1, (IR_SLAVE_ADDR << 1), OBJ_POLL_ADDR, I2C_MEMADD_SIZE_8BIT, &obj_read_raw, IR_POLL_BFR_SIZE);
-  HAL_I2C_Mem_Read_DMA(&hi2c1, (IR_SLAVE_ADDR << 1), AMB_POLL_ADDR, I2C_MEMADD_SIZE_8BIT, &amb_read_raw, IR_POLL_BFR_SIZE);
-
-  // OBJ Handling
-  if(MLX90614_VerifyData(OBJ_POLL_ADDR, (volatile uint8_t *)&obj_read_raw)) {
-
-    //CRC Check Passed -- Proceed with Data Processing
-    uint16_t obj_read_val = obj_read_raw.msb << 8 | obj_read_raw.lsb;
-
-    m
-  }
-  else {
-    // CRC Check Failed -- Do Nothing
-  }
-
-  // AMB Handling
-  if(MLX90614_VerifyData(AMB_POLL_ADDR, (volatile uint8_t *)&amb_read_raw)) {
-
-    //CRC Check Passed -- Proceed with Data Processing
-    uint16_t amb_read_val = amb_read_raw.msb << 8 | amb_read_raw.lsb;
-
-
-  }
-  else {
-    // CRC Check Failed -- Do Nothing
-  }
-
-  osDelay(20);
-}
 
 /* USER CODE END Application */
 
