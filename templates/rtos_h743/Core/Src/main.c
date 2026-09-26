@@ -22,7 +22,6 @@
 #include "cmsis_os2.h"
 #include "fdcan.h"
 #include "spi.h"
-#include "tim.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -60,12 +59,7 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t tach_pulse_count = 0u;
-uint32_t speedo_pulse_count = 0u;
-uint32_t prev_tach_pulse_count = 0u;
-uint32_t prev_speedo_pulse_count = 0u;
-uint32_t tach_interval_total = 0u;
-uint32_t speedo_interval_total = 0u;
+
 /* USER CODE END 0 */
 
 /**
@@ -108,8 +102,6 @@ int main(void)
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   MX_SPI4_Init();
-  MX_TIM2_Init();
-  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -228,20 +220,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  // TACHOMETER OVERFLOW
-  if (htim->Instance == TIM2)
-  {
-    tach_pulse_count = (prev_tach_pulse_count - TIM1_COUNTER_PERIOD) + __HAL_TIM_GET_COUNTER(&htim2);
-    tach_interval_total = tach_pulse_count - prev_tach_pulse_count;
-    prev_tach_pulse_count = tach_pulse_count;
-  }
-  // SPEEDOMETER OVERFLOW
-  if (htim->Instance == TIM5)
-  {
-    speedo_pulse_count = (prev_speedo_pulse_count - TIM3_COUNTER_PERIOD) + __HAL_TIM_GET_COUNTER(&htim5);
-    speedo_pulse_count = speedo_pulse_count - prev_speedo_pulse_count;
-    prev_speedo_pulse_count = speedo_pulse_count;
-  }
+
   /* USER CODE END Callback 1 */
 }
 
@@ -254,9 +233,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
-  }
+  for (;;){}
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
