@@ -37,11 +37,11 @@ qt_add_executable(${PROJECT_NAME}
         src/peripherals/webcam.h
 )
 
-file(GLOB DBC_FILES "assets/dbc/*.dbc")
+file(GLOB DBC_FILES "../../lib/dbc/*.dbc")
 
 qt_add_resources(${PROJECT_NAME} "dbc_resources"
         PREFIX "/"
-        BASE "assets/dbc"
+        BASE "../../lib/dbc"
         FILES ${DBC_FILES}
 )
 
