@@ -65,6 +65,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         # Append DBC database
         ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/dbc/roxy.c
         # Add user sources here
+        ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/helpers.c
 )
 
 # Add include paths
