@@ -1,7 +1,7 @@
-Run the following command from the project directory with openOCD on the modded St-Link V2:
+Run the following command from the project directory (or create a .sh/.bat run config) with openOCD on the modded St-Link V2:
 ```bash
 openocd \
-  -f "/Users/bfrzn/git/firmware/templates/rtos_h743/openocd.cfg" \
+  -f "./templates/rtos_h743/openocd.cfg" \
   -c "gdb_port disabled" \
   -c "tcl_port disabled" \
   -c "telnet_port disabled" \
