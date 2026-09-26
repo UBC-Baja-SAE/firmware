@@ -32,7 +32,7 @@
 #include "SEGGER_RTT.h"
 #include "st7735.h"
 #include "tim.h"
-
+#include "FreeRTOSConfig.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,6 +50,10 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 #define IMU_TX_READY         0x04
 #define ALL_SENSORS_TX_READY (TACH_TX_READY | SPEEDO_TX_READY | IMU_TX_READY)
 
+#define CAN_TRANSMIT_TICKS    100
+#define CAN_QUEUE_SIZE        16
+
+#define SETTLE_TICKS          200
 
 #define SPEED_SMOOTHING         0.15f
 #define TACH_SMOOTHING          0.10f
@@ -203,12 +207,12 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
-  osTimerStart(EnableCANTxHandle, 100);
+  osTimerStart(EnableCANTxHandle, CAN_TRANSMIT_TICKS);
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
   /* creation of FIFOCANTransmit */
-  FIFOCANTransmitHandle = osMessageQueueNew (16, sizeof(uint16_t), &FIFOCANTransmit_attributes);
+  FIFOCANTransmitHandle = osMessageQueueNew (CAN_QUEUE_SIZE, sizeof(uint16_t), &FIFOCANTransmit_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -260,7 +264,7 @@ void StartDefaultTask(void *argument)
 
 
   // SystemView Start
-  osDelay(200);
+  osDelay(SETTLE_TICKS);
 
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; // Enable Trace
   DWT->CYCCNT = 0;                                // Reset Cycle Counter
@@ -305,7 +309,7 @@ void SpeedoRead(void *argument)
     prev_tick = current_tick;
     prev_speedo_pulse_count = speedo_pulse_count;
 
-    float elapsed_seconds = (float)tick_delta / 1000.0f;
+    float elapsed_seconds = (float)tick_delta / configTICK_RATE_HZ;
 
     if (elapsed_seconds > 0.0f) {
       // Calculate raw Hz
