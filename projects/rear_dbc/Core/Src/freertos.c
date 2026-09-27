@@ -50,8 +50,10 @@ static inline int16_t median3(int16_t a, int16_t b, int16_t c) {
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+extern uint16_t *sg1_raw_data;
+extern uint16_t *sg1_raw_data;
+FDCAN_TxHeaderTypeDef TxHeader;
 
-SemaphoreHandle_t IMU_DataReady_Sem;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -60,13 +62,20 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for readADC */
+osThreadId_t readADCHandle;
+const osThreadAttr_t readADC_attributes = {
+  .name = "readADC",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-void ReadIMUTask(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
+void StartADC(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -83,7 +92,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  IMU_DataReady_Sem = xSemaphoreCreateBinary();
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -95,6 +103,9 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of readADC */
+  readADCHandle = osThreadNew(StartADC, NULL, &readADC_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
@@ -112,7 +123,6 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
-  FDCAN_TxHeaderTypeDef TxHeader;
 
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
   {
@@ -134,6 +144,36 @@ void StartDefaultTask(void *argument)
     osDelay(100);
   }
   /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN Header_StartADC */
+/**
+* @brief Function implementing the readADC thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartADC */
+void StartADC(void *argument)
+{
+  /* USER CODE BEGIN StartADC */
+  uint8_t TxData[8] = {0};
+
+  /* Infinite loop */
+  for(;;)
+  {
+    TxHeader.Identifier = 0x1A4;
+    TxHeader.DataLength = FDCAN_DLC_BYTES_2;
+
+    uint16_t current_strain = sg1_raw_data[0];
+
+    TxData[0] = (uint8_t)(current_strain & 0xFF);
+    TxData[1] = (uint8_t)((current_strain >> 8) & 0xFF);
+
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
+
+    osDelay(10);
+  }
+  /* USER CODE END StartADC */
 }
 
 /* Private application code --------------------------------------------------*/
