@@ -17,6 +17,8 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdlib.h>
+
+#include "adc.h"
 #include "fdcan.h"
 #include "mochi.h"
 #include "semphr.h"
@@ -53,6 +55,8 @@ static inline int16_t median3(int16_t a, int16_t b, int16_t c) {
 extern uint16_t *sg1_raw_data;
 extern uint16_t *sg1_raw_data;
 FDCAN_TxHeaderTypeDef TxHeader;
+
+volatile uint16_t  current_strain;
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -124,6 +128,15 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
 
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+  osDelay(250);
+
+  // 2. Drive HIGH to initiate self-calibration and enable normal operation
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+  osDelay(250);
+
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
   {
     Error_Handler();
@@ -141,7 +154,14 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(100);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+    osDelay(1000);
+
+    // Force EN/CAL HIGH — MCP611 active, output should track gauge
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+    osDelay(1000);
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -158,20 +178,35 @@ void StartADC(void *argument)
   /* USER CODE BEGIN StartADC */
   uint8_t TxData[8] = {0};
 
+  osDelay(600);
+
   /* Infinite loop */
   for(;;)
   {
     TxHeader.Identifier = 0x1A4;
     TxHeader.DataLength = FDCAN_DLC_BYTES_2;
 
-    uint16_t current_strain = sg1_raw_data[0];
+    // 1. Manually wake the ADC and trigger a single conversion
+    HAL_ADC_Start(&hadc1);
 
+    // 2. Wait up to 10ms for the hardware to finish the measurement
+    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
+    {
+      // 3. Pull the live value directly from the ADC Data Register
+      current_strain = HAL_ADC_GetValue(&hadc1);
+    }
+
+    // 4. Stop the ADC until the next loop iteration
+    HAL_ADC_Stop(&hadc1);
+
+    // Pack the 16-bit integer into the CAN payload buffer (Little-Endian)
     TxData[0] = (uint8_t)(current_strain & 0xFF);
     TxData[1] = (uint8_t)((current_strain >> 8) & 0xFF);
 
+    // Queue the message onto the FDCAN bus
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
 
-    osDelay(10);
+    osDelay(10); // Poll at 100 Hz
   }
   /* USER CODE END StartADC */
 }
