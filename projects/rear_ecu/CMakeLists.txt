@@ -37,41 +37,61 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
-# Append SystemView includes to generated cmake
-target_include_directories(stm32cubemx INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/SystemView/Config
-        ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/SystemView/SEGGER
-        ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/SystemView/SYSVIEW
-        ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/SystemView/Sample/FreeRTOSV10.4
-        ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/SystemView/Sample/FreeRTOSV10.4/Config/Cortex-M
-)
-
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
+        # Add user defined library search paths
+)
+
+# Add Lib Paths
+set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../lib")
+set(SYSVIEW_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/SystemView")
+set(DRIVER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/st7735")
+
+# Add SystemView Files Dynamically
+file(GLOB SYSVIEW_SOURCES
+        "${SYSVIEW_DIR}/SEGGER/*.c"
+        "${SYSVIEW_DIR}/SEGGER/*.S"
+        "${SYSVIEW_DIR}/SYSVIEW/*.c"
+        "${SYSVIEW_DIR}/Sample/FreeRTOSV10.4/*.c"
+        "${SYSVIEW_DIR}/Sample/FreeRTOSV10.4/Config/Cortex-M/*.c"
+)
+
+# Add DBC Files Dynamically
+file(GLOB DBC_SOURCES
+        "${LIB_DIR}/dbc/*.c"
+)
+
+# Add SystemView includes to generated cmake
+target_include_directories(stm32cubemx INTERFACE
+        ${SYSVIEW_DIR}/Config
+        ${SYSVIEW_DIR}/SEGGER
+        ${SYSVIEW_DIR}/SYSVIEW
+        ${SYSVIEW_DIR}/Sample/FreeRTOSV10.4
+        ${SYSVIEW_DIR}/Sample/FreeRTOSV10.4/Config/Cortex-M
+)
+
+# Append DBC includes to generated cmake
+target_include_directories(stm32cubemx INTERFACE
+        ${LIB_DIR}/dbc
 )
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         # Append SystemView sources
-        Middlewares/Third_Party/SystemView/SEGGER/SEGGER_RTT.c
-        Middlewares/Third_Party/SystemView/SEGGER/SEGGER_RTT_ASM_ARMv7M.S
-        Middlewares/Third_Party/SystemView/SYSVIEW/SEGGER_SYSVIEW.c
-        Middlewares/Third_Party/SystemView/Sample/FreeRTOSV10.4/SEGGER_SYSVIEW_FreeRTOS.c
-        Middlewares/Third_Party/SystemView/Sample/FreeRTOSV10.4/Config/Cortex-M/SEGGER_SYSVIEW_Config_FreeRTOS.c
-        # Append Display Drivers
-        ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/st7735/st7735.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/st7735/fonts.c
+        ${SYSVIEW_SOURCES}
+        # Append Display Driver
+        ${DRIVER_DIR}/st7735.c
+        ${DRIVER_DIR}/fonts.c
         # Append DBC database
-        ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/dbc/roxy.c
+        ${DBC_SOURCES}
         # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+        ${DRIVER_DIR}
+        ${LIB_DIR}/dbc
         # Add user defined include paths
-        ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/st7735
-        ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/dbc
 )
 
 # Add project symbols (macros)
