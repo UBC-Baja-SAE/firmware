@@ -37,33 +37,47 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
-# Link directories setup
-target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
+# Add Lib Paths
+set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../lib")
+set(LVGL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/lvgl")
+
+# Add LVGL source files dynamically
+file(GLOB_RECURSE LVGL_SOURCES
+        "${LVGL_DIR}/lvgl/src/*.c"
 )
 
-# Add LVGL source files
-file(GLOB_RECURSE LVGL_SOURCES
-   "Drivers/lvgl/lvgl/src/*.c"
+# Add DBC Files Dynamically
+file(GLOB DBC_SOURCES
+        "${LIB_DIR}/dbc/*.c"
+)
+
+# Append DBC includes to generated cmake target
+target_include_directories(stm32cubemx INTERFACE
+        ${LIB_DIR}/dbc
 )
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    ${LVGL_SOURCES}
-    Core/Src/lv_port_disp.c
-    Core/Src/GC9A01.c
-    # Add user sources here
+        # Append DBC database sources dynamically
+        ${DBC_SOURCES}
+        # Append LVGL sources
+        ${LVGL_SOURCES}
+        # Append Display Drivers
+        Core/Src/lv_port_disp.c
+        Core/Src/GC9A01.c
+        # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    Drivers/lvgl
-    # Add user defined include paths
+        ${LIB_DIR}/dbc
+        ${LVGL_DIR}
+        # Add user defined include paths
 )
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
+        # Add user defined symbols
 )
 
 # Remove wrong libob.a library dependency when using cpp files
@@ -71,7 +85,7 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
-    stm32cubemx
+        stm32cubemx
 
-    # Add user defined libraries
+        # Add user defined libraries
 )
