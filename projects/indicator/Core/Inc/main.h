@@ -31,12 +31,17 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "FreeRTOS.h"
+#include "queue.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+typedef struct {
+  uint32_t id;
+  uint8_t length;
+  uint8_t payload[32];
+} CAN_Rx_Frame_t;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -46,14 +51,14 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+extern QueueHandle_t can_rx_queue;
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+uint8_t FDCAN_DLC_To_Bytes(uint32_t DLC);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

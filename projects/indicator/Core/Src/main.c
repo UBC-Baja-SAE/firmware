@@ -50,7 +50,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+QueueHandle_t can_rx_queue;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,13 +98,12 @@ int main(void)
   MX_FDCAN1_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-  // // GC9A01_Init();
-  // // GC9A01_Reset();
-  // // lv_init();
-  // // lv_tick_set_cb(HAL_GetTick);
-  // // lv_port_disp_init();
-  //
-  // lv_display_set_rotation(lv_display_get_default(), LV_DISPLAY_ROTATION_180);
+  can_rx_queue = xQueueCreate(10, sizeof(CAN_Rx_Frame_t));
+
+  if (can_rx_queue == NULL) {
+    // Queue creation failed
+    Error_Handler();
+  }
 
   /* USER CODE END 2 */
 

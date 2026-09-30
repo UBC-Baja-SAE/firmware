@@ -22,6 +22,7 @@
 #include "stm32g4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -189,5 +190,27 @@ void TIM1_UP_TIM16_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
+  if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
 
+    FDCAN_RxHeaderTypeDef RxHeader;
+    uint8_t RxData[64];
+
+    if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK) {
+
+      // 1. Populate the generic struct
+      CAN_Rx_Frame_t frame_to_queue;
+      frame_to_queue.id = RxHeader.Identifier;
+      frame_to_queue.length = FDCAN_DLC_To_Bytes(RxHeader.DataLength);
+      memcpy(frame_to_queue.payload, RxData, frame_to_queue.length);
+
+      // 2. Send to queue using the ISR-safe function
+      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+      xQueueSendFromISR(can_rx_queue, &frame_to_queue, &xHigherPriorityTaskWoken);
+
+      // 3. Force a context switch if the receiving task has a higher priority
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+  }
+}
 /* USER CODE END 1 */

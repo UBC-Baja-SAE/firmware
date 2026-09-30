@@ -204,7 +204,7 @@ void GC9A01_Init(void)
 	GC9A01_WriteData(0x20);
 
 	GC9A01_WriteCommand(0x36);
-	GC9A01_WriteData(0x08);//Set as vertical screen
+	GC9A01_WriteData(0x68);//Set as vertical screen
 
 	GC9A01_WriteCommand(0x3A);
 	GC9A01_WriteData(0x05);
