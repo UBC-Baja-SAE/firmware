@@ -32,41 +32,50 @@ NS_ :
 
 BS_:
 
-BU_: front_ecu central_ecu rear_ecu
+BU_: central_ecu rear_ecu front_ecu
 
+BO_ 512 rear_daq: 26 rear_ecu
+ SG_ speedometer : 0|6@1+ (1,0) [0|63] "km/h" central_ecu
+ SG_ tachometer : 6|12@1+ (1,0) [0|4095] "rpm" central_ecu
+ SG_ cvt_temp : 18|7@1+ (1,0) [0|127] "celsius" central_ecu
+ SG_ ambient_temp : 25|7@1+ (1,0) [0|127] "celsius" central_ecu
+ SG_ linpot_r : 32|12@1+ (0.01,0) [0|40.95] "cm" central_ecu
+ SG_ linpot_l : 44|12@1+ (0.01,0) [0|40.95] "cm" central_ecu
+ SG_ accel_x : 56|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ accel_y : 72|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ accel_z : 88|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ gyro_x : 104|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ gyro_y : 120|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ gyro_z : 136|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ mag_x : 152|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ mag_y : 168|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ mag_z : 184|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
 
+BO_ 768 front_daq: 26 front_ecu
+ SG_ steering_angle : 0|12@1+ (0.1,0) [0|409.5] "" central_ecu
+ SG_ brake_f : 12|8@1+ (10,0) [0|2550] "" central_ecu
+ SG_ brake_r : 20|8@1+ (1,0) [0|255] "" central_ecu
+ SG_ linpot_r : 32|12@1+ (0.01,0) [0|40.95] "cm" central_ecu
+ SG_ linpot_l : 44|12@1+ (0.01,0) [0|40.95] "cm" central_ecu
+ SG_ accel_x : 56|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ accel_y : 72|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ accel_z : 88|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ gyro_x : 104|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ gyro_y : 120|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ gyro_z : 136|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ mag_x : 152|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ mag_y : 168|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
+ SG_ mag_z : 184|16@1- (0.001,0) [-32.768|32.767] "" central_ecu
 
+BA_DEF_ BO_ "VFrameFormat" ENUM "StandardCAN","ExtendedCAN","reserved","J1939PG";
+BA_DEF_ "DatabaseVersion" STRING;
+BA_DEF_ "BusType" STRING;
+BA_DEF_ "DatabaseCompiler" STRING;
+BA_DEF_DEF_ "VFrameFormat" "StandardCAN";
+BA_DEF_DEF_ "DatabaseVersion" "";
+BA_DEF_DEF_ "BusType" "";
+BA_DEF_DEF_ "DatabaseCompiler" "";
 
-
-
-
-
-BO_ 512 rear_daq: 114 Vector__XXX
- SG_ speedometer : 96|6@1+ (0,0) [0|0] "" Vector__XXX
- SG_ tachometer : 112|12@1+ (0,0) [0|0] "" Vector__XXX
- SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
- SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
- SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
- SG_ gyro_x : 48|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
- SG_ gyro_y : 64|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
- SG_ gyro_z : 80|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
- SG_ obj_temp : 128|16@1+ (0.02,-273.15) [-70|380] "" Vector__XXX
- SG_ amb_temp : 144|16@1+ (0.02,-273.15) [-70|380] "" Vector__XXX
-
-BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
-BA_DEF_  "DatabaseVersion" STRING ;
-BA_DEF_  "BusType" STRING ;
-BA_DEF_  "ProtocolType" STRING ;
-BA_DEF_  "DatabaseCompiler" STRING ;
-BA_DEF_DEF_  "VFrameFormat" "StandardCAN";
-BA_DEF_DEF_  "DatabaseVersion" "";
-BA_DEF_DEF_  "BusType" "";
-BA_DEF_DEF_  "ProtocolType" "";
-BA_DEF_DEF_  "DatabaseCompiler" "";
-BA_ "ProtocolType" "";
 BA_ "BusType" "CAN";
 BA_ "DatabaseCompiler" "UBC BAJA";
 BA_ "DatabaseVersion" "1.0.0";
-
-
-
