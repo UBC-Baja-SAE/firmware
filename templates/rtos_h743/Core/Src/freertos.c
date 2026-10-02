@@ -32,6 +32,7 @@
 #include "SEGGER_RTT.h"
 #include "st7735.h"
 #include "FreeRTOSConfig.h"
+#include "hx711.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +57,7 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+extern hx711_t strainGauge;
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -83,6 +85,13 @@ const osThreadAttr_t DisplayTask_attributes = {
   .name = "DisplayTask",
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
+};
+/* Definitions for readStrainTask */
+osThreadId_t readStrainTaskHandle;
+const osThreadAttr_t readStrainTask_attributes = {
+  .name = "readStrainTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for FIFOCANTransmit */
 osMessageQueueId_t FIFOCANTransmitHandle;
@@ -117,6 +126,7 @@ const osEventFlagsAttr_t CANTxEvent_attributes = {
 void StartDefaultTask(void *argument);
 void CANTransmit(void *argument);
 void refreshDisplay(void *argument);
+void readStrain(void *argument);
 void EnableCANTxCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -168,6 +178,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of DisplayTask */
   DisplayTaskHandle = osThreadNew(refreshDisplay, NULL, &DisplayTask_attributes);
+
+  /* creation of readStrainTask */
+  readStrainTaskHandle = osThreadNew(readStrain, NULL, &readStrainTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -252,6 +265,42 @@ void refreshDisplay(void *argument)
     osDelay(100);
   }
   /* USER CODE END refreshDisplay */
+}
+
+/* USER CODE BEGIN Header_readStrain */
+/**
+* @brief Function implementing the readStrainTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_readStrain */
+void readStrain(void *argument)
+{
+  /* USER CODE BEGIN readStrain */
+  hx711_init(&strainGauge, GPIOA, GPIO_PIN_4, GPIOA, GPIO_PIN_5);
+  set_gain(&strainGauge, 128, 64);
+  // Tare removes the initial unloaded resting voltage of the bridge
+  tare_all(&strainGauge, 10);
+
+  // Assume a standard Gauge Factor of 2.0 for the foil gauges
+  //TODO: find exact gauge factor for our strain gauges
+  const float GAUGE_FACTOR = 2.0f;
+  /* Infinite loop */
+  for(;;) {
+    // get_value returns the raw ADC count minus the tare offset
+    float raw_val = get_value(&strainGauge, 3, CHANNEL_A);
+
+    // 1. Convert raw ADC to mV/V ratio (Gain = 128, 2^23 - 1 = 8388607)
+    float mv_v = (raw_val / 8388607.0f) * (500.0f / 128.0f);
+
+    // 2. Convert mV/V to microstrain
+    float microstrain = (4000.0f * mv_v) / GAUGE_FACTOR;
+
+    (void)microstrain; // Suppress unused variable warning
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+  /* USER CODE END readStrain */
 }
 
 /* EnableCANTxCallback function */

@@ -65,6 +65,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         # Append DBC database
         ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/dbc/roxy.c
         # Add user sources here
+        ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/hx711/HX711.c
 )
 
 # Add include paths
@@ -72,6 +73,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined include paths
         ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/st7735
         ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/dbc
+        ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/hx711
 )
 
 # Add project symbols (macros)

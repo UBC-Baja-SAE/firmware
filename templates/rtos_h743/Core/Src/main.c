@@ -47,6 +47,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+hx711_t strainGauge;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/

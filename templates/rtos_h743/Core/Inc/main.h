@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "hx711.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -62,6 +62,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SCK_Pin GPIO_PIN_4
+#define SCK_GPIO_Port GPIOA
+#define DT_Pin GPIO_PIN_5
+#define DT_GPIO_Port GPIOA
 #define LCD_BLK_Pin GPIO_PIN_10
 #define LCD_BLK_GPIO_Port GPIOE
 #define LCD_CS_Pin GPIO_PIN_11
