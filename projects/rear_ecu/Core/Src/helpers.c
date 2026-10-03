@@ -5,8 +5,13 @@
 #include "helpers.h"
 #include <stdint.h>
 
-// Calculates the SMBus (sub i2c) crc byte passed on each IR sensor read
-// IR sensor task verifies the calculated crc is matching the sensed one
+/**
+* @brief Calculates the SMBus (sub i2c) crc byte passed on each IR sensor read
+*        IR sensor task verifies the calculated crc is matching the sensed one
+* @param data: a byte array containing all required SMBus values used in crc check
+* @param len: the number of slots in the byte array
+* @retval crc: the calculated smbus crc byte
+*/
 static uint8_t calculate_smbus_pec(uint8_t *data, uint8_t len) {
   uint8_t crc = 0;
   for (uint8_t i = 0; i < len; i++) {
@@ -23,9 +28,14 @@ static uint8_t calculate_smbus_pec(uint8_t *data, uint8_t len) {
   return crc;
 }
 
-// Public validation function
-// Wraps and builds the data type that the crc calculation private function
-// works on To be called from the IR sensor task from freertos.c
+
+/**
+* @brief Wraps and builds the data type that the crc calculation private function
+*        works on. To be called from the IR sensor task from freertos.c
+* @param target_reg: i2c slave address per sensor target (amb or obj)
+* @param dma_rx_buffer: byte buffer the DMA writes to
+* @retval bool: whether or not the SMBus passed byte matches the calculated one
+*/
 bool MLX90614_VerifyData(uint8_t target_reg, volatile uint8_t *dma_rx_buffer) {
   crc_payload_t payload;
 
@@ -37,7 +47,6 @@ bool MLX90614_VerifyData(uint8_t target_reg, volatile uint8_t *dma_rx_buffer) {
   payload.data_msb = dma_rx_buffer[1];
 
   // Cast the struct to a uint8_t pointer so the CRC function can iterate over
-  // it
   uint8_t calculated_pec =
       calculate_smbus_pec((uint8_t *)&payload, sizeof(crc_payload_t));
 

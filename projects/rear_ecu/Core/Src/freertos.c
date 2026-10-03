@@ -49,15 +49,27 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 /* USER CODE BEGIN PD */
 
 // i2c polling addresses based on GY-906 datasheet
-#define IR_SLAVE_ADDR 0x5A
-#define AMB_POLL_ADDR 0x06
-#define OBJ_POLL_ADDR 0x07
+#define IR_SLAVE_ADDR (0x5A)
+#define AMB_POLL_ADDR (0x06)
+#define OBJ_POLL_ADDR (0x07)
+
+#define BYTE_SHIFT (8u)
+
+// delta calculated based on accepted celsius diff divided by sensor resolution
+// 10 degrees celsius divided by 0.02 resolution
+#define CVT_ACCEPTED_DELTA (500u)
+// Ticks required for sense state to accept total change in readings
+#define SENSE_STATE_FLIP (15u)
+// EMA uses the following defines to allocate 25% to latest reading and 75% to history
+#define DIV_BY_FOUR_IN_BITS (2u)
+#define TEMP_HIST_FACTOR (3u)
+#define INT_ROUND_FACTOR (2u)
 
 // buffer sizing defines
-#define IR_POLL_BFR_SIZE 3u
-#define CAN_TRANSMIT_TICKS    100
+#define IR_POLL_BFR_SIZE (3u)
+#define CAN_TRANSMIT_TICKS    (100)
 
-#define SETTLE_TICKS          200
+#define SETTLE_TICKS          (200)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -68,13 +80,14 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 
-// OS thread definitions
 osThreadId_t thermalTaskHandle;
 const osThreadAttr_t thermalTask_attributes = {
   .name = "thermalTask",
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+
+osSemaphoreId_t I2C1_Rx_SemHandle;
 
 // Sensor Read Structs
 typedef struct __attribute__((packed)) {
@@ -83,11 +96,27 @@ typedef struct __attribute__((packed)) {
   uint8_t crc;  // checksum for valid data
 } thermo_read_raw_t;
 
+// Processed obj and amb readings for CAN transmit
+typedef struct __attribute__((packed)) {
+  uint8_t obj_lsb;
+  uint8_t obj_msb;
+  uint8_t amb_lsb;
+  uint8_t amb_msb;
+} thermo_read_can_t;
+
 // Single Variables
-volatile thermo_read_raw_t obj_read_raw = {0};
-volatile thermo_read_raw_t amb_read_raw = {0};
+volatile thermo_read_raw_t obj_read_raw = {0,0,0};
+volatile thermo_read_raw_t amb_read_raw = {0,0,0};
+volatile thermo_read_can_t ir_read_can = {0,0,0,0};
+
+uint16_t prev_obj_raw = 0;
+uint16_t obj_hist = 0;
+uint8_t base_sense = 0;
 
 /* USER CODE END Variables */
+
+// OS thread definitions
+
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
@@ -170,7 +199,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+  /* creation of I2C1_Rx_Sem */
+  // Max count 1, initial count 0 (starts empty so the task blocks immediately)
+  I2C1_Rx_SemHandle = osSemaphoreNew(1, 0, NULL);
+
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* Create the timer(s) */
@@ -299,24 +331,80 @@ void EnableCANTxCallback(void *argument)
 
 extern I2C_HandleTypeDef hi2c1; // Assuming main I2C refers to hi2c1
 
+/**
+* @brief Function implementing the ThermalSensorTask thread.
+* @param argument: Not used
+* @retval None
+*/
 void StartThermalSensorTask(void *argument) {
   for(;;) {
+    // Send
     HAL_I2C_Mem_Read_DMA(&hi2c1, (IR_SLAVE_ADDR << 1), OBJ_POLL_ADDR, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&obj_read_raw, IR_POLL_BFR_SIZE);
+    osSemaphoreAcquire(I2C1_Rx_SemHandle, osWaitForever);
+
     HAL_I2C_Mem_Read_DMA(&hi2c1, (IR_SLAVE_ADDR << 1), AMB_POLL_ADDR, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&amb_read_raw, IR_POLL_BFR_SIZE);
+    osSemaphoreAcquire(I2C1_Rx_SemHandle, osWaitForever);
 
     // OBJ Handling
     if(MLX90614_VerifyData(OBJ_POLL_ADDR, (volatile uint8_t *)&obj_read_raw)) {
       //CRC Check Passed -- Proceed with Data Processing
       uint16_t obj_read_val = obj_read_raw.msb << 8 | obj_read_raw.lsb;
+      uint16_t obj_diff = (obj_read_val > prev_obj_raw) ? obj_read_val - prev_obj_raw : prev_obj_raw - obj_read_val;
+
+      if (obj_diff < CVT_ACCEPTED_DELTA) {
+        // Delta indicates allow reading
+        if (obj_hist == 0) {
+          obj_hist = obj_read_val;
+          prev_obj_raw = obj_read_val;
+        }
+
+        uint16_t ema = (INT_ROUND_FACTOR + obj_read_val + TEMP_HIST_FACTOR*obj_hist)>>DIV_BY_FOUR_IN_BITS;
+        ir_read_can.obj_lsb = (uint8_t)(ema & 0xFF);
+        ir_read_can.obj_msb = (uint8_t)(ema >> BYTE_SHIFT);
+
+        obj_hist = ema;
+        prev_obj_raw = obj_read_val;
+        base_sense = 0;
+      }
+      else {
+        // Delta indicates that a sensor failure has occurred
+        // Relying on previous acceptable reading
+        base_sense += 1;
+
+        if (base_sense >= SENSE_STATE_FLIP) {
+          prev_obj_raw = obj_read_val;
+          base_sense = 0;
+        }
+      }
+
+    }
+    else {
+      // crc check failed -- do nothing
     }
 
     // AMB Handling
     if(MLX90614_VerifyData(AMB_POLL_ADDR, (volatile uint8_t *)&amb_read_raw)) {
       //CRC Check Passed -- Proceed with Data Processing
-      uint16_t amb_read_val = amb_read_raw.msb << 8 | amb_read_raw.lsb;
+      ir_read_can.amb_lsb = amb_read_raw.lsb;
+      ir_read_can.amb_msb = amb_read_raw.msb;
+    }
+    else {
+      // crc check failed -- do nothing
     }
 
-    osDelay(20);
+    osDelay(1000);
+  }
+}
+
+/**
+* @brief Function releasing sempahore hold of the
+* @param hi2c:
+* @retval None
+*/
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+  if (hi2c->Instance == I2C1) {
+    // Release the semaphore to wake up the Thermal Task
+    osSemaphoreRelease(I2C1_Rx_SemHandle);
   }
 }
 
