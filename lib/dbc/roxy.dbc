@@ -53,6 +53,9 @@ BO_ 512 rear_daq: 114 Vector__XXX
  SG_ obj_temp : 128|16@1+ (0.02,-273.15) [-70|380] "" Vector__XXX
  SG_ amb_temp : 144|16@1+ (0.02,-273.15) [-70|380] "" Vector__XXX
 
+BO_ 17 fuck_you: 8 Vector__XXX
+ SG_ microstrain : 0|32@1- (0,0) [0|0] "" Vector__XXX
+
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
 BA_DEF_  "DatabaseVersion" STRING ;
 BA_DEF_  "BusType" STRING ;
@@ -70,3 +73,7 @@ BA_ "DatabaseVersion" "1.0.0";
 
 
 
+
+
+
+SIG_VALTYPE_ 17 microstrain : 1;
