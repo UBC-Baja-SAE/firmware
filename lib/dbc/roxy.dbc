@@ -39,20 +39,6 @@ BU_: front_ecu central_ecu rear_ecu rr_ecu rl_ecu fr_ecu fl_ecu dash
 
 
 
-
-
-BO_ 512 rear_daq: 114 Vector__XXX
- SG_ speedometer : 96|6@1+ (0,0) [0|0] "" Vector__XXX
- SG_ tachometer : 112|12@1+ (0,0) [0|0] "" Vector__XXX
- SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
- SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
- SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "" Vector__XXX
- SG_ gyro_x : 48|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
- SG_ gyro_y : 64|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
- SG_ gyro_z : 80|16@1- (0.061,0) [-1998|1998] "" Vector__XXX
- SG_ obj_temp : 128|16@1+ (0.02,-273.15) [-70|380] "" Vector__XXX
- SG_ amb_temp : 144|16@1+ (0.02,-273.15) [-70|380] "" Vector__XXX
-
 BO_ 17 fuck_you: 8 Vector__XXX
  SG_ microstrain : 0|32@1- (0,0) [0|0] "" Vector__XXX
 
