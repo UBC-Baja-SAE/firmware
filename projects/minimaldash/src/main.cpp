@@ -29,10 +29,10 @@ int main(int argc, char *argv[]) {
         qCritical() << "Failed to extract EGLFS KMS config to /tmp";
     }
 
-    QString tempDbcPath = "/tmp/mochi.dbc";
+    QString tempDbcPath = "/tmp/roxy.dbc";
     QFile::remove(tempDbcPath);
 
-    if (!QFile::copy(":/mochi.dbc", tempDbcPath)) {
+    if (!QFile::copy(":/roxy.dbc", tempDbcPath)) {
         qCritical() << "Failed to extract dbc to /tmp";
     }
 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     });
 
     QObject::connect(parserThread, &QThread::started, dbcParser, [dbcParser]() {
-        dbcParser->loadDbcFiles({":/mochi.dbc"});
+        dbcParser->loadDbcFiles({":/roxy.dbc"});
     });
 
     // Auto-start Websocket, but leave MCAP off until the toggle switch flips
