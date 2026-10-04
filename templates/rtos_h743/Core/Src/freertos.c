@@ -59,6 +59,8 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 /* USER CODE BEGIN Variables */
 extern hx711_t strainGauge;
 
+volatile float microstrain;
+
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -294,7 +296,7 @@ void readStrain(void *argument)
     float mv_v = (raw_val / 8388607.0f) * (500.0f / 128.0f);
 
     // 2. Convert mV/V to microstrain
-    float microstrain = (4000.0f * mv_v) / GAUGE_FACTOR;
+    microstrain = (4000.0f * mv_v) / GAUGE_FACTOR;
 
     (void)microstrain; // Suppress unused variable warning
 

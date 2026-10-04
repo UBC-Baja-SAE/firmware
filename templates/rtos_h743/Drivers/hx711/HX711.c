@@ -7,6 +7,7 @@
 
 #include <HX711.h>
 
+#include "cmsis_os2.h"
 #include "main.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -106,7 +107,7 @@ bool is_ready(hx711_t *hx711) {
 void wait_ready(hx711_t *hx711) {
 	// Wait for the chip to become ready.
 	while (!is_ready(hx711)) {
-		HAL_Delay(0);
+		osDelay(1);
 	}
 }
 
@@ -152,7 +153,7 @@ long read_average(hx711_t *hx711, int8_t times, uint8_t channel) {
 	long sum = 0;
 	for (int8_t i = 0; i < times; i++) {
 		sum += read(hx711, channel);
-		HAL_Delay(0);
+		osDelay(1);
 	}
 	return sum / times;
 }
