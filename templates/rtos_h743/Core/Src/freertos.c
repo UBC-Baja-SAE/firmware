@@ -281,24 +281,49 @@ void readStrain(void *argument)
   /* USER CODE BEGIN readStrain */
   hx711_init(&strainGauge, GPIOA, GPIO_PIN_4, GPIOA, GPIO_PIN_5);
   set_gain(&strainGauge, 128, 64);
-  // Tare removes the initial unloaded resting voltage of the bridge
   tare_all(&strainGauge, 10);
 
-  // Assume a standard Gauge Factor of 2.0 for the foil gauges
-  //TODO: find exact gauge factor for our strain gauges
   const float GAUGE_FACTOR = 2.0f;
+
+  // Bring in your FDCAN handle (generated in fdcan.c)
+  extern FDCAN_HandleTypeDef hfdcan1;
+
   /* Infinite loop */
   for(;;) {
-    // get_value returns the raw ADC count minus the tare offset
     float raw_val = get_value(&strainGauge, 3, CHANNEL_A);
-
-    // 1. Convert raw ADC to mV/V ratio (Gain = 128, 2^23 - 1 = 8388607)
     float mv_v = (raw_val / 8388607.0f) * (500.0f / 128.0f);
-
-    // 2. Convert mV/V to microstrain
     microstrain = (4000.0f * mv_v) / GAUGE_FACTOR;
 
-    (void)microstrain; // Suppress unused variable warning
+    // ==========================================
+    // ROUGH FDCAN TRANSMISSION BLOCK
+    // ==========================================
+    struct roxy_fuck_you_t tx_msg;
+    uint8_t tx_data[8];
+
+    // 1. Init and load struct
+    roxy_fuck_you_init(&tx_msg);
+    tx_msg.microstrain = (float)microstrain;
+
+    // 2. Pack struct into byte array
+    roxy_fuck_you_pack(tx_data, &tx_msg, sizeof(tx_data));
+
+    // 3. Setup HAL FDCAN Header
+    FDCAN_TxHeaderTypeDef tx_header;
+
+    // If Cantools generated a macro for the ID in roxy.h, use it instead of 0x123
+    tx_header.Identifier = 0x123;
+    tx_header.IdType = FDCAN_STANDARD_ID;
+    tx_header.TxFrameType = FDCAN_DATA_FRAME;
+    tx_header.DataLength = FDCAN_DLC_BYTES_8;
+    tx_header.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+    tx_header.BitRateSwitch = FDCAN_BRS_OFF;
+    tx_header.FDFormat = FDCAN_CLASSIC_CAN; // Change to FDCAN_FD_CAN if using FD mode
+    tx_header.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+    tx_header.MessageMarker = 0;
+
+    // 4. Fire and forget into the TX FIFO
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &tx_header, tx_data);
+    // ==========================================
 
     vTaskDelay(pdMS_TO_TICKS(100));
   }
