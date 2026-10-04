@@ -39,23 +39,34 @@ add_subdirectory(cmake/stm32cubemx)
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
+        # Add user defined library search paths
+)
+
+# Add Lib Paths
+set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../lib")
+
+# Add DBC Files Dynamically
+file(GLOB DBC_SOURCES
+        "${LIB_DIR}/dbc/*.c"
 )
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-        Core/Src/mochi.c
+        # Append DBC database
+        ${DBC_SOURCES}
+        # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+        ${DRIVER_DIR}
+        ${LIB_DIR}/dbc
+        # Add user defined include paths
 )
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
+        # Add user defined symbols
 )
 
 # Remove wrong libob.a library dependency when using cpp files
