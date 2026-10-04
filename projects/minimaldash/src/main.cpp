@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     });
 
     QObject::connect(parserThread, &QThread::started, dbcParser, [dbcParser]() {
-        dbcParser->loadDbcFiles({":/mochi.dbc"});
+        dbcParser->loadDbcFiles({":/roxy.dbc"});
     });
 
     // Auto-start Websocket, but leave MCAP off until the toggle switch flips
