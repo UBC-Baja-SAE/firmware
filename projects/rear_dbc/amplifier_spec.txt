@@ -1,0 +1,31 @@
+axles and arms both 4130 steel
+elastic modulus around 190–205 GPa, assume k = 200 GPa
+density 7,850kg/m^3
+
+Axles are probably somewhere around 30” long 1” or 1.25” in diameter. Probably 0.35 in^2 in area
+0.762m 0.000225806m^2
+m = 1.35070kg
+
+Lower arms I think about 19-20" in length 1" diameter 1.835 in^2 cross section
+0.508m 0.0011838686m^2
+m = 4.7209kg
+upper will be about 16" in length 0.75" in diameter and 0.696 in^2 cross section
+0.4064m 0.00044903136m^2
+m = 1.43252kg
+
+k = (E*A)/L
+fn = 1/(2pi) * sqrt(k/m)
+
+axle:
+k = 200e9 * 0.762 * 0.000225806 = 34412834.4
+fn = 1/(2pi) * sqrt(34412834.4/1.35070) = 803.342796956
+
+lower:
+k = 200e9 * 0.508 * 0.0011838686 = 120281049.76
+fn = 1/(2pi) * sqrt(120281049.76/4.7209) = 803.352844867
+
+upper arm:
+k = 200e9 * 0.4064 * 0.00044903136 = 36497268.9408
+fn = 1/(2pi) * sqrt(36497268.9408/1.43252) = 803.341066517
+
+Need iltering for ~800Hz
