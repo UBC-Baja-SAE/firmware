@@ -104,6 +104,12 @@ int main(void)
   MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
 
+  // Start the CAN FD peripheral before handing control to the RTOS
+  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   /* USER CODE END 2 */
 
   /* Init scheduler */

@@ -31,6 +31,8 @@
 #include <stdint.h>
 #include "helpers.h"
 
+#include "fdcan.h"
+
 #include "roxy.h"
 #include "SEGGER_RTT.h"
 #include "st7735.h"
@@ -39,8 +41,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 typedef StaticTask_t osStaticThreadDef_t;
-typedef StaticQueue_t osStaticMessageQDef_t;
-typedef StaticEventGroup_t osStaticEventGroupDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -89,6 +89,12 @@ const osThreadAttr_t thermalTask_attributes = {
 
 osSemaphoreId_t I2C1_Rx_SemHandle;
 
+// CANDFD GLOBAL STRUCT DEF
+typedef struct __attribute__((packed)) {
+  thermo_read_can_t thermo_read_can; // 4 bytes
+  uint8_t padding[60];
+} can_global_transmit_t;
+
 // Sensor Read Structs
 typedef struct __attribute__((packed)) {
   uint8_t lsb;  // i2c reads for IR sensor come in 2 bytes
@@ -105,18 +111,18 @@ typedef struct __attribute__((packed)) {
 } thermo_read_can_t;
 
 // Single Variables
+can_global_transmit_t can_global_transmit = {0};
 volatile thermo_read_raw_t obj_read_raw = {0,0,0};
 volatile thermo_read_raw_t amb_read_raw = {0,0,0};
 volatile thermo_read_can_t ir_read_can = {0,0,0,0};
+
+extern FDCAN_HandleTypeDef hfdcan1;
 
 uint16_t prev_obj_raw = 0;
 uint16_t obj_hist = 0;
 uint8_t base_sense = 0;
 
 /* USER CODE END Variables */
-
-// OS thread definitions
-
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
@@ -124,48 +130,17 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for CANTransmitTask */
-osThreadId_t CANTransmitTaskHandle;
-uint32_t CANTransmitTaskBuffer[ 128 ];
-osStaticThreadDef_t CANTransmitTaskControlBlock;
-const osThreadAttr_t CANTransmitTask_attributes = {
-  .name = "CANTransmitTask",
-  .cb_mem = &CANTransmitTaskControlBlock,
-  .cb_size = sizeof(CANTransmitTaskControlBlock),
-  .stack_mem = &CANTransmitTaskBuffer[0],
-  .stack_size = sizeof(CANTransmitTaskBuffer),
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for DisplayTask */
-osThreadId_t DisplayTaskHandle;
-const osThreadAttr_t DisplayTask_attributes = {
-  .name = "DisplayTask",
-  .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
-};
-/* Definitions for FIFOCANTransmit */
-osMessageQueueId_t FIFOCANTransmitHandle;
-uint8_t FIFOCANTransmitBuffer[ 16 * sizeof( uint16_t ) ];
-osStaticMessageQDef_t FIFOCANTransmitControlBlock;
-const osMessageQueueAttr_t FIFOCANTransmit_attributes = {
-  .name = "FIFOCANTransmit",
-  .cb_mem = &FIFOCANTransmitControlBlock,
-  .cb_size = sizeof(FIFOCANTransmitControlBlock),
-  .mq_mem = &FIFOCANTransmitBuffer,
-  .mq_size = sizeof(FIFOCANTransmitBuffer)
-};
-/* Definitions for EnableCANTx */
-osTimerId_t EnableCANTxHandle;
-const osTimerAttr_t EnableCANTx_attributes = {
-  .name = "EnableCANTx"
-};
-/* Definitions for CANTxEvent */
-osEventFlagsId_t CANTxEventHandle;
-osStaticEventGroupDef_t EnableCANTxControlBlock;
-const osEventFlagsAttr_t CANTxEvent_attributes = {
-  .name = "CANTxEvent",
-  .cb_mem = &EnableCANTxControlBlock,
-  .cb_size = sizeof(EnableCANTxControlBlock),
+/* Definitions for CANFDTransmTask */
+osThreadId_t CANFDTransmTaskHandle;
+uint32_t CANFDTransmitTaskBuffer[ 128 ];
+osStaticThreadDef_t CANFDTransmitTaskControlBlock;
+const osThreadAttr_t CANFDTransmTask_attributes = {
+  .name = "CANFDTransmTask",
+  .cb_mem = &CANFDTransmitTaskControlBlock,
+  .cb_size = sizeof(CANFDTransmitTaskControlBlock),
+  .stack_mem = &CANFDTransmitTaskBuffer[0],
+  .stack_size = sizeof(CANFDTransmitTaskBuffer),
+  .priority = (osPriority_t) osPriorityHigh,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -175,9 +150,7 @@ void StartThermalSensorTask(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
-void CANTransmit(void *argument);
-void refreshDisplay(void *argument);
-void EnableCANTxCallback(void *argument);
+void StartCANFDTransmitTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -205,18 +178,10 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE END RTOS_SEMAPHORES */
 
-  /* Create the timer(s) */
-  /* creation of EnableCANTx */
-  EnableCANTxHandle = osTimerNew(EnableCANTxCallback, osTimerPeriodic, NULL, &EnableCANTx_attributes);
-
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   osTimerStart(EnableCANTxHandle, CAN_TRANSMIT_TICKS);
   /* USER CODE END RTOS_TIMERS */
-
-  /* Create the queue(s) */
-  /* creation of FIFOCANTransmit */
-  FIFOCANTransmitHandle = osMessageQueueNew (16, sizeof(uint16_t), &FIFOCANTransmit_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -226,20 +191,13 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of CANTransmitTask */
-  CANTransmitTaskHandle = osThreadNew(CANTransmit, NULL, &CANTransmitTask_attributes);
-
-  /* creation of DisplayTask */
-  DisplayTaskHandle = osThreadNew(refreshDisplay, NULL, &DisplayTask_attributes);
+  /* creation of CANFDTransmTask */
+  CANFDTransmTaskHandle = osThreadNew(StartCANFDTransmitTask, NULL, &CANFDTransmTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   thermalTaskHandle = osThreadNew(StartThermalSensorTask, NULL, &thermalTask_attributes);
   /* USER CODE END RTOS_THREADS */
-
-  /* Create the event(s) */
-  /* creation of CANTxEvent */
-  CANTxEventHandle = osEventFlagsNew(&CANTxEvent_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
@@ -276,54 +234,49 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
-/* USER CODE BEGIN Header_CANTransmit */
+/* USER CODE BEGIN Header_StartCANFDTransmitTask */
 /**
-* @brief Function implementing the CANTransmitTask thread.
+* @brief Function implementing the CANFDTransmTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_CANTransmit */
-void CANTransmit(void *argument)
+/* USER CODE END Header_StartCANFDTransmitTask */
+void StartCANFDTransmitTask(void *argument)
 {
-  /* USER CODE BEGIN CANTransmit */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1000);
-  }
-  /* USER CODE END CANTransmit */
-}
+  /* USER CODE BEGIN StartCANFDTransmitTask */
+  FDCAN_TxHeaderTypeDef txHeader;
 
-/* USER CODE BEGIN Header_refreshDisplay */
-/**
-* @brief Function implementing the DisplayTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_refreshDisplay */
-void refreshDisplay(void *argument)
-{
-  /* USER CODE BEGIN refreshDisplay */
-  // Init Display
-  HAL_GPIO_WritePin(LCD_BLK_GPIO_Port, LCD_BLK_Pin, GPIO_PIN_RESET);
-  ST7735_Init();
-  ST7735_FillScreen(ST7735_BLACK);
+  txHeader.Identifier = 0x123;
+  txHeader.IdType = FDCAN_STANDARD_ID;
+  txHeader.TxFrameType = FDCAN_DATA_FRAME;
+  txHeader.DataLength = FDCAN_DLC_BYTES_64;
+  txHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+  txHeader.BitRateSwitch = FDCAN_BRS_ON;    // Speeds up the clock during the data payload
+  txHeader.FDFormat = FDCAN_FD_CAN;         // Enables the up-to-64-byte frame format
+  txHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+  txHeader.MessageMarker = 0; // Used if you need to track this specific frame later
 
   /* Infinite loop */
   for(;;)
   {
-    // Sleep to yield CPU
+    // Copy prepared IR readings onto the CAN buffer using hardware blocking gates
+    taskENTER_CRITICAL();
+    can_global_transmit.thermo_read_can.obj_lsb = ir_read_can.obj_lsb;
+    can_global_transmit.thermo_read_can.obj_msb = ir_read_can.obj_msb;
+    can_global_transmit.thermo_read_can.amb_lsb = ir_read_can.amb_lsb;
+    can_global_transmit.thermo_read_can.amb_msb = ir_read_can.amb_msb;
+    taskEXIT_CRITICAL();
+
+    // Push the 64-byte struct to the CAN FD hardware Tx FIFO
+    if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, (uint8_t*)&can_global_transmit) != HAL_OK)
+    {
+      // Optional: Handle transmission error (e.g., Tx FIFO is full)
+      // Error_Handler();
+    }
+
     osDelay(100);
   }
-  /* USER CODE END refreshDisplay */
-}
-
-/* EnableCANTxCallback function */
-void EnableCANTxCallback(void *argument)
-{
-  /* USER CODE BEGIN EnableCANTxCallback */
-
-  /* USER CODE END EnableCANTxCallback */
+  /* USER CODE END StartCANFDTransmitTask */
 }
 
 /* Private application code --------------------------------------------------*/
@@ -359,8 +312,10 @@ void StartThermalSensorTask(void *argument) {
         }
 
         uint16_t ema = (INT_ROUND_FACTOR + obj_read_val + TEMP_HIST_FACTOR*obj_hist)>>DIV_BY_FOUR_IN_BITS;
+        taskENTER_CRITICAL();
         ir_read_can.obj_lsb = (uint8_t)(ema & 0xFF);
         ir_read_can.obj_msb = (uint8_t)(ema >> BYTE_SHIFT);
+        taskEXIT_CRITICAL();
 
         obj_hist = ema;
         prev_obj_raw = obj_read_val;
@@ -385,8 +340,10 @@ void StartThermalSensorTask(void *argument) {
     // AMB Handling
     if(MLX90614_VerifyData(AMB_POLL_ADDR, (volatile uint8_t *)&amb_read_raw)) {
       //CRC Check Passed -- Proceed with Data Processing
+      taskENTER_CRITICAL();
       ir_read_can.amb_lsb = amb_read_raw.lsb;
       ir_read_can.amb_msb = amb_read_raw.msb;
+      taskEXIT_CRITICAL();
     }
     else {
       // crc check failed -- do nothing
