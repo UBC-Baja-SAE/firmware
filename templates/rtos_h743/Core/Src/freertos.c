@@ -222,9 +222,33 @@ void StartDefaultTask(void *argument)
 void CANTransmit(void *argument)
 {
   /* USER CODE BEGIN CANTransmit */
+  extern FDCAN_HandleTypeDef hfdcan1;
+
+  FDCAN_TxHeaderTypeDef TxHeader;
+  uint8_t TxData[8] = {0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE};
+
+  // Configure Header for Classic CAN
+  TxHeader.Identifier = 0x123;
+  TxHeader.IdType = FDCAN_STANDARD_ID;
+  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
+  TxHeader.DataLength = FDCAN_DLC_BYTES_8;
+  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+  TxHeader.MessageMarker = 0;
+
+  // IMPORTANT: The FDCAN peripheral must be started before transmitting.
+  // If you haven't called this in main.c, leave it here.
+  HAL_FDCAN_Start(&hfdcan1);
+
   /* Infinite loop */
   for(;;)
   {
+    // Push the dummy message into the FIFO
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
+
+    // Block task for 1000 ticks (~1 second)
     osDelay(1000);
   }
   /* USER CODE END CANTransmit */
@@ -243,7 +267,7 @@ void refreshDisplay(void *argument)
   // Init Display
   HAL_GPIO_WritePin(LCD_BLK_GPIO_Port, LCD_BLK_Pin, GPIO_PIN_RESET);
   ST7735_Init();
-  ST7735_FillScreen(ST7735_BLACK);
+  ST7735_FillScreen(ST7735_GREEN);
 
   /* Infinite loop */
   for(;;)
