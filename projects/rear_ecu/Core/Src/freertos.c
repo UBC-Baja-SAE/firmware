@@ -256,6 +256,7 @@ void StartCANFDTransmitTask(void *argument)
   txHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
   txHeader.MessageMarker = 0; // Used if you need to track this specific frame later
 
+
   /* Infinite loop */
   for(;;)
   {
