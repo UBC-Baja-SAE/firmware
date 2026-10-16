@@ -225,21 +225,35 @@ void CANTransmit(void *argument)
   extern FDCAN_HandleTypeDef hfdcan1;
 
   FDCAN_TxHeaderTypeDef TxHeader;
-  uint8_t TxData[8] = {0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE};
+  uint8_t TxData[64] = {0};
+  TxData[0] = 0xDE;
+  TxData[1] = 0xAD;
+  TxData[2] = 0xBE;
+  TxData[3] = 0xEF;
+  TxData[4] = 0xDE;
+  TxData[5] = 0xAD;
+  TxData[6] = 0xBE;
+  TxData[7] = 0xEF;
+  TxData[8] = 0xDE;
+  TxData[9] = 0xAD;
+  TxData[10] = 0xBE;
+  TxData[11] = 0xEF;
+  TxData[12] = 0xDE;
+  TxData[13] = 0xAD;
+  TxData[14] = 0xBE;
+  TxData[15] = 0xEF;
 
-  // Configure Header for Classic CAN
+  // Configure Header for FD CAN
   TxHeader.Identifier = 0x123;
   TxHeader.IdType = FDCAN_STANDARD_ID;
   TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-  TxHeader.DataLength = FDCAN_DLC_BYTES_8;
+  TxHeader.DataLength = FDCAN_DLC_BYTES_64;
   TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
   TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
-  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+  TxHeader.FDFormat = FDCAN_FD_CAN;
   TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
   TxHeader.MessageMarker = 0;
 
-  // IMPORTANT: The FDCAN peripheral must be started before transmitting.
-  // If you haven't called this in main.c, leave it here.
   HAL_FDCAN_Start(&hfdcan1);
 
   /* Infinite loop */
@@ -248,8 +262,8 @@ void CANTransmit(void *argument)
     // Push the dummy message into the FIFO
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
 
-    // Block task for 1000 ticks (~1 second)
-    osDelay(1000);
+    // Block task for 100 ticks (~.1 seconds)
+    osDelay(100);
   }
   /* USER CODE END CANTransmit */
 }
