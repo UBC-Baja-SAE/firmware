@@ -39,19 +39,37 @@ BU_: front_ecu central_ecu rear_ecu
 
 
 
+BO_ 512 rear_dyno: 3 rear_ecu
+ SG_ speedometer : 0|10@1+ (0.1,0) [0|100] "km/h" central_ecu
+ SG_ tachometer : 10|13@1+ (1,0) [0|8191] "rpm" central_ecu
 
+BO_ 513 rear_temp: 3 rear_ecu
+ SG_ obj_temp : 0|12@1+ (0.1,-40) [-40|300] "deg" central_ecu
+ SG_ amb_temp : 12|12@1+ (0.1,-40) [-40|100] "deg" central_ecu
 
-BO_ 512 rear_daq: 20 rear_ecu
+BO_ 514 rear_imu_l: 12 rear_ecu
  SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
  SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
  SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
  SG_ gyro_x : 48|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
  SG_ gyro_y : 64|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
  SG_ gyro_z : 80|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
- SG_ speedometer : 96|6@1+ (1,0) [0|63] "" central_ecu
- SG_ tachometer : 112|12@1+ (1,0) [0|4095] "rpm" central_ecu
- SG_ obj_temp : 128|16@1+ (0.02,-273.15) [-70|380] "degC" central_ecu
- SG_ amb_temp : 144|16@1+ (0.02,-273.15) [-70|380] "degC" central_ecu
+
+BO_ 515 rear_imu_r: 12 rear_ecu
+ SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ gyro_x : 48|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
+ SG_ gyro_y : 64|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
+ SG_ gyro_z : 80|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
+
+BO_ 516 rear_imu_c: 12 rear_ecu
+ SG_ accel_x : 0|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ accel_y : 16|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ accel_z : 32|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ gyro_x : 48|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
+ SG_ gyro_y : 64|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
+ SG_ gyro_z : 80|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
 
 BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","StandardCAN_FD","ExtendedCAN_FD";
 BA_DEF_  "DatabaseVersion" STRING ;
@@ -66,6 +84,10 @@ BA_DEF_DEF_  "DatabaseCompiler" "";
 BA_ "ProtocolType" "";
 BA_ "BusType" "CAN FD";
 BA_ "VFrameFormat" BO_ 512 14;
+BA_ "VFrameFormat" BO_ 513 14;
+BA_ "VFrameFormat" BO_ 514 14;
+BA_ "VFrameFormat" BO_ 515 14;
+BA_ "VFrameFormat" BO_ 516 14;
 BA_ "DatabaseCompiler" "UBC BAJA";
 BA_ "DatabaseVersion" "1.0.0";
 
