@@ -27,26 +27,25 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
-
-#include "roxy.h"
+#include <string.h>
+#include <stdbool.h>
+#include "FreeRTOSConfig.h"
 #include "SEGGER_RTT.h"
 #include "st7735.h"
-#include "FreeRTOSConfig.h"
+#include "roxy.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
-typedef StaticTask_t osStaticThreadDef_t;
-typedef StaticQueue_t osStaticMessageQDef_t;
-typedef StaticEventGroup_t osStaticEventGroupDef_t;
 /* USER CODE BEGIN PTD */
-
+typedef struct {
+  uint32_t id;
+  uint8_t  len;
+  uint8_t  data[64];
+} CanFrame_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define CAN_TRANSMIT_TICKS    100
-
-#define SETTLE_TICKS          200
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,26 +55,21 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+static osMessageQueueId_t CanTxQueueHandle;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for CANTransmitTask */
 osThreadId_t CANTransmitTaskHandle;
-uint32_t CANTransmitTaskBuffer[ 128 ];
-osStaticThreadDef_t CANTransmitTaskControlBlock;
 const osThreadAttr_t CANTransmitTask_attributes = {
   .name = "CANTransmitTask",
-  .cb_mem = &CANTransmitTaskControlBlock,
-  .cb_size = sizeof(CANTransmitTaskControlBlock),
-  .stack_mem = &CANTransmitTaskBuffer[0],
-  .stack_size = sizeof(CANTransmitTaskBuffer),
-  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for DisplayTask */
 osThreadId_t DisplayTaskHandle;
@@ -84,40 +78,16 @@ const osThreadAttr_t DisplayTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
-/* Definitions for FIFOCANTransmit */
-osMessageQueueId_t FIFOCANTransmitHandle;
-uint8_t FIFOCANTransmitBuffer[ 16 * sizeof( uint16_t ) ];
-osStaticMessageQDef_t FIFOCANTransmitControlBlock;
-const osMessageQueueAttr_t FIFOCANTransmit_attributes = {
-  .name = "FIFOCANTransmit",
-  .cb_mem = &FIFOCANTransmitControlBlock,
-  .cb_size = sizeof(FIFOCANTransmitControlBlock),
-  .mq_mem = &FIFOCANTransmitBuffer,
-  .mq_size = sizeof(FIFOCANTransmitBuffer)
-};
-/* Definitions for EnableCANTx */
-osTimerId_t EnableCANTxHandle;
-const osTimerAttr_t EnableCANTx_attributes = {
-  .name = "EnableCANTx"
-};
-/* Definitions for CANTxEvent */
-osEventFlagsId_t CANTxEventHandle;
-osStaticEventGroupDef_t EnableCANTxControlBlock;
-const osEventFlagsAttr_t CANTxEvent_attributes = {
-  .name = "CANTxEvent",
-  .cb_mem = &EnableCANTxControlBlock,
-  .cb_size = sizeof(EnableCANTxControlBlock),
-};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
+static uint32_t len_to_dlc(uint8_t n);
+static void CAN_Tx(uint32_t id, const uint8_t *data, uint8_t len);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
 void CANTransmit(void *argument);
-void refreshDisplay(void *argument);
-void EnableCANTxCallback(void *argument);
+void RefreshDisplay(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -142,21 +112,13 @@ void MX_FREERTOS_Init(void) {
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
-  /* Create the timer(s) */
-  /* creation of EnableCANTx */
-  EnableCANTxHandle = osTimerNew(EnableCANTxCallback, osTimerPeriodic, NULL, &EnableCANTx_attributes);
-
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
-  osTimerStart(EnableCANTxHandle, CAN_TRANSMIT_TICKS);
   /* USER CODE END RTOS_TIMERS */
-
-  /* Create the queue(s) */
-  /* creation of FIFOCANTransmit */
-  FIFOCANTransmitHandle = osMessageQueueNew (16, sizeof(uint16_t), &FIFOCANTransmit_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
+  CanTxQueueHandle = osMessageQueueNew(16, sizeof(CanFrame_t), NULL);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -167,15 +129,11 @@ void MX_FREERTOS_Init(void) {
   CANTransmitTaskHandle = osThreadNew(CANTransmit, NULL, &CANTransmitTask_attributes);
 
   /* creation of DisplayTask */
-  DisplayTaskHandle = osThreadNew(refreshDisplay, NULL, &DisplayTask_attributes);
+  DisplayTaskHandle = osThreadNew(RefreshDisplay, NULL, &DisplayTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
-
-  /* Create the event(s) */
-  /* creation of CANTxEvent */
-  CANTxEventHandle = osEventFlagsNew(&CANTxEvent_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
@@ -196,8 +154,6 @@ void StartDefaultTask(void *argument)
 
 
   // SystemView Start
-  osDelay(SETTLE_TICKS);
-
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; // Enable Trace
   DWT->CYCCNT = 0;                                // Reset Cycle Counter
   DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
@@ -223,61 +179,44 @@ void CANTransmit(void *argument)
 {
   /* USER CODE BEGIN CANTransmit */
   extern FDCAN_HandleTypeDef hfdcan1;
+  CanFrame_t f;
 
-  FDCAN_TxHeaderTypeDef TxHeader;
-  uint8_t TxData[64] = {0};
-  TxData[0] = 0xDE;
-  TxData[1] = 0xAD;
-  TxData[2] = 0xBE;
-  TxData[3] = 0xEF;
-  TxData[4] = 0xDE;
-  TxData[5] = 0xAD;
-  TxData[6] = 0xBE;
-  TxData[7] = 0xEF;
-  TxData[8] = 0xDE;
-  TxData[9] = 0xAD;
-  TxData[10] = 0xBE;
-  TxData[11] = 0xEF;
-  TxData[12] = 0xDE;
-  TxData[13] = 0xAD;
-  TxData[14] = 0xBE;
-  TxData[15] = 0xEF;
-
-  // Configure Header for FD CAN
-  TxHeader.Identifier = 0x123;
-  TxHeader.IdType = FDCAN_STANDARD_ID;
-  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-  TxHeader.DataLength = FDCAN_DLC_BYTES_64;
-  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
-  TxHeader.FDFormat = FDCAN_FD_CAN;
-  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-  TxHeader.MessageMarker = 0;
+  FDCAN_TxHeaderTypeDef hdr = {
+    .IdType              = FDCAN_STANDARD_ID,
+    .TxFrameType         = FDCAN_DATA_FRAME,
+    .ErrorStateIndicator = FDCAN_ESI_ACTIVE,
+    .BitRateSwitch       = FDCAN_BRS_OFF,
+    .FDFormat            = FDCAN_FD_CAN,
+    .TxEventFifoControl  = FDCAN_NO_TX_EVENTS,
+    .MessageMarker       = 0
+  };
 
   HAL_FDCAN_Start(&hfdcan1);
 
-  /* Infinite loop */
-  for(;;)
+  for (;;)
   {
-    // Push the dummy message into the FIFO
-    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
+    if (osMessageQueueGet(CanTxQueueHandle, &f, NULL, osWaitForever) == osOK) {
+      hdr.Identifier = f.id;
+      hdr.DataLength = len_to_dlc(f.len);
 
-    // Block task for 100 ticks (~.1 seconds)
-    osDelay(100);
+      while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0) osDelay(1);
+
+      HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &hdr, f.data);
+    }
   }
   /* USER CODE END CANTransmit */
 }
 
-/* USER CODE BEGIN Header_refreshDisplay */
+/* USER CODE BEGIN Header_RefreshDisplay */
 /**
 * @brief Function implementing the DisplayTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_refreshDisplay */
-void refreshDisplay(void *argument)
+/* USER CODE END Header_RefreshDisplay */
+void RefreshDisplay(void *argument)
 {
-  /* USER CODE BEGIN refreshDisplay */
+  /* USER CODE BEGIN RefreshDisplay */
   // Init Display
   HAL_GPIO_WritePin(LCD_BLK_GPIO_Port, LCD_BLK_Pin, GPIO_PIN_RESET);
   ST7735_Init();
@@ -289,19 +228,33 @@ void refreshDisplay(void *argument)
     // Sleep to yield CPU
     osDelay(100);
   }
-  /* USER CODE END refreshDisplay */
-}
-
-/* EnableCANTxCallback function */
-void EnableCANTxCallback(void *argument)
-{
-  /* USER CODE BEGIN EnableCANTxCallback */
-  
-  /* USER CODE END EnableCANTxCallback */
+  /* USER CODE END RefreshDisplay */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
+// Dynamically converts message lengths to CAN frame formats
+static uint32_t len_to_dlc(uint8_t n)
+{
+  if (n <= 8)  return ((uint32_t)n << 16);
+  if (n <= 12) return FDCAN_DLC_BYTES_12;
+  if (n <= 16) return FDCAN_DLC_BYTES_16;
+  if (n <= 20) return FDCAN_DLC_BYTES_20;
+  if (n <= 24) return FDCAN_DLC_BYTES_24;
+  if (n <= 32) return FDCAN_DLC_BYTES_32;
+  if (n <= 48) return FDCAN_DLC_BYTES_48;
+  return FDCAN_DLC_BYTES_64;
+}
+
+// Adds message to FreeRTOS Queue
+static void CAN_Tx(uint32_t id, const uint8_t *data, uint8_t len)
+{
+  if (len > 64) len = 64;
+  CanFrame_t f = { .id = id, .len = len };
+  memcpy(f.data, data, len);
+
+  (void)osMessageQueuePut(CanTxQueueHandle, &f, 0, 0);
+}
 /* USER CODE END Application */
 
