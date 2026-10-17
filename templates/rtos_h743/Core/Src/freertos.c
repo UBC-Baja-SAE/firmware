@@ -78,6 +78,13 @@ const osThreadAttr_t DisplayTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
+/* Definitions for exampleTask */
+osThreadId_t exampleTaskHandle;
+const osThreadAttr_t exampleTask_attributes = {
+  .name = "exampleTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -88,6 +95,7 @@ static void CAN_Tx(uint32_t id, const uint8_t *data, uint8_t len);
 void StartDefaultTask(void *argument);
 void CANTransmit(void *argument);
 void RefreshDisplay(void *argument);
+void exampleRead(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -130,6 +138,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of DisplayTask */
   DisplayTaskHandle = osThreadNew(RefreshDisplay, NULL, &DisplayTask_attributes);
+
+  /* creation of exampleTask */
+  exampleTaskHandle = osThreadNew(exampleRead, NULL, &exampleTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -201,6 +212,8 @@ void CANTransmit(void *argument)
 
       while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) == 0) osDelay(1);
 
+      // TODO: Handle bus-off recovery, (enable auto retransmission once complete) and add fdcan fifo queue timeouts incase queue is full
+
       HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &hdr, f.data);
     }
   }
@@ -229,6 +242,30 @@ void RefreshDisplay(void *argument)
     osDelay(100);
   }
   /* USER CODE END RefreshDisplay */
+}
+
+/* USER CODE BEGIN Header_exampleRead */
+/**
+* @brief Function implementing the exampleTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_exampleRead */
+void exampleRead(void *argument)
+{
+  /* USER CODE BEGIN exampleRead */
+
+  // DEADBEEF hextype sample message
+  uint8_t test_12[12] = {0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF};
+
+  /* Infinite loop */
+  for(;;)
+  {
+    // Transmits every second
+    CAN_Tx(0x001, test_12, 12);
+    osDelay(1000);
+  }
+  /* USER CODE END exampleRead */
 }
 
 /* Private application code --------------------------------------------------*/
