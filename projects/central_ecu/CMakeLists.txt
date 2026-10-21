@@ -3,23 +3,14 @@ project(central_ecu LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 
-find_package(Eigen3 REQUIRED NO_MODULE)
-find_package(Chrono REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
-# Allow Debug builds to link against a Release-only Chrono library
-if(CHRONO_TARGETS)
-    set_target_properties(${CHRONO_TARGETS} PROPERTIES MAP_IMPORTED_CONFIG_DEBUG Release)
-endif()
-
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
 )
-
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
 qt_add_qml_module(${PROJECT_NAME}
         URI app
@@ -28,8 +19,30 @@ qt_add_qml_module(${PROJECT_NAME}
         src/ui/main.qml
 )
 
+file(GLOB_RECURSE ASSETS
+        CONFIGURE_DEPENDS
+        "src/assets/*"
+)
+
+qt_add_resources(${PROJECT_NAME} "assets"
+        PREFIX "/"
+        BASE "src/assets"
+        FILES
+        ${ASSETS}
+)
+
+
+include(cmake/Foxglove.cmake)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "LINUX")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE LINUX)
+elseif(APPLE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE APPLE)
+elseif(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WIN32)
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        ${CHRONO_TARGETS}
-        Eigen3::Eigen
         Qt6::Quick
+        Foxglove
 )

@@ -1,14 +1,13 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <chrono/physics/ChSystemNSC.h>
-#include <iostream>
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
 
     QQmlApplicationEngine engine;
 
-    const QUrl url(u"qrc:/qt/qml/app/src/ui/main.qml"_qs);
+    using namespace Qt::StringLiterals;
+    const QUrl url(u"qrc:/qt/qml/app/src/ui/main.qml"_s);
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
         &app, []() { QCoreApplication::exit(-1); },
