@@ -2,8 +2,6 @@ import QtQuick
 import QtQuick.Window
 
 Window {
-    width: 200
-    height: 200
     visible: true
     title: "central_ecu"
 
@@ -13,8 +11,7 @@ Window {
 
         anchors.centerIn: parent
         fillMode: Image.PreserveAspectFit
-        width: 200
-        height: 200
+        width: 400
+        height: 400
     }
-
 }

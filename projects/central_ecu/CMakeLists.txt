@@ -5,7 +5,7 @@ set(CMAKE_AUTOMOC ON)
 
 include(cmake/Foxglove.cmake)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick SerialBus)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -13,6 +13,9 @@ qt_policy(SET QTP0004 NEW)
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
 )
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config")
 
 qt_add_qml_module(${PROJECT_NAME}
         URI app
@@ -35,5 +38,6 @@ qt_add_resources(${PROJECT_NAME} "assets"
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Quick
+        Qt6::SerialBus
         Foxglove
 )
