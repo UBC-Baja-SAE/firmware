@@ -12,6 +12,14 @@ qt_policy(SET QTP0004 NEW)
 
 qt_add_executable(${PROJECT_NAME}
         src/main.cpp
+        src/core/cansocket.cpp
+        src/core/cansocket.h
+        src/core/dbcparser.cpp
+        src/core/dbcparser.h
+        src/core/foxglove.cpp
+        src/core/foxglove.h
+        src/core/guibridge.cpp
+        src/core/guibridge.h
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -34,6 +42,15 @@ qt_add_resources(${PROJECT_NAME} "assets"
         BASE "src/assets"
         FILES
         ${ASSETS}
+)
+
+get_filename_component(DBC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../lib/dbc" ABSOLUTE)
+
+qt_add_resources(${PROJECT_NAME} "dbc"
+        PREFIX "/"
+        BASE "${DBC_DIR}"
+        FILES
+        "${DBC_DIR}/roxy.dbc"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

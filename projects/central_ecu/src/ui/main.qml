@@ -2,16 +2,15 @@ import QtQuick
 import QtQuick.Window
 
 Window {
+    id: root
     visible: true
     title: "central_ecu"
 
-    Image {
-        id: myImage
-        source: "qrc:/images/ryan.jpeg"
+    property real speed: guiBridge.values.speedometer ?? 0
 
+    Text {
+        id: text
+        text: Math.round(root.speed) + " km/h"
         anchors.centerIn: parent
-        fillMode: Image.PreserveAspectFit
-        width: 400
-        height: 400
     }
 }
