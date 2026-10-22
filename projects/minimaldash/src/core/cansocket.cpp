@@ -23,9 +23,7 @@ bool CanSocket::connectDevice()
         qWarning() << "createDevice failed:" << errorMsg;
         return false;
     }
-
-    m_device->setConfigurationParameter(QCanBusDevice::CanFdKey, true);
-
+    
     connect(m_device, &QCanBusDevice::framesReceived, this, &CanSocket::onFramesReceived);
 
     if (!m_device->connectDevice()) {
