@@ -43,21 +43,21 @@ BO_ 513 rear_slow: 3 rear_ecu
  SG_ amb_temp : 12|12@1+ (0.1,-40) [-40|100] "deg" central_ecu
 
 BO_ 514 rear_fast: 48 rear_ecu
- SG_ accel_x_l : 0|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
- SG_ accel_y_l : 16|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
- SG_ accel_z_l : 32|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ accel_x_l : 0|16@1- (0.001,0) [-8|8] "g" central_ecu
+ SG_ accel_y_l : 16|16@1- (0.001,0) [-8|8] "g" central_ecu
+ SG_ accel_z_l : 32|16@1- (0.001,0) [-8|8] "g" central_ecu
  SG_ gyro_x_l : 48|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
  SG_ gyro_y_l : 64|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
  SG_ gyro_z_l : 80|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
- SG_ accel_x_r : 96|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
- SG_ accel_y_r : 112|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
- SG_ accel_z_r : 128|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ accel_x_r : 96|16@1- (0.001,0) [-8|8] "g" central_ecu
+ SG_ accel_y_r : 112|16@1- (0.001,0) [-8|8] "g" central_ecu
+ SG_ accel_z_r : 128|16@1- (0.001,0) [-8|8] "g" central_ecu
  SG_ gyro_x_r : 144|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
  SG_ gyro_y_r : 160|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
  SG_ gyro_z_r : 176|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
- SG_ accel_x_c : 192|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
- SG_ accel_y_c : 208|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
- SG_ accel_z_c : 224|16@1- (0.000244140625,0) [-8|8] "g" central_ecu
+ SG_ accel_x_c : 192|16@1- (0.001,0) [-8|8] "g" central_ecu
+ SG_ accel_y_c : 208|16@1- (0.001,0) [-8|8] "g" central_ecu
+ SG_ accel_z_c : 224|16@1- (0.001,0) [-8|8] "g" central_ecu
  SG_ gyro_x_c : 240|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
  SG_ gyro_y_c : 256|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
  SG_ gyro_z_c : 272|16@1- (0.061,0) [-1998|1998] "dps" central_ecu
