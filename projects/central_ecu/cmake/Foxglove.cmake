@@ -26,7 +26,7 @@ FetchContent_Declare(
         URL ${FOXGLOVE_URL}
         PATCH_COMMAND ${CMAKE_COMMAND}
         -D FILE=include/foxglove/parameter.hpp
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_foxglove_parameter.cmake"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FoxglovePatch.cmake"
 )
 
 FetchContent_MakeAvailable(foxglove_sdk)
