@@ -195,6 +195,8 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
 
 
+  // Hello
+
   // SystemView Start
   osDelay(SETTLE_TICKS);
 
