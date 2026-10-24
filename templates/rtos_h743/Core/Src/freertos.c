@@ -212,6 +212,8 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
+//hello - kenneth
+
 /* USER CODE BEGIN Header_CANTransmit */
 /**
 * @brief Function implementing the CANTransmitTask thread.
