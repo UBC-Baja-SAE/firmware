@@ -1,16 +1,30 @@
 import QtQuick
-import QtQuick.Window
 
 Window {
-    id: root
+    width: 400
+    height: 240
     visible: true
-    title: "central_ecu"
 
-    property real speed: guiBridge.values.speedometer ?? 0
+    FontLoader {
+        id: suse
+        source: "qrc:/fonts/CommitMono-Regular.otf"
+    }
 
-    Text {
-        id: text
-        text: Math.round(root.speed) + " km/h"
-        anchors.centerIn: parent
+    Item {
+        anchors.fill: parent
+        focus: true
+
+        Keys.onEscapePressed: {
+            console.log("Shutting down")
+            Qt.quit()
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: "UBC Baja"
+            color: "black"
+            font.pixelSize: 48
+            font.family: suse.name
+        }
     }
 }
