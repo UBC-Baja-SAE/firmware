@@ -25,11 +25,18 @@ qt_add_executable(${PROJECT_NAME}
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config")
 
+set_source_files_properties(src/ui/AppState.qml
+        PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
 qt_add_qml_module(${PROJECT_NAME}
         URI app
         VERSION 1.0
         QML_FILES
-        src/ui/main.qml
+        src/main.qml
+        src/ui/AppState.qml
+        src/ui/Panel.qml
+        src/ui/GPS.qml
+        src/ui/Data.qml
 )
 
 file(GLOB_RECURSE ASSETS
@@ -57,5 +64,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Quick
         Qt6::SerialBus
         Foxglove
-        ntdll
 )

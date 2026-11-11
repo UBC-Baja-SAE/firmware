@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 
     canThread.start();
 
-    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/app/src/ui/main.qml")));
+    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/app/src/main.qml")));
     if (engine.rootObjects().isEmpty()) {
         canThread.quit();
         canThread.wait();
