@@ -28,10 +28,13 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
+
 #include "FreeRTOSConfig.h"
 #include "SEGGER_RTT.h"
 #include "st7735.h"
 #include "roxy.h"
+#include "tim.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -41,6 +44,16 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 _Static_assert(configTICK_RATE_HZ == 1000, "CAN scheduler assumes a 1 kHz tick");
+
+#define SPEED_PULSES_PER_REV 1u
+#define SPEED_WHEEL_CIRCUMFERENCE 1.963f // in meters
+#define SPEED_TIMEOUT 2000u // in milliseconds
+#define SPEED_SMOOTHING  300.0f
+
+#define TACH_PULSES_PER_REV  1.0f
+#define TACH_TIMEOUT         1000u     // in milliseconds
+#define TACH_SMOOTHING       150.0f
+#define TACH_MAX_RPM         20000.0f
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,6 +77,9 @@ static FDCAN_TxHeaderTypeDef g_txHdr = {
   .TxEventFifoControl  = FDCAN_NO_TX_EVENTS,
   .MessageMarker       = 0
 };
+
+volatile float speed;
+volatile float rpm;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -128,6 +144,8 @@ void Roxy_UpdateFast(const struct roxy_rear_fast_t *s);
 void Roxy_UpdateSlow(const struct roxy_rear_slow_t *s);
 void Roxy_SetSpeedometer(uint16_t raw);
 void Roxy_SetTachometer(uint16_t raw);
+
+static float smooth(float current, float target, float dt_ms, float tau_ms);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -285,12 +303,16 @@ void RefreshDisplay(void *argument)
   // Init Display
   HAL_GPIO_WritePin(LCD_BLK_GPIO_Port, LCD_BLK_Pin, GPIO_PIN_RESET);
   ST7735_Init();
-  ST7735_FillScreen(ST7735_GREEN);
+  ST7735_FillScreen(ST7735_BLACK);
 
+  char buf[16];
   /* Infinite loop */
   for(;;)
   {
-    // Sleep to yield CPU
+    snprintf(buf, sizeof buf, "%4u km/h", (unsigned)(speed + 0.5f));
+    ST7735_WriteString(8, 8, buf, Font_16x26, ST7735_WHITE, ST7735_BLACK);
+    snprintf(buf, sizeof buf, "%4u rpm", (unsigned)(rpm + 0.5f));
+    ST7735_WriteString(8, 42, buf, Font_16x26, ST7735_WHITE, ST7735_BLACK);
     osDelay(100);
   }
   /* USER CODE END RefreshDisplay */
@@ -335,13 +357,45 @@ void IMURead(void *argument)
 void SpeedometerRead(void *argument)
 {
   /* USER CODE BEGIN SpeedometerRead */
-  uint32_t tick = osKernelGetTickCount();
+  HAL_TIM_Base_Start(&htim5);
+
+  uint32_t last_count = __HAL_TIM_GET_COUNTER(&htim5);
+  uint32_t last_ms    = osKernelGetTickCount();
+  float   kph      = 0.0f;
+  float   smoothed = 0.0f;
+  float   out      = 0.0f;
+  uint8_t have_ref = 0;
+  uint32_t prev_ms = osKernelGetTickCount();
+
   for (;;)
   {
-    tick += 10;
-    osDelayUntil(tick);
-    float kph = 20.0f + 15.0f * wave((float)tick * 0.001f, 0.1f, 0.0f);
-    Roxy_SetSpeedometer(roxy_rear_medium_speedometer_encode(kph));
+    osDelay(1);
+
+    uint32_t now = osKernelGetTickCount();
+    uint32_t count = __HAL_TIM_GET_COUNTER(&htim5);
+    uint32_t change   = count - last_count;
+
+    if (change) {
+      if (have_ref) {
+        float hz = (float)change * 1000.0f / (float)(now - last_ms);
+        smoothed = hz * 0.2f + smoothed * 0.8f;
+        kph = smoothed / SPEED_PULSES_PER_REV * SPEED_WHEEL_CIRCUMFERENCE * 3.6f;
+        if (kph > 150.0f) kph = 150.0f;
+      }
+      have_ref   = 1;
+      last_count = count;
+      last_ms    = now;
+    } else if (now - last_ms > SPEED_TIMEOUT) {
+      kph = 0.0f;
+      smoothed = 0.0f;
+      have_ref = 0;
+    }
+
+    out = smooth(out, kph, (float)(now - prev_ms), SPEED_SMOOTHING);
+    prev_ms = now;
+
+    speed = out;
+    Roxy_SetSpeedometer(roxy_rear_medium_speedometer_encode(out));
   }
   /* USER CODE END SpeedometerRead */
 }
@@ -356,13 +410,45 @@ void SpeedometerRead(void *argument)
 void TachometerRead(void *argument)
 {
   /* USER CODE BEGIN TachometerRead */
-  uint32_t tick = osKernelGetTickCount();
+  HAL_TIM_Base_Start(&htim2);
+
+  uint32_t last_count = __HAL_TIM_GET_COUNTER(&htim2);
+  uint32_t last_ms    = osKernelGetTickCount();
+  float    target     = 0.0f;
+  float    smoothed   = 0.0f;
+  float    out        = 0.0f;
+  uint8_t  have_ref   = 0;
+  uint32_t prev_ms    = osKernelGetTickCount();
+
   for (;;)
   {
-    tick += 10;
-    osDelayUntil(tick);
-    float rpm = 2000.0f + 2000.0f * wave((float)tick * 0.001f, 0.2f, 0.0f);
-    Roxy_SetTachometer(roxy_rear_medium_tachometer_encode(rpm));
+    osDelay(1);
+
+    uint32_t now = osKernelGetTickCount();
+    uint32_t count = __HAL_TIM_GET_COUNTER(&htim2);
+    uint32_t change   = count - last_count;
+
+    if (change) {
+      if (have_ref) {
+        float hz = (float)change * 1000.0f / (float)(now - last_ms);
+        smoothed = hz * 0.2f + smoothed * 0.8f;
+        target   = smoothed * 60.0f / TACH_PULSES_PER_REV;
+        if (target > TACH_MAX_RPM) target = TACH_MAX_RPM;
+      }
+      have_ref   = 1;
+      last_count = count;
+      last_ms    = now;
+    } else if (now - last_ms > TACH_TIMEOUT) {
+      target   = 0.0f;
+      smoothed = 0.0f;
+      have_ref = 0;
+    }
+
+    out = smooth(out, target, (float)(now - prev_ms), TACH_SMOOTHING);
+    prev_ms = now;
+
+    rpm = out;
+    Roxy_SetTachometer(roxy_rear_medium_tachometer_encode(out));
   }
   /* USER CODE END TachometerRead */
 }
@@ -435,6 +521,12 @@ static uint32_t len_to_dlc(uint8_t n)
   if (n <= 32) return FDCAN_DLC_BYTES_32;
   if (n <= 48) return FDCAN_DLC_BYTES_48;
   return FDCAN_DLC_BYTES_64;
+}
+
+static float smooth(float current, float target, float dt_ms, float tau_ms)
+{
+  float alpha = 1.0f - expf(-dt_ms / tau_ms);
+  return current + alpha * (target - current);
 }
 
 // Fake Data examples

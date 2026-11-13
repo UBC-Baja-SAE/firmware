@@ -154,23 +154,24 @@ extern SPI_HandleTypeDef ST7735_SPI_PORT;
 */
 
 // mini 160x80, rotate left
-/*
+
 #define ST7735_IS_160X80 1
 #define ST7735_XSTART 1
 #define ST7735_YSTART 26
 #define ST7735_WIDTH  160
 #define ST7735_HEIGHT 80
 #define ST7735_ROTATION (ST7735_MADCTL_MX | ST7735_MADCTL_MV | ST7735_MADCTL_BGR)
-*/
+
 
 // mini 160x80, rotate right
+/*
 #define ST7735_IS_160X80 1
 #define ST7735_XSTART 1
 #define ST7735_YSTART 26
 #define ST7735_WIDTH  160
 #define ST7735_HEIGHT 80
 #define ST7735_ROTATION (ST7735_MADCTL_MY | ST7735_MADCTL_MV | ST7735_MADCTL_BGR)
-
+*/
 
 /****************************/
 
