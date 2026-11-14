@@ -44,18 +44,36 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define CAN_TRANSMIT_TICKS    100
 
-#define SETTLE_TICKS          200
+#define WHEEL_DIAMETER 0.55f
+#define SPEED_SAMPLE_MS 1000U
+#define SPEED_POLL_MS 1U
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
+volatile uint32_t pulseCountA4 = 0;
+volatile uint32_t pulseCountA5 = 0;
+
+volatile float speedA4 = 0.0f;
+volatile float speedA5 = 0.0f;
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+
+osThreadId_t speedometerTaskHandle;
+
+const osThreadAttr_t speedometerTask_attributes = {
+
+  .name = "speedometerTask",
+  .stack_size = 1024 * 4,
+  .priority = osPriorityNormal
+
+}
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -111,6 +129,8 @@ const osEventFlagsAttr_t CANTxEvent_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
+
+void speedometerTask(void *argument);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -170,7 +190,14 @@ void MX_FREERTOS_Init(void) {
   DisplayTaskHandle = osThreadNew(refreshDisplay, NULL, &DisplayTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+
+  speedometerTaskHandle = osThreadNew(
+
+  speedometerTask, NULL, &speedometerTask_attributes
+
+  );
+
+
   /* USER CODE END RTOS_THREADS */
 
   /* Create the event(s) */
@@ -264,6 +291,79 @@ void EnableCANTxCallback(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+
+void speedometerTask(void *argument) {
+
+  GPIO_PinState previousA4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+
+  GPIO_PinState previousA5 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+
+  uint32_t revolutionsA4 = 0;
+  uint32_t revolutionsA5 = 0;
+
+  const uint32_t tickFreq = osKernelGetTickFreq();
+  const uint32_t sampleTicks = (SPEED_SAMPLE_MS * tickFreq + 999U) / 1000U;
+
+  const uint32_t pollTicks = (SPEED_POLL_MS * tickFreq + 999U) / 1000U;
+
+  uint32_t lastSample = osKernelGetTickCount();
+
+  for (;;) {
+
+    GPIO_PinState currentA4 =
+        HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+
+    GPIO_PinState currentA5 =
+        HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+
+    if (previousA4 == GPIO_PIN_RESET &&
+        currentA4 == GPIO_PIN_SET)
+    {
+      revolutionsA4++;
+      pulseCountA4++;
+    }
+
+
+    if (previousA5 == GPIO_PIN_RESET &&
+        currentA5 == GPIO_PIN_SET)
+    {
+      revolutionsA5++;
+      pulseCountA5++;
+    }
+
+    previousA4 = currentA4;
+    previousA5 = currentA5;
+
+    //check elapsed time
+
+    uint32_t ticks = osKernelGetTickCount();
+    uint32_t elapsedTicks = ticks - lastSample;
+
+    if (elapsedTicks >= sampleTicks) {
+
+      float elapsedSeconds = (float) elapsedTicks / (float) tickFreq;
+
+      //convert revs to km/h
+
+      speedA4 = (revolutionsA4 * 3.14159f * WHEEL_DIAMETER / (float) 5 * elapsedSeconds) * 3.6f;
+
+      speedA5 = (revolutionsA5 * 3.14159f * WHEEL_DIAMETER / (float) 5 * elapsedSeconds) * 3.6f;
+
+      //reset counters
+
+      revolutionsA4 = 0;
+      revolutionsA5 = 0;
+
+      lastSample = ticks;
+
+    }
+
+    // Allow other FreeRTOS tasks to run
+    osDelay(pollTicks > 0U ? pollTicks : 1U);
+
+  }
+
+}
 
 /* USER CODE END Application */
 

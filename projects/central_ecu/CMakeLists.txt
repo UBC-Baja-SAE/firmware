@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
+
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
 project(central_ecu LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
