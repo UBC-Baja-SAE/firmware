@@ -21,6 +21,9 @@ public:
 
     void startServer(uint16_t port = 8765);
 
+    signals:
+        void loggingChanged(bool active);
+
 public slots:
     void registerTopic(QtCanBus::UniqueId id, const QString &name, const QByteArray &schemaJson);
     void publishSignals(QtCanBus::UniqueId id, const QVariantMap &signalsMap, quint64 timestampNs);

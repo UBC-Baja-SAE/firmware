@@ -5,7 +5,7 @@ set(CMAKE_AUTOMOC ON)
 
 include(cmake/Foxglove.cmake)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick SerialBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick SerialBus Network)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -63,5 +63,6 @@ qt_add_resources(${PROJECT_NAME} "dbc"
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Quick
         Qt6::SerialBus
+        Qt6::Network
         Foxglove
 )

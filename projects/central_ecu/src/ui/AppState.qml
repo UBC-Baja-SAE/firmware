@@ -18,6 +18,11 @@ QtObject {
     property string battText: "12.2V"
     property string ipText: "127.0.0.1"
 
+
+    // timer setup
+    property double recStart: 0
+    onRecordingChanged: if (recording) { recStart = Date.now(); elapsedSeconds = 0 }
+
     // temp gps
     property var path: []
     property int pathTick: 0
@@ -29,11 +34,12 @@ QtObject {
     }
 
     property Timer elapsedTimer: Timer {
-        interval: 1000
+        interval: 500
         running: recording
         repeat: true
-        onTriggered: elapsedSeconds++
+        onTriggered: elapsedSeconds = Math.floor((Date.now() - recStart) / 1000)
     }
+
 
     // fake gps
     property Timer gpsTimer: Timer {

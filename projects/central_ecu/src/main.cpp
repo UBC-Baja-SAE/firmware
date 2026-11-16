@@ -38,6 +38,8 @@ int main(int argc, char *argv[])
                      foxgloveSink, &FoxgloveSink::publishSignals);
     QObject::connect(dbcParser, &DbcParser::messageDecoded,
                      guiBridge, &GuiBridge::onDecoded);
+    QObject::connect(foxgloveSink, &FoxgloveSink::loggingChanged,
+                 guiBridge,    &GuiBridge::setRecording);
 
     QObject::connect(&canThread, &QThread::started, foxgloveSink,
                      [foxgloveSink, dbcParser, canSocket]() {

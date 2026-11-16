@@ -94,9 +94,11 @@ void FoxgloveSink::setMcapLogging(bool enable, const QString &logDir)
         if (res.has_value()) {
             m_writer = std::make_unique<foxglove::McapWriter>(std::move(res.value()));
             qInfo() << "MCAP logging started:" << path;
+            emit loggingChanged(true);
         }
     } else if (!enable && m_writer) {
         m_writer.reset();
         qInfo() << "MCAP logging stopped.";
+        emit loggingChanged(false);
     }
 }
