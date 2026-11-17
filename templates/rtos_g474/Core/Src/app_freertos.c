@@ -243,7 +243,8 @@ void EnableCANTxCallback(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-void SystemViewWait() {
+void SystemViewWait()
+{
   osKernelLock();
   while (!SEGGER_RTT_HasData(1)) {}
   SEGGER_RTT_WriteNoLock(1, "SEGGER SystemView V3.52a\0\0\0\0\0\0\0", 32);
