@@ -103,13 +103,7 @@ static uint32_t len_to_dlc(uint8_t n);
 
 void Roxy_UpdateFast(const struct roxy_rear_fast_t *s);
 void Roxy_UpdateSlow(const struct roxy_rear_slow_t *s);
-void Roxy_SetSpeedometer(uint16_t raw);
-void Roxy_SetTachometer(uint16_t raw);
 
-static float    wave(float t, float hz, float phase);
-static void     fake_imu(int16_t *ax, int16_t *ay, int16_t *az,
-                         int16_t *gx, int16_t *gy, int16_t *gz,
-                         float t, float phase, int imu_select);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -126,8 +120,8 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; // Enable Trace
-  DWT->CYCCNT = 0;                                // Reset Cycle Counter
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0;
   DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
   // SystemView Init
@@ -183,46 +177,14 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
 
-  // SystemView Start TODO: (Comment this out if not using SystemView)
+  // SystemView TODO: (Comment this out if not using SystemView)
   SystemViewWait();
-
-  struct roxy_rear_fast_t fast_s = {0};
-  struct roxy_rear_slow_t slow_s = {0};
-  uint32_t tick = osKernelGetTickCount();
-  uint32_t step = 0;
 
   /* Infinite loop */
   for(;;)
   {
-    tick += 10; // Run fake data generator at 100 Hz (every 10 ms)
-    osDelayUntil(tick);
-
-    float t = (float)tick * 0.001f;
-
-    // 1. Fake IMU Data (Fast Frame)
-    fake_imu(&fast_s.accel_x_l, &fast_s.accel_y_l, &fast_s.accel_z_l,
-             &fast_s.gyro_x_l,  &fast_s.gyro_y_l,  &fast_s.gyro_z_l, t, 0.0f, 0);
-    fake_imu(&fast_s.accel_x_r, &fast_s.accel_y_r, &fast_s.accel_z_r,
-             &fast_s.gyro_x_r,  &fast_s.gyro_y_r,  &fast_s.gyro_z_r, t, 1.0f, 1);
-    fake_imu(&fast_s.accel_x_c, &fast_s.accel_y_c, &fast_s.accel_z_c,
-             &fast_s.gyro_x_c,  &fast_s.gyro_y_c,  &fast_s.gyro_z_c, t, 2.0f, 2);
-    Roxy_UpdateFast(&fast_s);
-
-    // 2. Fake Speed (0-60 km/h) & Tach (1500-4500 RPM) (Medium Frame)
-    float fake_kph = 30.0f + 30.0f * wave(t, 0.1f, 0.0f);
-    float fake_rpm = 3000.0f + 1500.0f * wave(t, 0.2f, 0.5f);
-    Roxy_SetSpeedometer(roxy_rear_medium_speedometer_encode(fake_kph));
-    Roxy_SetTachometer(roxy_rear_medium_tachometer_encode(fake_rpm));
-
-    // 3. Fake Temperatures (Slow Frame) + 1 Hz LED blink every 1000 ms
-    if (++step >= 100) {
-      step = 0;
-      HAL_GPIO_TogglePin(GPIOC, LED_Pin);
-
-      slow_s.obj_temp = roxy_rear_slow_obj_temp_encode(70.0f + 50.0f * wave(t, 0.05f, 0.0f));
-      slow_s.amb_temp = roxy_rear_slow_amb_temp_encode(30.0f + 10.0f * wave(t, 0.03f, 0.0f));
-      Roxy_UpdateSlow(&slow_s);
-    }
+    HAL_GPIO_TogglePin(GPIOC, LED_Pin);
+    osDelay(1000);
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -288,7 +250,6 @@ void SystemViewWait() {
   for (uint8_t b = 0; SEGGER_RTT_ReadNoLock(1, &b, 1) != 1U || b != 1U;) {}
   SEGGER_SYSVIEW_Start();
   osKernelUnlock();
-
 }
 
 static void Roxy_Copy(void *dst, const void *src, size_t n)
@@ -299,12 +260,6 @@ void Roxy_UpdateFast(const struct roxy_rear_fast_t *s)
 
 void Roxy_UpdateSlow(const struct roxy_rear_slow_t *s)
 { Roxy_Copy(&g_slow, s, sizeof g_slow); }
-
-void Roxy_SetSpeedometer(uint16_t raw)
-{ taskENTER_CRITICAL(); g_medium.speedometer = raw; taskEXIT_CRITICAL(); }
-
-void Roxy_SetTachometer(uint16_t raw)
-{ taskENTER_CRITICAL(); g_medium.tachometer = raw; taskEXIT_CRITICAL(); }
 
 static void CAN_Tx(uint32_t id, const uint8_t *buf, int len, int idx)
 {
@@ -333,39 +288,6 @@ static uint32_t len_to_dlc(uint8_t n)
   if (n <= 32) return FDCAN_DLC_BYTES_32;
   if (n <= 48) return FDCAN_DLC_BYTES_48;
   return FDCAN_DLC_BYTES_64;
-}
-
-static float wave(float t, float hz, float phase)
-{
-  return sinf(6.2831853f * hz * t + phase);
-}
-
-static void fake_imu(int16_t *ax, int16_t *ay, int16_t *az,
-                     int16_t *gx, int16_t *gy, int16_t *gz,
-                     float t, float phase, int imu_select)
-{
-  if (imu_select == 0) {
-    *ax = roxy_rear_fast_accel_x_l_encode(0.5f * wave(t, 1.0f, phase));
-    *ay = roxy_rear_fast_accel_y_l_encode(0.5f * wave(t, 1.5f, phase));
-    *az = roxy_rear_fast_accel_z_l_encode(1.0f + 0.2f * wave(t, 2.0f, phase));
-    *gx = roxy_rear_fast_gyro_x_l_encode(100.0f * wave(t, 0.5f, phase));
-    *gy = roxy_rear_fast_gyro_y_l_encode(100.0f * wave(t, 0.7f, phase));
-    *gz = roxy_rear_fast_gyro_z_l_encode(100.0f * wave(t, 0.9f, phase));
-  } else if (imu_select == 1) {
-    *ax = roxy_rear_fast_accel_x_r_encode(0.5f * wave(t, 1.0f, phase));
-    *ay = roxy_rear_fast_accel_y_r_encode(0.5f * wave(t, 1.5f, phase));
-    *az = roxy_rear_fast_accel_z_r_encode(1.0f + 0.2f * wave(t, 2.0f, phase));
-    *gx = roxy_rear_fast_gyro_x_r_encode(100.0f * wave(t, 0.5f, phase));
-    *gy = roxy_rear_fast_gyro_y_r_encode(100.0f * wave(t, 0.7f, phase));
-    *gz = roxy_rear_fast_gyro_z_r_encode(100.0f * wave(t, 0.9f, phase));
-  } else {
-    *ax = roxy_rear_fast_accel_x_c_encode(0.5f * wave(t, 1.0f, phase));
-    *ay = roxy_rear_fast_accel_y_c_encode(0.5f * wave(t, 1.5f, phase));
-    *az = roxy_rear_fast_accel_z_c_encode(1.0f + 0.2f * wave(t, 2.0f, phase));
-    *gx = roxy_rear_fast_gyro_x_c_encode(100.0f * wave(t, 0.5f, phase));
-    *gy = roxy_rear_fast_gyro_y_c_encode(100.0f * wave(t, 0.7f, phase));
-    *gz = roxy_rear_fast_gyro_z_c_encode(100.0f * wave(t, 0.9f, phase));
-  }
 }
 /* USER CODE END Application */
 
