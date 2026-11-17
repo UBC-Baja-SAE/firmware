@@ -126,16 +126,16 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
 
   // SystemView Start (Comment this out if not using SystemView)
-  while (SEGGER_RTT_HasData(1) == 0)
-  {
-    osDelay(10);
-  }
-  SEGGER_SYSVIEW_Start();
+  // while (SEGGER_RTT_HasData(1) == 0)
+  // {
+  //   osDelay(10);
+  // }
+  // SEGGER_SYSVIEW_Start();
 
   /* Infinite loop */
   for(;;)
   {
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+    HAL_GPIO_TogglePin(GPIOC, LED_Pin);
     osDelay(1000);
   }
   /* USER CODE END StartDefaultTask */
