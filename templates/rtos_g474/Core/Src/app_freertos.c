@@ -25,6 +25,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "roxy.h"
+#include "SEGGER_RTT.h"
+#include "FreeRTOSConfig.h"
 
 /* USER CODE END Includes */
 
@@ -72,6 +75,13 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; // Enable Trace
+  DWT->CYCCNT = 0;                                // Reset Cycle Counter
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  // SystemView Init
+  SEGGER_SYSVIEW_Conf();
+
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -114,10 +124,19 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+
+  // SystemView Start (Comment this out if not using SystemView)
+  while (SEGGER_RTT_HasData(1) == 0)
+  {
+    osDelay(10);
+  }
+  SEGGER_SYSVIEW_Start();
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+    osDelay(1000);
   }
   /* USER CODE END StartDefaultTask */
 }
