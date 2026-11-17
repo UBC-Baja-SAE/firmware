@@ -41,17 +41,17 @@ void MX_FDCAN2_Init(void)
   hfdcan2.Init.ClockDivider = FDCAN_CLOCK_DIV1;
   hfdcan2.Init.FrameFormat = FDCAN_FRAME_FD_BRS;
   hfdcan2.Init.Mode = FDCAN_MODE_NORMAL;
-  hfdcan2.Init.AutoRetransmission = DISABLE;
+  hfdcan2.Init.AutoRetransmission = ENABLE;
   hfdcan2.Init.TransmitPause = DISABLE;
   hfdcan2.Init.ProtocolException = DISABLE;
-  hfdcan2.Init.NominalPrescaler = 8;
-  hfdcan2.Init.NominalSyncJumpWidth = 3;
-  hfdcan2.Init.NominalTimeSeg1 = 12;
-  hfdcan2.Init.NominalTimeSeg2 = 3;
-  hfdcan2.Init.DataPrescaler = 4;
-  hfdcan2.Init.DataSyncJumpWidth = 3;
-  hfdcan2.Init.DataTimeSeg1 = 12;
-  hfdcan2.Init.DataTimeSeg2 = 3;
+  hfdcan2.Init.NominalPrescaler = 1;
+  hfdcan2.Init.NominalSyncJumpWidth = 25;
+  hfdcan2.Init.NominalTimeSeg1 = 102;
+  hfdcan2.Init.NominalTimeSeg2 = 25;
+  hfdcan2.Init.DataPrescaler = 2;
+  hfdcan2.Init.DataSyncJumpWidth = 6;
+  hfdcan2.Init.DataTimeSeg1 = 25;
+  hfdcan2.Init.DataTimeSeg2 = 6;
   hfdcan2.Init.StdFiltersNbr = 0;
   hfdcan2.Init.ExtFiltersNbr = 0;
   hfdcan2.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
@@ -93,10 +93,17 @@ void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef* fdcanHandle)
     PB12     ------> FDCAN2_RX
     PB13     ------> FDCAN2_TX
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13;
+    GPIO_InitStruct.Pin = GPIO_PIN_12;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF9_FDCAN2;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_13;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF9_FDCAN2;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
