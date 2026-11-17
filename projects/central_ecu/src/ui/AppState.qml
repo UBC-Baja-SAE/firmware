@@ -3,7 +3,7 @@ import QtQuick
 
 QtObject {
     // theme stuff
-    property bool dark: false
+    property bool dark: true
     readonly property color bg: dark ? "black" : "white"
     readonly property color fg: dark ? "white" : "black"
     readonly property int margin: 8
