@@ -30,11 +30,9 @@ bool CanSocket::start(const QString &plugin, const QString &interfaceName)
 
     m_device->setConfigurationParameter(QCanBusDevice::CanFdKey, QVariant(true));
 
-    connect(m_device, &QCanBusDevice::framesReceived,
-            this, &CanSocket::onDeviceFramesReceived);
+    connect(m_device, &QCanBusDevice::framesReceived, this, &CanSocket::onDeviceFramesReceived);
 
-    connect(m_device, &QCanBusDevice::stateChanged,
-            this, [selectedPlugin, interfaceName](QCanBusDevice::CanBusDeviceState state) {
+    connect(m_device, &QCanBusDevice::stateChanged, this, [selectedPlugin, interfaceName](QCanBusDevice::CanBusDeviceState state) {
         if (state == QCanBusDevice::ConnectedState) {
             qInfo() << "Connected to CAN backend:" << selectedPlugin << "on" << interfaceName;
         }

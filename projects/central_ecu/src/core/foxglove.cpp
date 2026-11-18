@@ -29,8 +29,7 @@ void FoxgloveSink::startServer(uint16_t port)
     }
 }
 
-const FoxgloveSink::ChannelEntry *FoxgloveSink::ensureChannel(const QString &topic,
-                                                              const QVariantMap &values)
+const FoxgloveSink::ChannelEntry *FoxgloveSink::ensureChannel(const QString &topic, const QVariantMap &values)
 {
     auto it = m_channels.constFind(topic);
     if (it != m_channels.cend())

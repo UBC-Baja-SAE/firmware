@@ -6,9 +6,7 @@
 #include <QDebug>
 
 DbcParser::DbcParser(QObject *parent)
-    : QObject(parent)
-{
-}
+    : QObject(parent){}
 
 bool DbcParser::loadDbc(const QString &filePath)
 {
