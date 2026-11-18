@@ -6,7 +6,7 @@ Window {
     visible: true
     title: "central_ecu"
 
-    property real speed: guiBridge.values.speedometer ?? 0
+    property real speed: guiBridge.values.rear_medium_speedometer ?? 0
 
     Text {
         id: text

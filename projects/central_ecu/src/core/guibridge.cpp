@@ -1,4 +1,5 @@
 #include "guibridge.h"
+#include <utility>
 
 GuiBridge::GuiBridge(QObject *parent)
     : QObject(parent), m_values(this)
@@ -8,17 +9,23 @@ GuiBridge::GuiBridge(QObject *parent)
     m_timer.start();
 }
 
-void GuiBridge::onDecoded(QtCanBus::UniqueId, const QVariantMap &signalValues, quint64)
+void GuiBridge::onSample(const QString &topic, const QVariantMap &values, quint64)
 {
-    for (auto it = signalValues.cbegin(); it != signalValues.cend(); ++it)
-        m_pending.insert(it.key(), it.value());
+    const QString prefix = (topic.startsWith('/') ? topic.mid(1) : topic) + QLatin1Char('_');
+
+    QMutexLocker lock(&m_mutex);
+    for (auto it = values.cbegin(); it != values.cend(); ++it)
+        m_pending.insert(prefix + it.key(), it.value());
 }
 
 void GuiBridge::flush()
 {
-    if (m_pending.isEmpty())
-        return;
-    for (auto it = m_pending.cbegin(); it != m_pending.cend(); ++it)
+    QVariantMap pending;
+    {
+        QMutexLocker lock(&m_mutex);
+        if (m_pending.isEmpty()) return;
+        pending.swap(m_pending);
+    }
+    for (auto it = pending.cbegin(); it != pending.cend(); ++it)
         m_values.insert(it.key(), it.value());
-    m_pending.clear();
 }
