@@ -22,6 +22,15 @@ qt_add_executable(${PROJECT_NAME}
         src/core/guibridge.h
 )
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(ALSA REQUIRED)
+    target_sources(${PROJECT_NAME} PRIVATE
+            src/peripherals/webcam.cpp
+            src/peripherals/webcam.h
+    )
+    target_link_libraries(${PROJECT_NAME} PRIVATE ALSA::ALSA)
+endif()
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config")
 
