@@ -2,10 +2,9 @@
 """
 UBC Baja DBC compiler.
 
-Generates the regular cantools C source for each DBC, then appends one struct
-per signal group (SIG_GROUP_) and a helper that copies that group into its
-message struct. Nothing here locks; guarding shared group instances is left to
-the application.
+Generates the regular cantools C source for each DBC.
+Appends one struct per signal group (SIG_GROUP_) and a helper that copies that group into
+its message struct.
 
 Usage:
     python tools/dbcgen/dbcgen.py                    # every lib/dbc/*.dbc, in place
