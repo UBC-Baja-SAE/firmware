@@ -80,9 +80,10 @@ BA_ "VFrameFormat" BO_ 514 15;
 BA_ "DatabaseCompiler" "UBC BAJA";
 BA_ "DatabaseVersion" "1.0.0";
 
-SIG_GROUP_ 512 rear_fast 1 : accel_x_l accel_y_l accel_z_l gyro_x_l gyro_y_l gyro_z_l accel_x_r accel_y_r accel_z_r gyro_x_r gyro_y_r gyro_z_r accel_x_c accel_y_c accel_z_c gyro_x_c gyro_y_c gyro_z_c;
 SIG_GROUP_ 512 rear_medium 1 : speedometer tachometer;
-SIG_GROUP_ 512 rear_slow 1 : obj_temp amb_temp;
+SIG_GROUP_ 513 rear_slow 1 : obj_temp amb_temp;
+SIG_GROUP_ 514 rear_fast 1 : accel_x_l accel_y_l accel_z_l gyro_x_l gyro_y_l gyro_z_l accel_x_r accel_y_r accel_z_r gyro_x_r gyro_y_r gyro_z_r accel_x_c accel_y_c accel_z_c gyro_x_c gyro_y_c gyro_z_c;
+
 
 
 
