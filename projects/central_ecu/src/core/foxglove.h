@@ -25,8 +25,8 @@ public:
 
 public slots:
     void publishSample(const QString &topic, const QVariantMap &values, quint64 timestampNs);
-    void publishImage(const QByteArray &jpeg, quint64 ts);
-    void publishAudio(const QByteArray &pcm, quint64 ts, quint32 rate, quint32 channels);
+    void publishImage(const QString &cam, const QByteArray &jpeg, quint64 ts);
+    void publishAudio(const QString &cam, const QByteArray &pcm, quint64 ts, quint32 rate, quint32 channels);
     void startMcapLogging(bool enable, const QString &logDir);
 
 private:
@@ -40,8 +40,8 @@ private:
     QHash<QString, ChannelEntry> m_channels;
     QByteArray m_jsonScratch;
 
-    std::optional<foxglove::messages::CompressedImageChannel> m_imageChannel;
-    std::optional<foxglove::messages::RawAudioChannel> m_audioChannel;
+    QHash<QString, std::shared_ptr<foxglove::messages::CompressedImageChannel>> m_imageChannels;
+    QHash<QString, std::shared_ptr<foxglove::messages::RawAudioChannel>> m_audioChannels;
 
     std::unique_ptr<foxglove::WebSocketServer> m_server;
     std::unique_ptr<foxglove::McapWriter> m_writer;

@@ -9,8 +9,8 @@
 FoxgloveSink::~FoxgloveSink()
 {
     m_channels.clear();
-    m_imageChannel.reset();
-    m_audioChannel.reset();
+    m_imageChannels.clear();
+    m_audioChannels.clear();
     m_writer.reset();
     m_server.reset();
 }
@@ -90,34 +90,38 @@ void FoxgloveSink::publishSample(const QString &topic, const QVariantMap &values
     entry->channel->log(reinterpret_cast<const std::byte*>(m_jsonScratch.constData()), m_jsonScratch.size(), ts);
 }
 
-void FoxgloveSink::publishImage(const QByteArray &jpeg, quint64 ts)
+void FoxgloveSink::publishImage(const QString &cam, const QByteArray &jpeg, quint64 ts)
 {
-    if (!m_imageChannel) {
-        auto res = foxglove::messages::CompressedImageChannel::create("/camera/front");
+    auto &ch = m_imageChannels[cam];
+    if (!ch) {
+        auto res = foxglove::messages::CompressedImageChannel::create(("/camera/" + cam).toStdString());
         if (!res.has_value()) {
-            qWarning() << "Image channel failed:" << QString::fromStdString(foxglove::strerror(res.error()));
+            qWarning() << "Image channel failed for" << cam << ":" << QString::fromStdString(foxglove::strerror(res.error()));
+            m_imageChannels.remove(cam);
             return;
         }
-        m_imageChannel.emplace(std::move(res.value()));
+        ch = std::make_shared<foxglove::messages::CompressedImageChannel>(std::move(res.value()));
     }
 
     foxglove::messages::CompressedImage img;
     img.timestamp = {static_cast<uint32_t>(ts / 1000000000ull), static_cast<uint32_t>(ts % 1000000000ull)};
-    img.frame_id = "webcam";
+    img.frame_id = cam.toStdString();
     img.format   = "jpeg";
     img.data.assign(reinterpret_cast<const std::byte*>(jpeg.constData()), reinterpret_cast<const std::byte*>(jpeg.constData()) + jpeg.size());
-    m_imageChannel->log(img, ts);
+    ch->log(img, ts);
 }
 
-void FoxgloveSink::publishAudio(const QByteArray &pcm, quint64 ts, quint32 rate, quint32 channels)
+void FoxgloveSink::publishAudio(const QString &cam, const QByteArray &pcm, quint64 ts, quint32 rate, quint32 channels)
 {
-    if (!m_audioChannel) {
-        auto res = foxglove::messages::RawAudioChannel::create("/camera/audio");
+    auto &ch = m_audioChannels[cam];
+    if (!ch) {
+        auto res = foxglove::messages::RawAudioChannel::create(("/camera/" + cam + "/audio").toStdString());
         if (!res.has_value()) {
-            qWarning() << "Audio channel failed:" << QString::fromStdString(foxglove::strerror(res.error()));
+            qWarning() << "Audio channel failed for" << cam << ":" << QString::fromStdString(foxglove::strerror(res.error()));
+            m_audioChannels.remove(cam);
             return;
         }
-        m_audioChannel.emplace(std::move(res.value()));
+        ch = std::make_shared<foxglove::messages::RawAudioChannel>(std::move(res.value()));
     }
 
     foxglove::messages::RawAudio a;
@@ -126,7 +130,7 @@ void FoxgloveSink::publishAudio(const QByteArray &pcm, quint64 ts, quint32 rate,
     a.sample_rate = rate;
     a.number_of_channels = channels;
     a.data.assign(reinterpret_cast<const std::byte*>(pcm.constData()), reinterpret_cast<const std::byte*>(pcm.constData()) + pcm.size());
-    m_audioChannel->log(a, ts);
+    ch->log(a, ts);
 }
 
 void FoxgloveSink::startMcapLogging(bool enable, const QString &logDir)

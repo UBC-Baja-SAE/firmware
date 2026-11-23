@@ -27,29 +27,36 @@ int main(int argc, char *argv[])
     auto *foxgloveSink = new FoxgloveSink();
     auto *guiBridge = new GuiBridge(&app);
 #ifdef Q_OS_LINUX
-    auto *webcam = new Webcam();
+    // TODO: replace /dev/video0 with the stable path from `ls -l /dev/v4l/by-path`
+    QList<Webcam *> webcams;
+    // Front
+    webcams << new Webcam(QStringLiteral("front"),
+                      QStringLiteral("/dev/v4l/by-id/usb-046d_0819_D813F890-video-index0"),
+                      QStringLiteral("plughw:CARD=front,DEV=0"));
 #endif
 
     canSocket->moveToThread(&canThread);
     dbcParser->moveToThread(&canThread);
     foxgloveSink->moveToThread(&foxgloveThread);
 #ifdef Q_OS_LINUX
-    webcam->moveToThread(&camThread);
+    for (auto *w : webcams) w->moveToThread(&camThread);
 #endif
 
     QObject::connect(&canThread,  &QThread::finished, canSocket, &QObject::deleteLater);
     QObject::connect(&canThread,  &QThread::finished, dbcParser, &QObject::deleteLater);
     QObject::connect(&foxgloveThread, &QThread::finished, foxgloveSink, &QObject::deleteLater);
 #ifdef Q_OS_LINUX
-    QObject::connect(&camThread,  &QThread::finished, webcam, &QObject::deleteLater);
+    for (auto *w : webcams) QObject::connect(&camThread, &QThread::finished, w, &QObject::deleteLater);
 #endif
 
     QObject::connect(canSocket, &CanSocket::framesReceived, dbcParser, &DbcParser::processFrames);
     QObject::connect(dbcParser, &DbcParser::sample, foxgloveSink, &FoxgloveSink::publishSample);
     QObject::connect(dbcParser, &DbcParser::sample, guiBridge, &GuiBridge::onSample, Qt::DirectConnection);
 #ifdef Q_OS_LINUX
-    QObject::connect(webcam, &Webcam::frameReady, foxgloveSink, &FoxgloveSink::publishImage);
-    QObject::connect(webcam, &Webcam::audioReady, foxgloveSink, &FoxgloveSink::publishAudio);   // NEW
+    for (auto *w : webcams) {
+        QObject::connect(w, &Webcam::frameReady, foxgloveSink, &FoxgloveSink::publishImage);
+        QObject::connect(w, &Webcam::audioReady, foxgloveSink, &FoxgloveSink::publishAudio);
+    }
 #endif
 
     QObject::connect(&foxgloveThread, &QThread::started, foxgloveSink, [foxgloveSink]() {
@@ -67,12 +74,7 @@ int main(int argc, char *argv[])
     });
 
 #ifdef Q_OS_LINUX
-    QObject::connect(&camThread, &QThread::started, webcam, [webcam]() {
-        if (!webcam->start(QStringLiteral("/dev/video0"), 640, 480, 30))
-            qWarning() << "Webcam start failed";
-        if (!webcam->startAudio(QStringLiteral("plughw:CARD=U0x46d0x819,DEV=0"), 48000, 1))   // NEW
-            qWarning() << "Audio start failed";
-    });
+    for (auto *w : webcams) QObject::connect(&camThread, &QThread::started, w, &Webcam::begin);
 #endif
 
     engine.rootContext()->setContextProperty("guiBridge", guiBridge);
